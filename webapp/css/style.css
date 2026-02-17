@@ -1,0 +1,99 @@
+/* ================= HEADER GANTT ================= */
+.gantt-month-header {
+    border-right: 1px solid #ccc !important;
+    box-sizing: border-box !important;
+    height: 100%;
+    background-color: #f7f7f7;
+}
+
+.gantt-month-header:last-child {
+    border-right: none !important;
+}
+
+.gantt-day-border {
+    border-right: 1px solid #e0e0e0;
+    font-size: 0.7rem;
+    color: #666;
+}
+
+/* ================= ROW & BARS ================= */
+
+/* Container chung của cell */
+.gantt-row-container {
+    height: 100%;
+    padding: 2px 0;
+    justify-content: center;
+    position: relative;
+}
+
+/* Chiều cao cho dòng Cha (Single Bar) */
+.gantt-line-height {
+    height: 18px;
+    display: flex !important;
+}
+
+/* Chiều cao cho dòng Con (Double Bar - Song song) */
+.gantt-line-height-half {
+    height: 10px;
+    /* Nhỏ hơn để xếp chồng 2 cái */
+    display: flex !important;
+    margin-bottom: 2px;
+}
+
+/* --- BAR STYLES --- */
+
+/* 1. NODE CHA: Màu Đen */
+.gantt-bar-root {
+    background-color: #2c3e50 !important;
+    /* Màu đen/xám đậm */
+    height: 10px;
+    border-radius: 2px;
+}
+
+/* 2. NODE CON - PLAN: Màu Xanh Dương */
+.gantt-bar-plan {
+    background-color: #3498db !important;
+    /* Xanh dương */
+    height: 9px;
+    border-radius: 2px;
+    opacity: 0.9;
+    margin-bottom: 3px;
+}
+
+.gantt-label-nc {
+    font-size: 10px;
+    /* <--- Giảm số này xuống (ví dụ 10px hoặc 11px) */
+    font-weight: bold;
+    /* Giữ in đậm cho dễ đọc, hoặc đổi thành 'normal' nếu muốn mảnh hơn */
+    color: #333333;
+    white-space: nowrap;
+
+    /* Căn chỉnh lại vị trí một chút nếu chữ bị lệch */
+    position: relative;
+    top: -1px;
+    /* Đẩy chữ lên 1px nếu thấy nó bị thấp hơn thanh bar */
+}
+
+/* 3. NODE CON - ACTUAL: Màu Xanh Lá */
+.gantt-bar-actual {
+    background-color: #27ae60 !important;
+    /* Xanh lá */
+    height: 9px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+}
+
+/* Label nhỏ bên trong thanh Actual (nếu thanh đủ dài) */
+.gantt-bar-label-inner {
+    font-size: 8px;
+    color: white;
+    padding-left: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* ================= UTILS ================= */
+.gantt-no-shrink {
+    flex-shrink: 0 !important;
+}

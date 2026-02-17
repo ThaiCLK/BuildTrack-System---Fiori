@@ -1,0 +1,32 @@
+[
+  {
+    "project_id": "123e4567-e89b-12d3-a456-426614174000",
+    "project_code": "PRJ-2024-001",
+    "project_name": "Xây dựng khu dân cư Sunrise",
+    "project_type": "Construction",
+    "start_date": "/Date(1704067200000)/",
+    "end_date": "/Date(1753833600000)/",
+    "status": "RUNNING",
+    "created_by": "MANAGER01",
+    "created_on": "/Date(1701388800000)/",
+    "created_at": "PT08H30M00S",
+    "updated_by": "MANAGER01",
+    "updated_on": "/Date(1748736000000)/",
+    "updated_at": "PT09H00M00S"
+  },
+  {
+    "project_id": "987fcdeb-51a2-43c1-b789-123456789abc",
+    "project_code": "PRJ-2023-999",
+    "project_name": "Cải tạo văn phòng SAP",
+    "project_type": "Renovation",
+    "start_date": "/Date(1672531200000)/",
+    "end_date": "/Date(1688169600000)/",
+    "status": "COMPLETED",
+    "created_by": "ADMIN",
+    "created_on": "/Date(1672000000000)/",
+    "created_at": "PT14H00M00S",
+    "updated_by": "MANAGER01",
+    "updated_on": "/Date(1688256000000)/",
+    "updated_at": "PT16H45M00S"
+  }
+]

@@ -1,0 +1,42 @@
+<mvc:View
+    controllerName="z.bts.buildtrack.controller.Site"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f">
+    <Page 
+        title="Danh sách Site của Project: {project_name}" 
+        showNavButton="true" 
+        navButtonPress="onNavBack">
+        <content>
+            <Table 
+    id="siteTable" 
+    items="{to_Sites}" 
+    headerText="Các Site liên quan">
+    <columns>
+        <Column><Text text="Mã Site" /></Column>
+        <Column><Text text="Tên Site" /></Column>
+        <Column><Text text="Địa chỉ" /></Column>
+        <Column><Text text="Trạng thái" /></Column>
+        <Column><Text text="Ngày tạo" /></Column>
+    </columns>
+    <items>
+        <ColumnListItem type="Navigation" press=".onSitePress">
+            <cells>
+                <Text text="{site_code}" /> 
+                <Text text="{site_name}" />
+                <Text text="{address}" />
+                <ObjectStatus 
+                    text="{status}" 
+                    state="{= ${status} === 'OPEN' ? 'Success' : 'Warning' }" />
+                <Text text="{
+                    path: 'created_on',
+                    type: 'sap.ui.model.type.Date',
+                    formatOptions: { pattern: 'dd/MM/yyyy' }
+                }" />
+            </cells>
+        </ColumnListItem>
+    </items>
+</Table>
+        </content>
+    </Page>
+</mvc:View>

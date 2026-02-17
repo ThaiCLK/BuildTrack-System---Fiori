@@ -1,0 +1,111 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:t="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes">
+
+    <t:TreeTable id="wbsTreeTable"
+        rows="{path: 'viewData>/WBS', parameters: {arrayNames: ['children'], numberOfExpandedLevels: 2}}"
+        selectionMode="Single"
+        class="myCustomWideContent"
+        cellClick=".onGanttTaskClick">
+
+        <t:rowMode>
+            <rowmodes:Fixed rowCount="20" rowContentHeight="32" />
+        </t:rowMode>
+
+        <t:columns>
+            <t:Column width="19rem">
+                <t:label><Label text="Work progress" design="Bold"/></t:label>
+                <t:template>
+                    <HBox alignItems="Center">
+                        <core:Icon src="{= ${viewData>Type} === 'WBS' ? 'sap-icon://folder-blank' : 'sap-icon://activity-items'}"
+                                   class="sapUiTinyMarginEnd" 
+                                   color="{= ${viewData>Type} === 'WBS' ? '#346187' : '#e67e22'}"/>
+                        <Text text="{viewData>wbs_name}" wrapping="false" tooltip="{viewData>wbs_name}"/>
+                    </HBox>
+                </t:template>
+            </t:Column>
+
+            <t:Column width="6rem" hAlign="Center">
+                <t:label><Label text="Start"/></t:label>
+                <t:template>
+                    <Text text="{path: 'viewData>start_date', formatter: '.formatDate'}"/>
+                </t:template>
+            </t:Column>
+
+            <t:Column width="6rem" hAlign="Center">
+                <t:label><Label text="End"/></t:label>
+                <t:template>
+                    <Text text="{path: 'viewData>end_date', formatter: '.formatDate'}"/>
+                </t:template>
+            </t:Column>
+
+            <t:Column width="{viewConfig>/totalWidth}" resizable="false">
+                <t:label>
+                    <VBox width="{viewConfig>/totalWidth}" renderType="Bare">
+                        <HBox items="{path: 'viewConfig>/timeScale'}" renderType="Bare" height="25px">
+                            <items>
+                                <FlexBox width="{viewConfig>monthWidth}" 
+                                         justifyContent="Center" alignItems="Center" 
+                                         class="gantt-month-header gantt-no-shrink">
+                                    <Text text="{viewConfig>monthLabel}"/>
+                                </FlexBox>
+                            </items>
+                        </HBox>
+                        
+                        <HBox items="{path: 'viewConfig>/timeScale'}" renderType="Bare" height="20px">
+                            <items>
+                                <HBox items="{path: 'viewConfig>days'}" renderType="Bare" class="gantt-no-shrink">
+                                    <items>
+                                        <FlexBox width="{viewConfig>dayWidth}" 
+                                                 justifyContent="Center" alignItems="Center"
+                                                 class="gantt-day-border gantt-no-shrink">
+                                            <Text text="{viewConfig>dayLabel}" 
+                                                  visible="{= ${viewConfig>dayLabel} !== ''}"
+                                                  wrapping="false"/>
+                                        </FlexBox>
+                                    </items>
+                                </HBox>
+                            </items>
+                        </HBox>
+                    </VBox>
+                </t:label>
+
+                <t:template>
+                    <FlexBox width="{viewConfig>/totalWidth}" renderType="Bare" direction="Column" class="gantt-row-container">
+                        
+                        <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height"
+                                 visible="{path: 'viewData>parent_id', formatter: '.isRootNode'}">
+                            <FlexBox width="{path: 'viewData>start_date', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
+                            <FlexBox width="{parts: ['viewData>start_date', 'viewData>end_date'], formatter: '.calcWidth'}" 
+                                     class="gantt-bar-root gantt-no-shrink" renderType="Bare" />
+                        </FlexBox>
+
+                        <VBox renderType="Bare" visible="{path: 'viewData>parent_id', formatter: '.isChildNode'}">
+                            
+                            <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height-half">
+                                <FlexBox width="{path: 'viewData>start_date', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
+                                <FlexBox width="{parts: ['viewData>start_date', 'viewData>end_date'], formatter: '.calcWidth'}" 
+                                         class="gantt-bar-plan gantt-no-shrink" renderType="Bare" />
+                                         <Text 
+                text="{path: 'viewData>quantity', formatter: '.formatLabelNC'}"
+                visible="{= ${viewData>quantity} !== null &amp;&amp; ${viewData>quantity} !== undefined }"
+                class="sapUiTinyMarginBegin gantt-label-nc" />
+                            </FlexBox>
+
+                            <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height-half"
+                                     visible="{= !!${viewData>start_actual} }">
+                                <FlexBox width="{path: 'viewData>start_actual', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
+                                <FlexBox width="{parts: ['viewData>start_actual', 'viewData>end_actual'], formatter: '.calcWidth'}" 
+                                         class="gantt-bar-actual gantt-no-shrink" renderType="Bare">
+                                </FlexBox>
+                            </FlexBox>
+                        </VBox>
+
+                    </FlexBox>
+                </t:template>
+            </t:Column>
+        </t:columns>
+    </t:TreeTable>
+</core:FragmentDefinition>
