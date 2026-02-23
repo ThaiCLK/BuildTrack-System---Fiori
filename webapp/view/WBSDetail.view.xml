@@ -5,7 +5,7 @@
     xmlns:core="sap.ui.core"
     xmlns:form="sap.ui.layout.form"> <Page title="WBS Detail: {wbs_name}" showNavButton="true" navButtonPress="onNavBack">
         <content>
-            <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding">
+            <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding" select="onIconTabBarSelect">
                 <items>
                     <IconTabFilter icon="sap-icon://hint" text="Information">
                         
@@ -73,8 +73,8 @@
 
                     </IconTabFilter>
                     
-                    <IconTabFilter icon="sap-icon://Chart-Tree-Map" text="Daily Log">
-                        <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.DailyLog" type="XML" />
+                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://Chart-Tree-Map" text="Daily Log">
+                        <!-- Fragment will be loaded programmatically when tab is selected -->
                     </IconTabFilter>
                 </items>
             </IconTabBar>

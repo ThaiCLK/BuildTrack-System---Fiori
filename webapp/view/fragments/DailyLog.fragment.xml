@@ -88,7 +88,7 @@
                             <layoutData><l:GridData span="XL2 L2 M2 S4"/></layoutData>
                         </Input>
 
-                        <core:Title text="Máy móc thiết bị / Tài nguyên sử dụng" />
+                        <core:Title text="Tài nguyên sử dụng" />
                         
                         <Label text=""/>
                         <VBox>

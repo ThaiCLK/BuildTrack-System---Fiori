@@ -23,8 +23,9 @@ sap.ui.define([
     "sap/m/Column",
     "sap/m/ColumnListItem",
     "sap/m/Text",
+    "sap/ui/core/Fragment",
     "z/bts/buildtrack/utils/ExcelHelper"
-], function (Controller, History, JSONModel, MessageToast, MessageBox, Dialog, Button, Label, Input, DatePicker, TextArea, ComboBox, RadioButton, RadioButtonGroup, Item, Title, SimpleForm, GridData, VBox, HBox, Table, Column, ColumnListItem, Text, ExcelHelper) {
+], function (Controller, History, JSONModel, MessageToast, MessageBox, Dialog, Button, Label, Input, DatePicker, TextArea, ComboBox, RadioButton, RadioButtonGroup, Item, Title, SimpleForm, GridData, VBox, HBox, Table, Column, ColumnListItem, Text, Fragment, ExcelHelper) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.WBSDetail", {
@@ -41,6 +42,55 @@ sap.ui.define([
 
             // 3. Khởi tạo model cho Daily Log
             this._initDailyLogModel();
+        },
+        
+        /**
+         * Sau khi view được render
+         */
+        onAfterRendering: function() {
+            if (!this._dailyLogFragmentLoaded) {
+                // Load fragment sau một chút để đảm bảo DOM đã sẵn sàng
+                setTimeout(this._loadDailyLogFragment.bind(this), 100);
+            }
+        },
+        
+        /**
+         * Handler khi tab được chọn
+         */
+        onIconTabBarSelect: function(oEvent) {
+            var sKey = oEvent.getParameter("key");
+            if (sKey === "dailyLogTab" && !this._dailyLogFragmentLoaded) {
+                this._loadDailyLogFragment();
+            }
+        },
+        
+        /**
+         * Load Daily Log Fragment programmatically
+         */
+        _loadDailyLogFragment: function() {
+            var that = this;
+            if (!this._dailyLogFragment) {
+                console.log("Loading Daily Log fragment...");
+                Fragment.load({
+                    id: this.getView().getId(),
+                    name: "z.bts.buildtrack.view.fragments.DailyLog",
+                    controller: this
+                }).then(function(oFragment) {
+                    that._dailyLogFragment = oFragment;
+                    that._dailyLogFragmentLoaded = true;
+                    var oDailyLogTab = that.byId("idDailyLogTab");
+                    if (oDailyLogTab) {
+                        oDailyLogTab.removeAllContent();
+                        oDailyLogTab.addContent(oFragment);
+                        console.log("Daily Log fragment loaded successfully");
+                    } else {
+                        console.error("Daily Log tab not found");
+                    }
+                }).catch(function(error) {
+                    console.error("Error loading DailyLog fragment:", error);
+                    MessageBox.error("Không thể load Daily Log fragment: " + error.message);
+                });
+            }
         },
 
         /**
@@ -250,10 +300,19 @@ sap.ui.define([
         },
 
         onAddLog: function() {
-            var that = this;
-            var oModel = this.getView().getModel("dailyLogModel");
+            console.log("onAddLog called!");
+            MessageToast.show("Đang mở popup thêm nhật ký...");
             
-            var oNewModel = new JSONModel({
+            try {
+                var that = this;
+                var oModel = this.getView().getModel("dailyLogModel");
+                
+                if (!oModel) {
+                    MessageBox.error("Model dailyLogModel chưa được khởi tạo!");
+                    return;
+                }
+            
+                var oNewModel = new JSONModel({
                 log_id: "", log_date: new Date(), wbs_id: "", 
                 weather_am_idx: 0, weather_pm_idx: 0, 
                 man_cbkt: 0, man_cn: 0,
@@ -377,7 +436,7 @@ sap.ui.define([
                     new VBox({
                         items: [
                             oForm,
-                            new Title({ text: "Máy móc thiết bị / Tài nguyên sử dụng" }),
+                            new Label({ text: "Tài nguyên sử dụng", design: "Bold" }).addStyleClass("sapUiMediumMarginTop"),
                             oAddResourceBtn,
                             oResourcesTable
                         ]
@@ -413,6 +472,11 @@ sap.ui.define([
             oDialog.setModel(oNewModel, "new");
             oDialog.setModel(oModel, "dailyLogModel");
             oDialog.open();
+            
+            } catch (error) {
+                console.error("Error in onAddLog:", error);
+                MessageBox.error("Lỗi khi mở popup: " + error.message);
+            }
         },
 
         // --- CÁC HÀM SỬA / XÓA ---
@@ -835,7 +899,7 @@ sap.ui.define([
                 verticalScrolling: true,
                 content: [ 
                     oForm,
-                    new Label({ text: "Máy móc thiết bị / Tài nguyên sử dụng", design: "Bold" }),
+                    new Label({ text: "Tài nguyên sử dụng", design: "Bold" }),
                     oAddResourceBtn,
                     oResourcesTable
                 ],
