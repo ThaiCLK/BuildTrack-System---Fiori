@@ -74,7 +74,7 @@
                     </IconTabFilter>
                     
                     <IconTabFilter icon="sap-icon://Chart-Tree-Map" text="Daily Log">
-                        <Text text="Nội dung thông tin chung của Daily Log..." />
+                        <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.DailyLog" type="XML" />
                     </IconTabFilter>
                 </items>
             </IconTabBar>
