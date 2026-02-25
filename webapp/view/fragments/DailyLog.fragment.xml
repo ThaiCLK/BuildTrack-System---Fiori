@@ -90,8 +90,10 @@
 
                         <core:Title text="Tài nguyên sử dụng" />
                         
-                        <Label text=""/>
-                        <VBox>
+                        <VBox width="100%">
+                        <layoutData>
+                                <l:GridData span="XL12 L12 M12 S12"/>
+                            </layoutData>
                             <Button 
                                 text="Thêm tài nguyên" 
                                 icon="sap-icon://add" 

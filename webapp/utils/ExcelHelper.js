@@ -167,7 +167,6 @@ sap.ui.define([
             var weatherMap = {
                 "Nắng": 0,
                 "Mát mẻ": 1,
-                "Mát me": 1,
                 "Mưa": 2
             };
 
