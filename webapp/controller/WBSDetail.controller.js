@@ -782,12 +782,24 @@ sap.ui.define([
                 oItemCopy.resources = [];
             }
 
-            var oEditModel = new JSONModel(oItemCopy);
+            var oEditModel = new sap.ui.model.json.JSONModel(oItemCopy);
 
             console.log("Edit model data:", oEditModel.getData());
 
-            // Create resources table
-            var oResourcesTable = new Table({
+            // 1. Tạo nút Thêm tài nguyên (Add Resource Button)
+            var oAddResourceBtn = new sap.m.Button({
+                text: "Thêm tài nguyên",
+                icon: "sap-icon://add",
+                type: "Transparent",
+                press: function () {
+                    var aResources = oEditModel.getProperty("/resources");
+                    aResources.push({ resource_name: "", unit: "", quantity: 0 });
+                    oEditModel.setProperty("/resources", aResources);
+                }
+            });
+
+            // 2. Tạo Bảng tài nguyên (Resources Table)
+            var oResourcesTable = new sap.m.Table({
                 growing: false,
                 width: "100%",
                 mode: "Delete",
@@ -799,46 +811,47 @@ sap.ui.define([
                     oEditModel.setProperty("/resources", aResources);
                 },
                 columns: [
-                    new Column({ header: new Label({ text: "Tên tài nguyên", required: true }), width: "40%" }),
-                    new Column({ header: new Label({ text: "Đơn vị" }), width: "30%" }),
-                    new Column({ header: new Label({ text: "Số lượng", required: true }), width: "30%" })
+                    new sap.m.Column({ width: "45%", header: new sap.m.Text({ text: "Tên tài nguyên" }) }),
+                    new sap.m.Column({ width: "30%", header: new sap.m.Text({ text: "Đơn vị" }) }),
+                    new sap.m.Column({ width: "25%", header: new sap.m.Text({ text: "Số lượng" }) })
                 ],
                 items: {
                     path: "edit>/resources",
-                    template: new ColumnListItem({
+                    template: new sap.m.ColumnListItem({
                         cells: [
-                            new Input({ value: "{edit>resource_name}", required: true }),
-                            new Input({ value: "{edit>unit}" }),
-                            new Input({ value: "{edit>quantity}", type: "Number", required: true })
+                            new sap.m.Input({ value: "{edit>resource_name}", required: true }),
+                            new sap.m.Input({ value: "{edit>unit}" }),
+                            new sap.m.Input({ value: "{edit>quantity}", type: "Number", required: true })
                         ]
                     })
                 }
             });
 
-            var oAddResourceBtn = new Button({
-                text: "Thêm tài nguyên",
-                icon: "sap-icon://add",
-                press: function () {
-                    var aResources = oEditModel.getProperty("/resources");
-                    aResources.push({ resource_name: "", unit: "", quantity: 0 });
-                    oEditModel.setProperty("/resources", aResources);
-                }
+            // 3. Gói Nút và Bảng vào VBox (Thiết lập GridData span 12)
+            var oResourceVBox = new sap.m.VBox({
+                width: "100%",
+                layoutData: new sap.ui.layout.GridData({ span: "XL12 L12 M12 S12" }),
+                items: [oAddResourceBtn, oResourcesTable]
             });
 
-            var oForm = new SimpleForm({
+            // 4. Tạo SimpleForm
+            var oForm = new sap.ui.layout.form.SimpleForm({
                 editable: true,
                 layout: "ResponsiveGridLayout",
-                labelSpanXL: 4, labelSpanL: 4, labelSpanM: 4,
+                labelSpanXL: 4, labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 adjustLabelSpan: false,
+                emptySpanXL: 0, emptySpanL: 0, emptySpanM: 0, emptySpanS: 0,
                 columnsXL: 2, columnsL: 2, columnsM: 2,
+                singleContainerFullSize: false,
                 content: [
-                    new Title({ text: "Thông tin chung" }),
+                    // --- CỘT 1: THÔNG TIN CHUNG ---
+                    new sap.ui.core.Title({ text: "Thông tin chung" }),
 
-                    new Label({ text: "Mã nhật ký" }),
-                    new Input({ value: "{edit>/log_id}", placeholder: "VD: LOG001" }),
+                    new sap.m.Label({ text: "Mã nhật ký" }),
+                    new sap.m.Input({ value: "{edit>/log_id}", placeholder: "VD: LOG001" }),
 
-                    new Label({ text: "Ngày báo cáo" }),
-                    new DatePicker({
+                    new sap.m.Label({ text: "Ngày báo cáo", required: true }),
+                    new sap.m.DatePicker({
                         value: {
                             path: "edit>/log_date",
                             type: "sap.ui.model.type.Date",
@@ -847,78 +860,78 @@ sap.ui.define([
                         displayFormat: "dd/MM/yyyy"
                     }),
 
-                    new Label({ text: "Mã WBS" }),
-                    new Input({ value: "{edit>/wbs_id}" }),
+                    new sap.m.Label({ text: "Mã WBS" }),
+                    new sap.m.Input({ value: "{edit>/wbs_id}" }),
 
-                    new Label({ text: "Tên hạng mục" }),
-                    new Input({ value: "{edit>/wbs_name}" }),
+                    new sap.m.Label({ text: "Tên hạng mục" }),
+                    new sap.m.Input({ value: "{edit>/wbs_name}" }),
 
-                    new Label({ text: "Thời tiết (Sáng)" }),
-                    new RadioButtonGroup({
+                    new sap.m.Label({ text: "Thời tiết (Sáng)" }),
+                    new sap.m.RadioButtonGroup({
                         columns: 3,
                         selectedIndex: "{edit>/weather_am_idx}",
                         buttons: [
-                            new RadioButton({ text: "Nắng" }),
-                            new RadioButton({ text: "Mát mẻ" }),
-                            new RadioButton({ text: "Mưa" })
+                            new sap.m.RadioButton({ text: "Nắng" }),
+                            new sap.m.RadioButton({ text: "Mát mẻ" }),
+                            new sap.m.RadioButton({ text: "Mưa" })
                         ]
                     }),
 
-                    new Label({ text: "Thời tiết (Chiều)" }),
-                    new RadioButtonGroup({
+                    new sap.m.Label({ text: "Thời tiết (Chiều)" }),
+                    new sap.m.RadioButtonGroup({
                         columns: 3,
                         selectedIndex: "{edit>/weather_pm_idx}",
                         buttons: [
-                            new RadioButton({ text: "Nắng" }),
-                            new RadioButton({ text: "Mát mẻ" }),
-                            new RadioButton({ text: "Mưa" })
+                            new sap.m.RadioButton({ text: "Nắng" }),
+                            new sap.m.RadioButton({ text: "Mát mẻ" }),
+                            new sap.m.RadioButton({ text: "Mưa" })
                         ]
                     }),
 
-                    new Label({ text: "CBKT" }),
-                    new Input({ value: "{edit>/man_cbkt}", type: "Number" }),
+                    new sap.m.Label({ text: "CBKT" }),
+                    new sap.m.Input({ value: "{edit>/man_cbkt}", type: "Number", layoutData: new sap.ui.layout.GridData({ span: "XL2 L2 M2 S4" }) }),
 
-                    new Label({ text: "CN" }),
-                    new Input({ value: "{edit>/man_cn}", type: "Number" }),
+                    new sap.m.Label({ text: "CN" }),
+                    new sap.m.Input({ value: "{edit>/man_cn}", type: "Number", layoutData: new sap.ui.layout.GridData({ span: "XL2 L2 M2 S4" }) }),
 
-                    new Title({ text: "Chi tiết thực hiện" }),
+                    // --- CỘT 2: TÀI NGUYÊN SỬ DỤNG ---
+                    new sap.ui.core.Title({ text: "Tài nguyên sử dụng" }),
+                    oResourceVBox, // Đưa VBox chứa bảng tài nguyên vào đây
 
-                    new Label({ text: "Mô tả công việc" }),
-                    new TextArea({ value: "{edit>/description}", rows: 3 }),
+                    // --- DÒNG DƯỚI: CHI TIẾT THỰC HIỆN ---
+                    new sap.ui.core.Title({ text: "Chi tiết thực hiện" }),
 
-                    new Label({ text: "Note An toàn vệ sinh" }),
-                    new TextArea({ value: "{edit>/note_safety}", rows: 2 }),
+                    new sap.m.Label({ text: "Mô tả công việc" }),
+                    new sap.m.TextArea({ value: "{edit>/description}", rows: 4 }),
 
-                    new Label({ text: "Ý kiến tư vấn giám sát" }),
-                    new TextArea({ value: "{edit>/consultant_note}", rows: 2 }),
+                    new sap.m.Label({ text: "Note An toàn vệ sinh" }),
+                    new sap.m.TextArea({ value: "{edit>/note_safety}", rows: 3 }),
 
-                    new Label({ text: "Ý kiến nhà thầu" }),
-                    new TextArea({ value: "{edit>/contractor_note}", rows: 2 })
+                    new sap.m.Label({ text: "Ý kiến tư vấn giám sát" }),
+                    new sap.m.TextArea({ value: "{edit>/consultant_note}", rows: 3 }),
+
+                    new sap.m.Label({ text: "Ý kiến nhà thầu" }),
+                    new sap.m.TextArea({ value: "{edit>/contractor_note}", rows: 3 })
                 ]
             });
 
-            var oEditDialog = new Dialog({
+            var oEditDialog = new sap.m.Dialog({
                 title: "Chỉnh sửa dữ liệu",
-                contentWidth: "900px",
+                contentWidth: "1000px", // Mở rộng để Form tự động chia 2 cột
                 contentHeight: "80%",
                 verticalScrolling: true,
-                content: [
-                    oForm,
-                    new Label({ text: "Tài nguyên sử dụng", design: "Bold" }),
-                    oAddResourceBtn,
-                    oResourcesTable
-                ],
-                beginButton: new Button({
+                content: [ oForm ], // Chỉ chứa oForm
+                beginButton: new sap.m.Button({
                     text: "Lưu",
                     type: "Emphasized",
                     press: function () {
                         var oEditedItem = oEditModel.getData();
                         oPreviewModel.setProperty(sPath, oEditedItem);
-                        MessageToast.show("Đã cập nhật!");
+                        sap.m.MessageToast.show("Đã cập nhật!");
                         oEditDialog.close();
                     }
                 }),
-                endButton: new Button({
+                endButton: new sap.m.Button({
                     text: "Hủy",
                     press: function () {
                         oEditDialog.close();
