@@ -17,7 +17,7 @@
     },
     "dataSources": {
       "mainService": {
-        "uri": "/here/goes/your/serviceurl",
+        "uri": "/sap/opu/odata/sap/ZBT_ODATA_SRV/",
         "type": "OData",
         "settings": {
           "annotations": [],
@@ -50,7 +50,9 @@
       "libs": {
         "sap.m": {},
         "sap.ui.core": {},
-        "sap.ui.table": {}
+        "sap.ui.table": {},
+        "sap.ui.layout": {},
+        "sap.f": {}
       }
     },
     "contentDensities": {
@@ -89,8 +91,15 @@
       },
       "routes": [
         {
+          "name": "Dashboard",
+          "pattern": "",
+          "target": [
+            "TargetDashboard"
+          ]
+        },
+        {
           "name": "RouteMain",
-          "pattern": ":?query:",
+          "pattern": "projects",
           "target": [
             "TargetMain"
           ]
@@ -118,6 +127,13 @@
         }
       ],
       "targets": {
+        "TargetDashboard": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "Dashboard",
+          "viewName": "Dashboard"
+        },
         "TargetMain": {
           "viewType": "XML",
           "transition": "slide",

@@ -3,73 +3,280 @@ sap.ui.define([
     "sap/ui/core/routing/History",
     "z/bts/buildtrack/controller/delegate/WBSDelegate",
     "sap/ui/model/json/JSONModel",
-    "sap/ui/core/format/DateFormat" // Import thêm để dùng cho formatDate
-], function (Controller, History, WBSDelegate, JSONModel, DateFormat) {
+    "sap/ui/core/format/DateFormat",
+    "sap/m/MessageToast",
+    "sap/m/MessageBox",
+    "sap/m/Dialog",
+    "sap/m/Button",
+    "sap/m/Label",
+    "sap/m/Input",
+    "sap/m/Select",
+    "sap/ui/core/Item",
+    "sap/m/DatePicker",
+    "sap/m/VBox",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
+    "sap/ui/layout/form/SimpleForm"
+], function (Controller, History, WBSDelegate, JSONModel, DateFormat,
+    MessageToast, MessageBox, Dialog, Button, Label, Input,
+    Select, Item, DatePicker, VBox, Filter, FilterOperator, SimpleForm) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.SiteDetail", {
 
         onInit: function () {
             this._oWBSDelegate = new WBSDelegate(this);
-
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("SiteDetail").attachPatternMatched(this._onObjectMatched, this);
-
             this.getView().setModel(new JSONModel(), "viewData");
             this.getView().setModel(new JSONModel(), "viewConfig");
         },
 
         _onObjectMatched: function (oEvent) {
             var sSiteId = oEvent.getParameter("arguments").site_id;
-            var oModel = this.getOwnerComponent().getModel();
+            this._sCurrentSiteId = sSiteId;
             var that = this;
 
-            // 1. Bind thông tin Site Detail
-            this.getView().bindElement("/zbt_site(guid'" + sSiteId + "')");
+            this.getView().bindElement({
+                path: "/SiteSet(guid'" + sSiteId + "')",
+                events: {
+                    dataRequested: function () { that.getView().setBusy(true); },
+                    dataReceived: function () { that.getView().setBusy(false); }
+                }
+            });
 
-            // 2. Nạp dữ liệu WBS
-            oModel.read("/zbt_wbs", {
-                filters: [new sap.ui.model.Filter("site_id", "EQ", sSiteId)],
+            this._loadWbsData();
+        },
+
+        _loadWbsData: function () {
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            oModel.read("/WBSSet", {
+                filters: [new Filter("SiteId", FilterOperator.EQ, this._sCurrentSiteId)],
                 success: function (oData) {
-                    // Logic transform cây có thể để ở đây hoặc chuyển vào Delegate cho gọn
                     var aTreeData = that._transformToTree(oData.results);
-
-                    // Delegate tính toán ngày tháng Gantt
                     var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
-
                     that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
                     that.getView().getModel("viewConfig").setData(oGanttConfig);
-                }
+                },
+                error: function (oError) { console.error("Error reading WBSSet:", oError); }
             });
         },
 
         onNavBack: function () {
             var oHistory = History.getInstance();
-            var sPreviousHash = oHistory.getPreviousHash();
-
-            if (sPreviousHash !== undefined) {
+            if (oHistory.getPreviousHash() !== undefined) {
                 window.history.go(-1);
             } else {
                 var oCtx = this.getView().getBindingContext();
-                var sProjectId = oCtx ? oCtx.getProperty("project_id") : "";
-
-                this.getOwnerComponent().getRouter().navTo("Site", {
-                    project_id: sProjectId
-                }, true);
+                var sProjectId = oCtx ? oCtx.getProperty("ProjectId") : "";
+                this.getOwnerComponent().getRouter().navTo("Site", { project_id: sProjectId }, true);
             }
+        },
+
+        // ── WBS: CREATE (root if no row selected, child if row selected) ────────
+        onAddWbs: function () {
+            var oTable = this.byId("wbsTreeTable");
+            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
+
+            if (iIndex >= 0) {
+                // A row is selected → create as child of that row
+                var oCtx = oTable.getContextByIndex(iIndex);
+                var sParentId = oCtx ? oCtx.getProperty("WbsId") : null;
+                var sParentName = oCtx ? oCtx.getProperty("WbsName") : "";
+                this._openWbsDialog(null, sParentId, sParentName);
+            } else {
+                // No row selected → create as root WBS (null / GUID zero parent)
+                this._openWbsDialog(null, null, null);
+            }
+        },
+
+        // ── WBS: EDIT ────────────────────────────────────────────────────────
+        onEditWbs: function () {
+            var oTable = this.byId("wbsTreeTable");
+            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
+            if (iIndex < 0) {
+                MessageToast.show("Please select a WBS row to edit.");
+                return;
+            }
+            var oCtx = oTable.getContextByIndex(iIndex);
+            this._openWbsDialog(oCtx, null, null);
+        },
+
+        // ── WBS: DELETE ───────────────────────────────────────────────────────
+        onDeleteWbs: function () {
+            var oTable = this.byId("wbsTreeTable");
+            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
+            if (iIndex < 0) {
+                MessageToast.show("Please select a WBS row to delete.");
+                return;
+            }
+            var oCtx = oTable.getContextByIndex(iIndex);
+            var sName = oCtx.getProperty("WbsName");
+            var sWbsId = oCtx.getProperty("WbsId");
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+
+            MessageBox.confirm("Are you sure you want to delete WBS \"" + sName + "\"?\nChild WBS items will not be deleted automatically.", {
+                title: "Confirm Delete WBS",
+                onClose: function (sAction) {
+                    if (sAction === MessageBox.Action.OK) {
+                        oModel.remove("/WBSSet('" + sWbsId + "')", {
+                            success: function () {
+                                MessageToast.show("WBS deleted: " + sName);
+                                that._loadWbsData();
+                            },
+                            error: function () { MessageBox.error("Unable to delete WBS."); }
+                        });
+                    }
+                }
+            });
+        },
+
+        // ── PRIVATE: Create/Edit WBS Dialog ───────────────────────────────────
+        _openWbsDialog: function (oContext, sParentId, sParentName) {
+            var that = this;
+            var bEdit = !!oContext;
+            var oModel = this.getOwnerComponent().getModel();
+
+            var oInputCode = new Input({ placeholder: "e.g. 1.1.1" });
+            var oInputName = new Input({ placeholder: "Work item name" });
+            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
+            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
+            var oInputQty = new Input({ type: "Number", placeholder: "0" });
+            var oSelectUnit = new Select({
+                width: "100%",
+                items: [
+                    new Item({ key: "MAN", text: "Man-day (MAN)" }),
+                    new Item({ key: "M3", text: "Cubic Meter (M3)" }),
+                    new Item({ key: "M2", text: "Square Meter (M2)" }),
+                    new Item({ key: "M", text: "Linear Meter (M)" }),
+                    new Item({ key: "TON", text: "Ton (TON)" }),
+                    new Item({ key: "EA", text: "Each (EA)" })
+                ]
+            });
+            var oSelectStatus = new Select({
+                width: "100%",
+                items: [
+                    new Item({ key: "PLANNING", text: "Planning" }),
+                    new Item({ key: "RUNNING", text: "In Progress" }),
+                    new Item({ key: "COMPLETED", text: "Completed" }),
+                    new Item({ key: "ON_HOLD", text: "On Hold" })
+                ]
+            });
+
+            var sDialogTitle;
+            if (bEdit) {
+                sDialogTitle = "Edit WBS";
+                oInputCode.setValue(oContext.getProperty("WbsCode"));
+                oInputName.setValue(oContext.getProperty("WbsName"));
+                var oStart = oContext.getProperty("StartDate");
+                var oEnd = oContext.getProperty("EndDate");
+                if (oStart) oPickerStart.setDateValue(oStart);
+                if (oEnd) oPickerEnd.setDateValue(oEnd);
+                var sQty = oContext.getProperty("Quantity");
+                if (sQty) oInputQty.setValue(parseFloat(sQty));
+                oSelectUnit.setSelectedKey(oContext.getProperty("UnitCode"));
+                oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
+            } else {
+                sDialogTitle = sParentId
+                    ? "Add Child WBS of: " + sParentName
+                    : "Create WBS (Root Level)";
+            }
+
+            var oForm = new SimpleForm({
+                editable: true,
+                layout: "ResponsiveGridLayout",
+                labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
+                columnsL: 1, columnsM: 1,
+                content: [
+                    new Label({ text: "WBS Code", required: true }), oInputCode,
+                    new Label({ text: "Name", required: true }), oInputName,
+                    new Label({ text: "Start Date", required: true }), oPickerStart,
+                    new Label({ text: "End Date", required: true }), oPickerEnd,
+                    new Label({ text: "Quantity", required: true }), oInputQty,
+                    new Label({ text: "Unit" }), oSelectUnit,
+                    new Label({ text: "Status" }), oSelectStatus
+                ]
+            });
+
+            var oDialog = new Dialog({
+                title: sDialogTitle,
+                contentWidth: "450px",
+                content: [oForm],
+                beginButton: new Button({
+                    text: bEdit ? "Save Changes" : "Create WBS",
+                    type: "Emphasized",
+                    press: function () {
+                        var sWbsCode = oInputCode.getValue().trim();
+                        var sName = oInputName.getValue().trim();
+                        var dStart = oPickerStart.getDateValue();
+                        var dEnd = oPickerEnd.getDateValue();
+                        var sQuantity = oInputQty.getValue() || "0";
+                        if (!sWbsCode || !sName || !dStart || !dEnd) {
+                            MessageToast.show("Please enter all required fields!");
+                            return;
+                        }
+                        // Fix timezone shift: getDateValue() returns local midnight (UTC+7).
+                        // Converting to UTC midnight avoids the date being stored 1 day earlier.
+                        var toUTC = function (d) {
+                            return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                        };
+                        var oPayload = {
+                            WbsCode: sWbsCode,
+                            WbsName: sName,
+                            StartDate: toUTC(dStart),
+                            EndDate: toUTC(dEnd),
+                            Quantity: oInputQty.getValue() || "0",
+                            UnitCode: oSelectUnit.getSelectedKey(),
+                            Status: oSelectStatus.getSelectedKey()
+                        };
+                        if (bEdit) {
+                            // Key = WbsId of the row being edited (read from context, not from a form input)
+                            var sEditWbsId = oContext.getProperty("WbsId");
+                            oModel.update("/WBSSet(guid'" + sEditWbsId + "')", oPayload, {
+                                success: function () {
+                                    MessageToast.show("WBS updated!");
+                                    oDialog.close();
+                                    // refresh(true) clears OData V2 client cache so the next
+                                    // read() fetches fresh data instead of a stale cached response
+                                    oModel.refresh(true);
+                                    that._loadWbsData();
+                                },
+                                error: function () { MessageBox.error("Error updating WBS!"); }
+                            });
+                        } else {
+                            // Backend generates WbsId (GUID) — FE must supply SiteId + optional ParentId
+                            oPayload.SiteId = that._sCurrentSiteId;
+                            oPayload.ParentId = sParentId || null;
+                            oModel.create("/WBSSet", oPayload, {
+                                success: function () { MessageToast.show("WBS created successfully!"); oDialog.close(); that._loadWbsData(); },
+                                error: function () { MessageBox.error("Error creating WBS!"); }
+                            });
+                        }
+                    }
+                }),
+                endButton: new Button({
+                    text: "Cancel",
+                    press: function () { oDialog.close(); }
+                }),
+                afterClose: function () { oDialog.destroy(); }
+            });
+
+            oDialog.addStyleClass("sapUiContentPadding");
+            oDialog.open();
         },
 
         _transformToTree: function (aData) {
             var map = {}, node, res = [], i;
             for (i = 0; i < aData.length; i++) {
-                map[aData[i].wbs_id] = i;
+                map[aData[i].WbsId] = i;
                 aData[i].children = [];
             }
             for (i = 0; i < aData.length; i++) {
                 node = aData[i];
-                // Check parent_id khác rỗng và tồn tại trong map
-                if (node.parent_id && map[node.parent_id] !== undefined) {
-                    aData[map[node.parent_id]].children.push(node);
+                if (node.ParentId && map[node.ParentId] !== undefined) {
+                    aData[map[node.ParentId]].children.push(node);
                 } else {
                     res.push(node);
                 }
@@ -77,69 +284,29 @@ sap.ui.define([
             return res;
         },
 
-        /* =========================================================== */
-        /* FORMATTERS (Cầu nối giữa XML View và Logic trong Delegate)  */
-        /* =========================================================== */
-
-        // 1. Thêm hàm này: Check Node Cha
-        isRootNode: function (vParentId) {
-            return this._oWBSDelegate.isRootNode(vParentId);
-        },
-
-        // 2. Thêm hàm này: Check Node Con
-        isChildNode: function (vParentId) {
-            return this._oWBSDelegate.isChildNode(vParentId);
-        },
-
-        // 3. Các hàm cũ giữ nguyên
-        calcMargin: function (sDate) {
-            return this._oWBSDelegate.calcMargin(sDate);
-        },
-
-        calcWidth: function (sStart, sEnd) {
-            return this._oWBSDelegate.calcWidth(sStart, sEnd);
-        },
+        isRootNode: function (v) { return this._oWBSDelegate.isRootNode(v); },
+        isChildNode: function (v) { return this._oWBSDelegate.isChildNode(v); },
+        calcMargin: function (s) { return this._oWBSDelegate.calcMargin(s); },
+        calcWidth: function (s, e) { return this._oWBSDelegate.calcWidth(s, e); },
 
         formatDate: function (oDate) {
-            // Nên dùng hàm có sẵn trong Delegate nếu có, hoặc viết tại đây
             if (!oDate) return "";
-            var oDateFormat = DateFormat.getInstance({ pattern: "dd/MM/yyyy" });
-            return oDateFormat.format(oDate);
+            return DateFormat.getInstance({ pattern: "dd/MM/yyyy" }).format(oDate);
         },
 
-        formatLabelNC: function (sQuantity) {
-            // 1. Kiểm tra nếu không có dữ liệu hoặc bằng 0 thì không hiện
-            if (!sQuantity || sQuantity === "0" || sQuantity === "0.000") {
-                return "";
-            }
-
-            // 2. Chuyển đổi từ chuỗi "15.000" sang số nguyên 15
-            // parseInt sẽ tự động bỏ qua phần thập phân
-            var iQuantity = parseInt(sQuantity, 10);
-
-            // 3. Trả về chuỗi định dạng
-            // Kết quả sẽ là: "NC [15]" thay vì "NC [15.000]"
-            return "NC [" + iQuantity + "]";
+        formatWorkVolume: function (sQuantity, sUnitCode) {
+            if (!sQuantity || sQuantity === "0" || sQuantity === "0.000") return "";
+            var sFormattedQty = parseFloat(sQuantity).toString(); // remove trailing zeros
+            var sUnit = sUnitCode ? " " + sUnitCode : "";
+            return sFormattedQty + sUnit;
         },
 
-        // Sự kiện click
-        /* Hàm onGanttTaskClick */
         onGanttTaskClick: function (oEvent) {
             var oContext = oEvent.getParameter("rowBindingContext");
             if (!oContext) return;
-
-            var sWbsId = oContext.getProperty("wbs_id");
-
-            // Lấy site_id. 
-            // CÁCH 1: Nếu trong dòng dữ liệu JSON của bảng có trường site_id/project_id
-            var sSiteId = oContext.getProperty("site_id"); // hoặc "project_id" tuỳ dữ liệu của bạn
-
-            // CÁCH 2 (An toàn hơn): Nếu đang đứng ở trang SiteDetail, lấy ID từ URL hiện tại
-            // var sSiteId = this.getOwnerComponent().getRouter().getHashChanger().getHash().split("/")[1]; 
-
             this.getOwnerComponent().getRouter().navTo("WBSDetail", {
-                site_id: sSiteId, // <--- Truyền thêm cái này
-                wbsId: sWbsId
+                site_id: oContext.getProperty("SiteId"),
+                wbsId: oContext.getProperty("WbsId")
             });
         }
     });

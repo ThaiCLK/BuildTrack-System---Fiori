@@ -4,87 +4,136 @@
     xmlns:f="sap.f"
     xmlns:core="sap.ui.core">
 
-    <Page id="pageProjectList" title="{i18n>title}">
+    <Page id="pageProjectList" showNavButton="true" navButtonPress=".onNavBack"
+          showHeader="false">
         <content>
             <Table id="projectTable"
                 inset="false"
-                items="{
-                    path: '/zbt_project',
-                    sorter: { path: 'project_code' }
-                }">
-                
+                growing="true"
+                growingThreshold="20"
+                alternateRowColors="true"
+                items="{ path: '/ProjectSet' }">
+
                 <headerToolbar>
-                    <OverflowToolbar id="otbSubheader">
-                        <Title id="tableHeader" text="Project Database ({= ${/zbt_project}.length })" level="H2"/>
+                    <OverflowToolbar id="otbSubheader" style="Clear">
+                        <!-- Back chevron + title -->
+                        <Button icon="sap-icon://nav-back" type="Transparent" press=".onNavBack"
+                                tooltip="Back to Dashboard"/>
+                        <Title id="tableHeader" text="Project Database" level="H2"/>
+                        <Text id="txtItemCount" text="{= 'Projects: ' }"/>
                         <ToolbarSpacer id="toolbarSpacer"/>
-                        <SearchField 
-    id="searchProject" 
-    width="20%" 
-    placeholder="Find..." 
-    search=".onSearch" />  <Button 
-    id="btnCreateProject" 
-    text="Create Project" 
-    type="Emphasized" 
-    icon="sap-icon://add"
-    press=".onPressCreate" />
-                        <Button id="btnSortProject" icon="sap-icon://sort" type="Transparent"/>
+                        <SearchField
+                            id="searchProject"
+                            width="22rem"
+                            placeholder="Search by name or code…"
+                            liveChange=".onSearch"/>
+                        <Button
+                            id="btnCreateProject"
+                            text="Create Project"
+                            type="Emphasized"
+                            icon="sap-icon://add"
+                            press=".onPressCreate"/>
+                        <Button id="btnSortProject" icon="sap-icon://sort" type="Transparent"
+                                tooltip="Sort"/>
                     </OverflowToolbar>
                 </headerToolbar>
 
                 <columns>
-                    <Column id="colProjectCode" width="12em">
-                        <Text id="txtColProjectCode" text="Project ID" />
+                    <Column id="colProjectCode" width="10rem">
+                        <Text id="txtColProjectCode" text="Project ID"/>
                     </Column>
                     <Column id="colProjectName" minScreenWidth="Tablet" demandPopin="true">
-                        <Text id="txtColProjectName" text="Project Name" />
+                        <Text id="txtColProjectName" text="Project Name"/>
                     </Column>
-                    <Column id="colProjectType" minScreenWidth="Tablet" demandPopin="true" hAlign="Center">
-                        <Text id="txtColProjectType" text="Type" />
+                    <Column id="colProjectType" width="9rem" minScreenWidth="Tablet" demandPopin="true" hAlign="Center">
+                        <Text id="txtColProjectType" text="Type"/>
                     </Column>
-                    <Column id="colStartDate" hAlign="End">
-                        <Text id="txtColStartDate" text="Start Date" />
+                    <Column id="colStartDate" width="8rem" hAlign="End">
+                        <Text id="txtColStartDate" text="Start Date"/>
                     </Column>
-                    <Column id="colEndDate" hAlign="End">
-                        <Text id="txtColEndDate" text="Est. End Date" />
+                    <Column id="colEndDate" width="9rem" hAlign="End">
+                        <Text id="txtColEndDate" text="Est. End Date"/>
                     </Column>
-                    <Column id="colStatus" hAlign="Center">
-                        <Text id="txtColStatus" text="Status" />
+                    <Column id="colStatus" width="10rem" hAlign="Center">
+                        <Text id="txtColStatus" text="Status"/>
                     </Column>
-                    <Column id="colAction" width="5em">
-                        <Text id="txtColAction" text="Action" />
+                    <Column id="colAction" width="7rem" hAlign="Center">
+                        <Text id="txtColAction" text="Actions"/>
                     </Column>
                 </columns>
 
                 <items>
-                    <ColumnListItem id="cliProjectTemplate" vAlign="Middle" type="Navigation" press=".onPressProject">
+                    <ColumnListItem id="cliProjectTemplate" vAlign="Middle"
+                                    type="Navigation" press=".onPressProject">
                         <cells>
-                            <ObjectIdentifier id="objProjectCode" title="{project_code}" />
+                            <!-- Project Code: bold identifier -->
+                            <ObjectIdentifier id="objProjectCode"
+                                title="{ProjectCode}"
+                                titleActive="false"/>
 
-                            <Text id="txtProjectName" text="{project_name}" />
+                            <!-- Project Name -->
+                            <ObjectIdentifier id="objProjectName"
+                                title="{ProjectName}"
+                                titleActive="false"/>
 
-                            <ObjectStatus id="objProjectType" text="{project_type}" state="Information" inverted="true" />
+                            <!-- Type badge — icon & colour via formatter (avoids XML whitespace issues) -->
+                            <ObjectStatus id="objProjectType"
+                                text="{ProjectType}"
+                                icon="{ path: 'ProjectType', formatter: '.formatTypeIcon' }"
+                                state="{ path: 'ProjectType', formatter: '.formatTypeState' }"
+                                inverted="true"/>
 
+                            <!-- Start Date -->
                             <Text id="txtStartDate" text="{
-                                path: 'start_date',
+                                path: 'StartDate',
                                 type: 'sap.ui.model.type.Date',
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
-                            }" />
+                            }"/>
 
-                            <Text id="txtEndDate" text="{
-                                path: 'end_date',
-                                type: 'sap.ui.model.type.Date',
-                                formatOptions: { pattern: 'dd/MM/yyyy' }
-                            }" />
+                            <!-- End Date — highlight overdue in red -->
+                            <ObjectStatus id="objEndDate"
+                                text="{
+                                    path: 'EndDate',
+                                    type: 'sap.ui.model.type.Date',
+                                    formatOptions: { pattern: 'dd/MM/yyyy' }
+                                }"
+                                state="None"/>
 
+                            <!-- Status badge with semantic colours -->
                             <ObjectStatus id="objStatus"
-                                text="{status}"
-                                state="{= ${status} === 'COMPLETED' ? 'Success' : (${status} === 'RUNNING' ? 'Indication05' : 'None') }"
-                                icon="{= ${status} === 'COMPLETED' ? 'sap-icon://accept' : 'sap-icon://process' }" />
-                            
-                            <Button id="btnEditProject" icon="sap-icon://edit" type="Transparent" />
+                                text="{Status}"
+                                icon="{= ${Status} === 'ACTIVE'   ? 'sap-icon://status-positive'  :
+                                       ${Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
+                                       ${Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
+                                                                   'sap-icon://status-inactive' }"
+                                state="{= ${Status} === 'ACTIVE'   ? 'Success'     :
+                                        ${Status} === 'PLANNING' ? 'Warning'     :
+                                        ${Status} === 'CLOSED'   ? 'Error'       :
+                                                                    'None' }"
+                                inverted="true"/>
+
+                            <!-- Actions -->
+                            <HBox alignItems="Center" justifyContent="Center">
+                                <Button icon="sap-icon://edit"
+                                        type="Transparent"
+                                        tooltip="Edit Project"
+                                        press=".onEditProject"/>
+                                <Button icon="sap-icon://delete"
+                                        type="Transparent"
+                                        tooltip="Delete Project"
+                                        press=".onDeleteProject"/>
+                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>
+
+                <noData>
+                    <IllustratedMessage
+                        illustrationType="sapIllus-NoData"
+                        title="No Projects Found"
+                        description="Create a new project or adjust your search."/>
+                </noData>
+
             </Table>
         </content>
     </Page>

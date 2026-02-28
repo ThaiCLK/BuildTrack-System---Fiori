@@ -3,112 +3,273 @@
     xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
     xmlns:sap="http://www.sap.com/Protocols/SAPData">
     <edmx:DataServices m:DataServiceVersion="2.0">
-        <Schema Namespace="Z_BTS_SRV" xml:lang="en" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+        <Schema Namespace="ZBT_ODATA_SRV" xml:lang="en" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
 
             <EntityType Name="Project">
                 <Key>
-                    <PropertyRef Name="project_id" />
+                    <PropertyRef Name="ProjectId" />
                 </Key>
-                <Property Name="project_id" Type="Edm.Guid" Nullable="false" sap:label="Project UUID" />
-                <Property Name="project_code" Type="Edm.String" MaxLength="30" sap:label="Project Code" />
-                <Property Name="project_name" Type="Edm.String" MaxLength="100" sap:label="Project Name" />
-                <Property Name="project_type" Type="Edm.String" MaxLength="20" sap:label="Type" />
-                <Property Name="start_date" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Start Date" />
-                <Property Name="end_date" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="End Date" />
-                <Property Name="status" Type="Edm.String" MaxLength="10" sap:label="Status" />
-                <Property Name="created_by" Type="Edm.String" MaxLength="12" sap:label="Created By" />
-                <Property Name="created_on" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
-                <Property Name="created_at" Type="Edm.Time" Precision="0" sap:label="Created At" />
-                <Property Name="updated_by" Type="Edm.String" MaxLength="12" sap:label="Updated By" />
-                <Property Name="updated_on" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
-                <Property Name="updated_at" Type="Edm.Time" Precision="0" sap:label="Updated At" />
-                <NavigationProperty Name="to_Sites" Relationship="Z_BTS_SRV.Proj_to_Site" FromRole="FromProj" ToRole="ToSite" />
+                <Property Name="Client"     Type="Edm.String" MaxLength="3"   sap:label="Client" />
+                <Property Name="ProjectId"   Type="Edm.Guid"   Nullable="false" sap:label="Project UUID" />
+                <Property Name="ProjectCode" Type="Edm.String" MaxLength="30"  sap:label="Project Code" />
+                <Property Name="ProjectName" Type="Edm.String" MaxLength="100" sap:label="Project Name" />
+                <Property Name="ProjectType" Type="Edm.String" MaxLength="20"  sap:label="Type" />
+                <Property Name="StartDate"   Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Start Date" />
+                <Property Name="EndDate"     Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="End Date" />
+                <Property Name="Status"      Type="Edm.String" MaxLength="10"  sap:label="Status" />
+                <Property Name="CreatedBy"   Type="Edm.String" MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn"   Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt"   Type="Edm.Time"   Precision="0"   sap:label="Created At" />
+                <Property Name="UpdatedBy"   Type="Edm.String" MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn"   Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt"   Type="Edm.Time"   Precision="0"   sap:label="Updated At" />
+                <NavigationProperty Name="ToSites" Relationship="ZBT_ODATA_SRV.Proj_to_Site" FromRole="FromProj" ToRole="ToSite" />
             </EntityType>
 
             <EntityType Name="Site">
                 <Key>
-                    <PropertyRef Name="site_id" />
+                    <PropertyRef Name="SiteId" />
                 </Key>
-                <Property Name="site_id" Type="Edm.Guid" Nullable="false" sap:label="Site UUID" />
-                <Property Name="project_id" Type="Edm.Guid" sap:label="Project UUID" />
-                <Property Name="site_code" Type="Edm.String" MaxLength="30" sap:label="Site Code" />
-                <Property Name="site_name" Type="Edm.String" MaxLength="100" sap:label="Site Name" />
-                <Property Name="address" Type="Edm.String" MaxLength="100" sap:label="Address" />
-                <Property Name="status" Type="Edm.String" MaxLength="10" sap:label="Status" />
-                <Property Name="created_by" Type="Edm.String" MaxLength="12" sap:label="Created By" />
-                <Property Name="created_on" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
-                <Property Name="created_at" Type="Edm.Time" Precision="0" sap:label="Created At" />
-                <Property Name="updated_by" Type="Edm.String" MaxLength="12" sap:label="Updated By" />
-                <Property Name="updated_on" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
-                <Property Name="updated_at" Type="Edm.Time" Precision="0" sap:label="Updated At" />
-                <NavigationProperty Name="to_WBS" Relationship="Z_BTS_SRV.Site_to_WBS" FromRole="FromSite" ToRole="ToWBS" />
+                <Property Name="Client"    Type="Edm.String"   MaxLength="3"   sap:label="Client" />
+                <Property Name="SiteId"    Type="Edm.Guid"     Nullable="false" sap:label="Site UUID" />
+                <Property Name="ProjectId" Type="Edm.Guid"     sap:label="Project UUID" />
+                <Property Name="SiteCode"  Type="Edm.String"   MaxLength="30"  sap:label="Site Code" />
+                <Property Name="SiteName"  Type="Edm.String"   MaxLength="100" sap:label="Site Name" />
+                <Property Name="Address"   Type="Edm.String"   MaxLength="100" sap:label="Address" />
+                <Property Name="Status"    Type="Edm.String"   MaxLength="10"  sap:label="Status" />
+                <Property Name="CreatedBy" Type="Edm.String"   MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn" Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt" Type="Edm.Time"     Precision="0"   sap:label="Created At" />
+                <Property Name="UpdatedBy" Type="Edm.String"   MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn" Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt" Type="Edm.Time"     Precision="0"   sap:label="Updated At" />
+                <NavigationProperty Name="ToWbs" Relationship="ZBT_ODATA_SRV.Site_to_WBS" FromRole="FromSite" ToRole="ToWBS" />
             </EntityType>
 
             <EntityType Name="WBS">
                 <Key>
-                    <PropertyRef Name="wbs_id" />
+                    <PropertyRef Name="WbsId" />
                 </Key>
-                <Property Name="wbs_id" Type="Edm.Guid" Nullable="false" sap:label="WBS UUID" />
-                <Property Name="site_id" Type="Edm.Guid" sap:label="Site UUID" />
-                <Property Name="wbs_name" Type="Edm.String" MaxLength="200" sap:label="WBS Name" />
-                <Property Name="wbs_code" Type="Edm.String" MaxLength="30" sap:label="WBS Code" />
-                <Property Name="parent_id" Type="Edm.Guid" sap:label="Parent WBS UUID" />
-                <Property Name="start_date" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Plan Start" />
-                <Property Name="end_date" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Plan End" />
-                <Property Name="start_actual" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Actual Start" />
-                <Property Name="end_actual" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Actual End" />
-                <Property Name="quantity" Type="Edm.Decimal" Precision="13" Scale="3" sap:label="Quantity" />
-                <Property Name="unit_code" Type="Edm.String" MaxLength="3" sap:label="Unit" />
-                <Property Name="status" Type="Edm.String" MaxLength="50" sap:label="Status" />
-                <Property Name="created_by" Type="Edm.String" MaxLength="12" sap:label="Created By" />
-                <Property Name="created_on" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
-                <Property Name="created_at" Type="Edm.Time" Precision="0" sap:label="Created At" />
-                <Property Name="updated_by" Type="Edm.String" MaxLength="12" sap:label="Updated By" />
-                <Property Name="updated_on" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
-                <Property Name="updated_at" Type="Edm.Time" Precision="0" sap:label="Updated At" />
-                
-                <NavigationProperty Name="SubWBS" Relationship="Z_BTS_SRV.WBS_to_SubWBS" FromRole="ParentWBS" ToRole="ChildWBS" />
+                <Property Name="Client"      Type="Edm.String"   MaxLength="3"    sap:label="Client" />
+                <Property Name="WbsId"       Type="Edm.Guid"                      Nullable="false" sap:label="WBS UUID" />
+                <Property Name="SiteId"      Type="Edm.Guid"     sap:label="Site UUID" />
+                <Property Name="WbsName"     Type="Edm.String"   MaxLength="200"  sap:label="WBS Name" />
+                <Property Name="WbsCode"     Type="Edm.String"   MaxLength="30"   sap:label="WBS Code" />
+                <Property Name="ParentId"    Type="Edm.Guid"                      sap:label="Parent WBS UUID" />
+                <Property Name="StartDate"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Plan Start" />
+                <Property Name="EndDate"     Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Plan End" />
+                <Property Name="StartActual" Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Actual Start" />
+                <Property Name="EndActual"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Actual End" />
+                <Property Name="Quantity"    Type="Edm.Decimal"  Precision="13"   Scale="3" sap:label="Quantity" />
+                <Property Name="UnitCode"    Type="Edm.String"   MaxLength="3"    sap:label="Unit" />
+                <Property Name="Status"      Type="Edm.String"   MaxLength="50"   sap:label="Status" />
+                <Property Name="CreatedBy"   Type="Edm.String"   MaxLength="12"   sap:label="Created By" />
+                <Property Name="CreatedOn"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt"   Type="Edm.Time"     Precision="0"    sap:label="Created At" />
+                <Property Name="UpdatedBy"   Type="Edm.String"   MaxLength="12"   sap:label="Updated By" />
+                <Property Name="UpdatedOn"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt"   Type="Edm.Time"     Precision="0"    sap:label="Updated At" />
+                <NavigationProperty Name="SubWbs" Relationship="ZBT_ODATA_SRV.WBS_to_SubWBS" FromRole="ParentWBS" ToRole="ChildWBS" />
+                <NavigationProperty Name="ToLogs" Relationship="ZBT_ODATA_SRV.WBS_to_DailyLog" FromRole="FromWBS"   ToRole="ToLog" />
+                <NavigationProperty Name="ToLocations" Relationship="ZBT_ODATA_SRV.WBS_to_Location" FromRole="FromWBS" ToRole="ToLocation" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- DailyLog  (ZBT_DAILY_LOG)                                  -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="DailyLog">
+                <Key>
+                    <PropertyRef Name="LogId" />
+                </Key>
+                <Property Name="LogId"          Type="Edm.Guid"     Nullable="false" sap:label="Log UUID" />
+                <Property Name="WbsId"          Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="LogDate"        Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Log Date" />
+                <Property Name="WeatherAm"      Type="Edm.String"   MaxLength="50"  sap:label="Weather AM" />
+                <Property Name="WeatherPm"      Type="Edm.String"   MaxLength="50"  sap:label="Weather PM" />
+                <Property Name="QuantityDone"   Type="Edm.Decimal"  Precision="7"  Scale="3" sap:label="Quantity Done" />
+                <Property Name="UnitCode"       Type="Edm.String"   MaxLength="10" sap:label="Unit Code" />
+                <Property Name="SafeNote"       Type="Edm.String"   MaxLength="255" sap:label="Safe Note" />
+                <Property Name="GeneralNote"    Type="Edm.String"   MaxLength="255" sap:label="General Note" />
+                <Property Name="ContractorNote" Type="Edm.String"   MaxLength="255" sap:label="Contractor Note" />
+                <Property Name="CreatedBy"      Type="Edm.String"   MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn"      Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt"      Type="Edm.Time"     Precision="0"   sap:label="Created At" />
+                <Property Name="UpdatedBy"      Type="Edm.String"   MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn"      Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt"      Type="Edm.Time"     Precision="0"   sap:label="Updated At" />
+                <NavigationProperty Name="ToResourceUses" Relationship="ZBT_ODATA_SRV.Log_to_ResourceUse" FromRole="FromLog" ToRole="ToResourceUse" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Resource  (ZBT_RESOURCE — master data)                     -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="Resource">
+                <Key>
+                    <PropertyRef Name="ResourceId" />
+                </Key>
+                <Property Name="ResourceId"   Type="Edm.String" MaxLength="20"  Nullable="false" sap:label="Resource Code" />
+                <Property Name="ResourceName" Type="Edm.String" MaxLength="100" sap:label="Resource Name" />
+                <Property Name="ResourceType" Type="Edm.String" MaxLength="20"  sap:label="Resource Type" />
+                <Property Name="UnitCode"     Type="Edm.String" MaxLength="10"  sap:label="Unit Code" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- ResourceUse  (ZBT_RESOURCE_USE — usage log)               -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="ResourceUse">
+                <Key>
+                    <PropertyRef Name="ResourceUseId" />
+                </Key>
+                <Property Name="ResourceUseId" Type="Edm.Guid"    Nullable="false" sap:label="Resource Use UUID" />
+                <Property Name="ResourceId"    Type="Edm.String"  MaxLength="20"   sap:label="Resource Code" />
+                <Property Name="WbsId"         Type="Edm.Guid"    sap:label="WBS UUID" />
+                <Property Name="LogId"         Type="Edm.Guid"    sap:label="Log UUID" />
+                <Property Name="Quantity"      Type="Edm.Decimal" Precision="7" Scale="3" sap:label="Quantity" />
+                <NavigationProperty Name="ToResource" Relationship="ZBT_ODATA_SRV.ResourceUse_to_Resource" FromRole="FromResourceUse" ToRole="ToResource" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Location  (ZBT_LOCATION — work location/position)          -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="Location">
+                <Key>
+                    <PropertyRef Name="LocationId" />
+                </Key>
+                <Property Name="LocationId"   Type="Edm.Guid"    Nullable="false" sap:label="Location UUID" />
+                <Property Name="WbsId"        Type="Edm.Guid"    sap:label="WBS UUID" />
+                <Property Name="LocationType" Type="Edm.String"  MaxLength="20"  sap:label="Location Type" />
+                <Property Name="LocationCode" Type="Edm.String"  MaxLength="30"  sap:label="Location Code" />
+                <Property Name="LocationName" Type="Edm.String"  MaxLength="100" sap:label="Location Name" />
+                <Property Name="PosStart"     Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Start" />
+                <Property Name="PosEnd"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position End" />
+                <Property Name="PosTop"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Top" />
+                <Property Name="PosBot"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Bottom" />
+                <Property Name="UnitCode"     Type="Edm.String"  MaxLength="10"  sap:label="Unit" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- WorkSummary (ZBT_WORK_SUMMARY)                               -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="WorkSummary">
+                <Key>
+                    <PropertyRef Name="WorkSummaryId" />
+                </Key>
+                <Property Name="WorkSummaryId"      Type="Edm.Guid"     Nullable="false" sap:label="Work Summary UUID" />
+                <Property Name="WbsId"              Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="TotalQuantityDone" Type="Edm.Decimal"  Precision="13" Scale="3" sap:label="Total Qty Done" />
+                <Property Name="Status"             Type="Edm.String"   MaxLength="50"  sap:label="Status" />
+                <NavigationProperty Name="ToWbs" Relationship="ZBT_ODATA_SRV.WBS_to_WorkSummary" FromRole="ToWorkSummary" ToRole="FromWBS" />
             </EntityType>
 
             <Association Name="Proj_to_Site">
-                <End Role="FromProj" Type="Z_BTS_SRV.Project" Multiplicity="1" />
-                <End Role="ToSite" Type="Z_BTS_SRV.Site" Multiplicity="*" />
+                <End Role="FromProj" Type="ZBT_ODATA_SRV.Project" Multiplicity="1" />
+                <End Role="ToSite"   Type="ZBT_ODATA_SRV.Site"    Multiplicity="*" />
                 <ReferentialConstraint>
-                    <Principal Role="FromProj"><PropertyRef Name="project_id" /></Principal>
-                    <Dependent Role="ToSite"><PropertyRef Name="project_id" /></Dependent>
+                    <Principal Role="FromProj"><PropertyRef Name="ProjectId" /></Principal>
+                    <Dependent  Role="ToSite"><PropertyRef Name="ProjectId" /></Dependent>
                 </ReferentialConstraint>
             </Association>
 
             <Association Name="Site_to_WBS">
-                <End Role="FromSite" Type="Z_BTS_SRV.Site" Multiplicity="1" />
-                <End Role="ToWBS" Type="Z_BTS_SRV.WBS" Multiplicity="*" />
+                <End Role="FromSite" Type="ZBT_ODATA_SRV.Site" Multiplicity="1" />
+                <End Role="ToWBS"    Type="ZBT_ODATA_SRV.WBS"  Multiplicity="*" />
                 <ReferentialConstraint>
-                    <Principal Role="FromSite"><PropertyRef Name="site_id" /></Principal>
-                    <Dependent Role="ToWBS"><PropertyRef Name="site_id" /></Dependent>
+                    <Principal Role="FromSite"><PropertyRef Name="SiteId" /></Principal>
+                    <Dependent  Role="ToWBS"><PropertyRef Name="SiteId" /></Dependent>
                 </ReferentialConstraint>
             </Association>
 
             <Association Name="WBS_to_SubWBS">
-                <End Role="ParentWBS" Type="Z_BTS_SRV.WBS" Multiplicity="0..1" />
-                <End Role="ChildWBS" Type="Z_BTS_SRV.WBS" Multiplicity="*" />
+                <End Role="ParentWBS" Type="ZBT_ODATA_SRV.WBS" Multiplicity="0..1" />
+                <End Role="ChildWBS"  Type="ZBT_ODATA_SRV.WBS" Multiplicity="*" />
                 <ReferentialConstraint>
-                    <Principal Role="ParentWBS"><PropertyRef Name="wbs_id" /></Principal>
-                    <Dependent Role="ChildWBS"><PropertyRef Name="parent_id" /></Dependent>
+                    <Principal Role="ParentWBS"><PropertyRef Name="WbsId" /></Principal>
+                    <Dependent  Role="ChildWBS"><PropertyRef Name="ParentId" /></Dependent>
                 </ReferentialConstraint>
             </Association>
 
-            <EntityContainer Name="Z_BTS_SRV_Entities" m:IsDefaultEntityContainer="true">
-                <EntitySet Name="zbt_project" EntityType="Z_BTS_SRV.Project" />
-                <EntitySet Name="zbt_site" EntityType="Z_BTS_SRV.Site" />
-                <EntitySet Name="zbt_wbs" EntityType="Z_BTS_SRV.WBS" />
+            <Association Name="WBS_to_DailyLog">
+                <End Role="FromWBS" Type="ZBT_ODATA_SRV.WBS"      Multiplicity="1" />
+                <End Role="ToLog"   Type="ZBT_ODATA_SRV.DailyLog" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
+                    <Dependent  Role="ToLog"><PropertyRef Name="WbsId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
 
-                <AssociationSet Name="Proj_to_Site_Set" Association="Z_BTS_SRV.Proj_to_Site">
-                    <End Role="FromProj" EntitySet="zbt_project" />
-                    <End Role="ToSite" EntitySet="zbt_site" />
+            <Association Name="WBS_to_Location">
+                <End Role="FromWBS"    Type="ZBT_ODATA_SRV.WBS"      Multiplicity="1" />
+                <End Role="ToLocation" Type="ZBT_ODATA_SRV.Location" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
+                    <Dependent  Role="ToLocation"><PropertyRef Name="WbsId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
+            <Association Name="Log_to_ResourceUse">
+                <End Role="FromLog"        Type="ZBT_ODATA_SRV.DailyLog"    Multiplicity="1" />
+                <End Role="ToResourceUse" Type="ZBT_ODATA_SRV.ResourceUse" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromLog"><PropertyRef Name="LogId" /></Principal>
+                    <Dependent  Role="ToResourceUse"><PropertyRef Name="LogId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
+            <Association Name="ResourceUse_to_Resource">
+                <End Role="FromResourceUse" Type="ZBT_ODATA_SRV.ResourceUse" Multiplicity="*" />
+                <End Role="ToResource"      Type="ZBT_ODATA_SRV.Resource"    Multiplicity="0..1" />
+                <ReferentialConstraint>
+                    <Principal Role="ToResource"><PropertyRef Name="ResourceId" /></Principal>
+                    <Dependent  Role="FromResourceUse"><PropertyRef Name="ResourceId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
+            <Association Name="WBS_to_WorkSummary">
+                <End Role="FromWBS"        Type="ZBT_ODATA_SRV.WBS"         Multiplicity="1" />
+                <End Role="ToWorkSummary"  Type="ZBT_ODATA_SRV.WorkSummary" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
+                    <Dependent  Role="ToWorkSummary"><PropertyRef Name="WbsId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
+            <EntityContainer Name="ZBT_ODATA_SRV_Entities" m:IsDefaultEntityContainer="true">
+                <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
+                <EntitySet Name="SiteSet"              EntityType="ZBT_ODATA_SRV.Site" />
+                <EntitySet Name="WBSSet"               EntityType="ZBT_ODATA_SRV.WBS" />
+                <EntitySet Name="DailyLogSet"     EntityType="ZBT_ODATA_SRV.DailyLog" />
+                <EntitySet Name="ResourceSet"     EntityType="ZBT_ODATA_SRV.Resource" />
+                <EntitySet Name="ResourceUseSet"  EntityType="ZBT_ODATA_SRV.ResourceUse" />
+                <EntitySet Name="LocationSet"     EntityType="ZBT_ODATA_SRV.Location" />
+                <EntitySet Name="WorkSummarySet"  EntityType="ZBT_ODATA_SRV.WorkSummary" />
+
+                <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
+                    <End Role="FromProj" EntitySet="ProjectSet" />
+                    <End Role="ToSite"   EntitySet="SiteSet" />
                 </AssociationSet>
-                <AssociationSet Name="Site_to_WBS_Set" Association="Z_BTS_SRV.Site_to_WBS">
-                    <End Role="FromSite" EntitySet="zbt_site" />
-                    <End Role="ToWBS" EntitySet="zbt_wbs" />
+                <AssociationSet Name="Site_to_WBS_Set" Association="ZBT_ODATA_SRV.Site_to_WBS">
+                    <End Role="FromSite" EntitySet="SiteSet" />
+                    <End Role="ToWBS"    EntitySet="WBSSet" />
+                </AssociationSet>
+                <AssociationSet Name="WBS_to_DailyLog_Set" Association="ZBT_ODATA_SRV.WBS_to_DailyLog">
+                    <End Role="FromWBS" EntitySet="WBSSet" />
+                    <End Role="ToLog"   EntitySet="DailyLogSet" />
+                </AssociationSet>
+                <AssociationSet Name="Log_to_ResourceUse_Set" Association="ZBT_ODATA_SRV.Log_to_ResourceUse">
+                    <End Role="FromLog"        EntitySet="DailyLogSet" />
+                    <End Role="ToResourceUse"  EntitySet="ResourceUseSet" />
+                </AssociationSet>
+                <AssociationSet Name="ResourceUse_to_Resource_Set" Association="ZBT_ODATA_SRV.ResourceUse_to_Resource">
+                    <End Role="FromResourceUse" EntitySet="ResourceUseSet" />
+                    <End Role="ToResource"      EntitySet="ResourceSet" />
+                </AssociationSet>
+                <AssociationSet Name="WBS_to_Location_Set" Association="ZBT_ODATA_SRV.WBS_to_Location">
+                    <End Role="FromWBS"    EntitySet="WBSSet" />
+                    <End Role="ToLocation" EntitySet="LocationSet" />
+                </AssociationSet>
+                <AssociationSet Name="WBS_to_WorkSummary_Set" Association="ZBT_ODATA_SRV.WBS_to_WorkSummary">
+                    <End Role="FromWBS"        EntitySet="WBSSet" />
+                    <End Role="ToWorkSummary"  EntitySet="WorkSummarySet" />
                 </AssociationSet>
             </EntityContainer>
         </Schema>

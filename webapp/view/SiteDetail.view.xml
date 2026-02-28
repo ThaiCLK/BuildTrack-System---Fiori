@@ -3,17 +3,15 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:core="sap.ui.core">
-    <Page title="Site Detail: {site_name}" showNavButton="true" navButtonPress="onNavBack">
+    <Page title="Site Detail: {SiteName}" showNavButton="true" navButtonPress="onNavBack">
         <content>
-
-
             <IconTabBar id="idIconTabBar" class="sapUiResponsiveContentPadding">
                 <items>
-                    <IconTabFilter icon="sap-icon://hint" text="Thông tin chung">
-                        <Text text="Nội dung thông tin chung của Site..." />
+                    <IconTabFilter icon="sap-icon://hint" text="General Info">
+                        <Text text="General information about the site..." />
                     </IconTabFilter>
                     
-                    <IconTabFilter icon="sap-icon://Chart-Tree-Map" text="WBS &amp; Tiến độ">
+                    <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="WBS &amp; Schedule">
                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WBS" type="XML" />
                     </IconTabFilter>
                 </items>

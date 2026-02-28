@@ -1,0 +1,92 @@
+[
+    {
+        "ResourceId": "EXCAVATOR",
+        "ResourceName": "Excavator",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "CRANE",
+        "ResourceName": "Tower Crane",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "CONCRETE_PUMP",
+        "ResourceName": "Concrete Pump",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "MIXER",
+        "ResourceName": "Concrete Mixer",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "TRUCK",
+        "ResourceName": "Truck",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "ROLLER",
+        "ResourceName": "Road Roller",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "WELDER",
+        "ResourceName": "Welding Machine",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "VIBRATOR",
+        "ResourceName": "Concrete Vibrator",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "BENDER",
+        "ResourceName": "Rebar Bender/Cutter",
+        "ResourceType": "EQUIPMENT",
+        "UnitCode": "CA"
+    },
+    {
+        "ResourceId": "CEMENT",
+        "ResourceName": "Cement PC40",
+        "ResourceType": "MATERIAL",
+        "UnitCode": "BAO"
+    },
+    {
+        "ResourceId": "REBAR_D16",
+        "ResourceName": "Rebar D16",
+        "ResourceType": "MATERIAL",
+        "UnitCode": "KG"
+    },
+    {
+        "ResourceId": "REBAR_D20",
+        "ResourceName": "Rebar D20",
+        "ResourceType": "MATERIAL",
+        "UnitCode": "KG"
+    },
+    {
+        "ResourceId": "CONCRETE_B25",
+        "ResourceName": "Concrete B25",
+        "ResourceType": "MATERIAL",
+        "UnitCode": "M3"
+    },
+    {
+        "ResourceId": "SAND",
+        "ResourceName": "Sand",
+        "ResourceType": "MATERIAL",
+        "UnitCode": "M3"
+    },
+    {
+        "ResourceId": "GRAVEL",
+        "ResourceName": "Gravel",
+        "ResourceType": "MATERIAL",
+        "UnitCode": "M3"
+    }
+]

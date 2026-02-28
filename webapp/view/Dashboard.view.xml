@@ -1,0 +1,170 @@
+<mvc:View
+    controllerName="z.bts.buildtrack.controller.Dashboard"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:l="sap.ui.layout"
+    xmlns:core="sap.ui.core">
+
+    <Page id="pageDashboard" showNavButton="false" class="dashboardPage">
+        <customHeader>
+            <Bar class="dashboardHeader">
+                <contentLeft>
+                    <HBox alignItems="Center">
+                        <core:Icon src="sap-icon://SAP-icons-TNT/application" class="sapUiSmallMarginEnd dashboardLogo" />
+                        <Title text="Construction Management Dashboard" level="H4" class="dashboardTitle"/>
+                    </HBox>
+                </contentLeft>
+            </Bar>
+        </customHeader>
+
+        <content>
+            <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false">
+            <l:VerticalLayout width="100%" class="dashboardContent">
+
+                <!-- ══════════════════════════════════════════════════════
+                     TOP ROW: Project Overview (left) + Daily Operations (right)
+                ══════════════════════════════════════════════════════ -->
+                <HBox width="100%" class="dashboardTopRow">
+
+                    <!-- LEFT COLUMN — Project Overview -->
+                    <VBox class="dashboardColumn">
+                        <Title id="secProject" text="Project Overview" level="H4"
+                            class="dashboardSectionTitle"/>
+
+                        <HBox class="dashboardCardRow">
+                            <Panel id="cardMyProjects" class="dashboardCard dashboardCardClickable"
+                                   headerText="" expandable="false">
+                                <HBox alignItems="Center" class="dashboardCardHeader">
+                                    <core:Icon src="sap-icon://project-definition-triangle" class="dashboardCardIcon iconBlue"/>
+                                    <VBox class="sapUiTinyMarginBegin">
+                                        <Title text="My Projects" level="H5"/>
+                                    </VBox>
+                                </HBox>
+                                <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
+                                    <VBox alignItems="Center">
+                                        <Text text="{dashboard>/activeProjects}" class="dashboardBigNumber"/>
+                                        <Text text="Active Projects" class="dashboardSubLabel"/>
+                                    </VBox>
+                                </HBox>
+                            </Panel>
+
+                            <Panel id="cardProjectSites" class="dashboardCard dashboardCardClickable"
+                                   headerText="" expandable="false">
+                                <HBox alignItems="Center" class="dashboardCardHeader">
+                                    <core:Icon src="sap-icon://building" class="dashboardCardIcon iconGreen"/>
+                                    <VBox class="sapUiTinyMarginBegin">
+                                        <Title text="Project Sites" level="H5"/>
+                                    </VBox>
+                                </HBox>
+                                <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
+                                    <VBox alignItems="Center">
+                                        <Text text="{dashboard>/totalSites}" class="dashboardBigNumber"/>
+                                        <Text text="Active Sites" class="dashboardSubLabel"/>
+                                    </VBox>
+                                </HBox>
+                            </Panel>
+                        </HBox>
+                    </VBox>
+
+                    <!-- RIGHT COLUMN — Daily Operations -->
+                    <VBox class="dashboardColumn">
+                        <Title id="secOps" text="Daily Operations" level="H4"
+                            class="dashboardSectionTitle"/>
+
+                        <HBox class="dashboardCardRow">
+                            <Panel id="cardDailyLogs" class="dashboardCard dashboardCardClickable"
+                                   headerText="" expandable="false">
+                                <HBox alignItems="Center" class="dashboardCardHeader">
+                                    <core:Icon src="sap-icon://appointment-2" class="dashboardCardIcon iconBlue"/>
+                                    <VBox class="sapUiTinyMarginBegin">
+                                        <Title text="Today's Entries: {dashboard>/todayLogs}" level="H5"/>
+                                    </VBox>
+                                </HBox>
+                                <HBox alignItems="Center" justifyContent="Center" class="dashboardCardBody">
+                                    <Button text="New Entry" icon="sap-icon://add" type="Emphasized" press=".onGoToProjects" class="dashboardNewEntryBtn"/>
+                                </HBox>
+                            </Panel>
+
+                            <Panel id="cardWeather" class="dashboardCard"
+                                   headerText="" expandable="false">
+                                <HBox alignItems="Center" class="dashboardCardHeader">
+                                    <core:Icon src="sap-icon://weather-proofing" class="dashboardCardIcon iconOrange"/>
+                                    <VBox class="sapUiTinyMarginBegin">
+                                        <Title text="Weather Today" level="H5"/>
+                                    </VBox>
+                                </HBox>
+                                <HBox justifyContent="SpaceAround" alignItems="Center" class="dashboardCardBody">
+                                    <VBox alignItems="Center">
+                                        <Text text="{dashboard>/weatherTemp}" class="dashboardBigNumber"/>
+                                        <Text text="{dashboard>/weatherCity}" class="dashboardSubLabel"/>
+                                    </VBox>
+                                    <VBox alignItems="Center">
+                                        <core:Icon src="{dashboard>/weatherIcon}" size="2.2rem" color="#f39c12"/>
+                                        <Text text="{dashboard>/weatherDesc}" class="dashboardSubLabel"/>
+                                    </VBox>
+                                </HBox>
+                                <HBox class="dashboardCardFooterWeather" justifyContent="SpaceBetween">
+                                    <Text text="💧 {dashboard>/weatherHumidity}%" class="dashboardWeatherDetail"/>
+                                    <Text text="💨 {dashboard>/weatherWind} km/h" class="dashboardWeatherDetail"/>
+                                </HBox>
+                            </Panel>
+                        </HBox>
+                    </VBox>
+
+                </HBox>
+
+                <!-- ════════════════════════════════
+                     SECTION 2 · APPROVALS & TASKS
+                ════════════════════════════════ -->
+                <Title id="secTasks" text="Approvals &amp; Tasks" level="H4"
+                    class="dashboardSectionTitle"/>
+
+                <HBox class="dashboardCardRow">
+                    <!-- Pending Approvals -->
+                    <Panel id="cardPendingApprovals" class="dashboardCard dashboardCardRed"
+                           headerText="" expandable="false">
+                        <HBox alignItems="Center" class="dashboardCardHeader">
+                            <core:Icon src="sap-icon://alert" class="dashboardCardIcon iconWhite"/>
+                            <VBox class="sapUiTinyMarginBegin">
+                                <Title text="Pending Approvals" level="H5" class="dashboardWhiteText"/>
+                            </VBox>
+                        </HBox>
+                        <HBox justifyContent="SpaceAround" class="dashboardCardBody">
+                            <VBox alignItems="Center">
+                                <Text text="{dashboard>/pendingApprovals}" class="dashboardBigNumberWhite"/>
+                                <Text text="Ongoing Requests" class="dashboardSubLabelWhite"/>
+                            </VBox>
+                            <VBox alignItems="Center">
+                                <Text text="3" class="dashboardBigNumberWhite"/>
+                                <Text text="Critical Allocation" class="dashboardSubLabelWhite"/>
+                            </VBox>
+                        </HBox>
+                        <Text text="Delayed: 2" class="dashboardCardFooterWhite"/>
+                    </Panel>
+
+                    <!-- Work Summary -->
+                    <Panel id="cardWorkSummary" class="dashboardCard dashboardCardClickable"
+                           headerText="" expandable="false">
+                        <HBox alignItems="Center" class="dashboardCardHeader">
+                            <core:Icon src="sap-icon://task" class="dashboardCardIcon iconGreen"/>
+                            <VBox class="sapUiTinyMarginBegin">
+                                <Title text="Work Summary" level="H5"/>
+                            </VBox>
+                        </HBox>
+                        <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
+                            <core:Icon src="sap-icon://circle-task-2" size="2.5rem" color="#27ae60" class="sapUiSmallMarginEnd"/>
+                            <VBox>
+                                <Text text="{dashboard>/workCompletedPct}% Completed Quantity" class="dashboardMediumText"/>
+                                <Text text="status" class="dashboardSubLabel"/>
+                            </VBox>
+                        </HBox>
+                    </Panel>
+                </HBox>
+
+                <core:HTML content="&lt;div style='height:2rem'&gt;&lt;/div&gt;"/>
+
+            </l:VerticalLayout>
+            </ScrollContainer>
+        </content>
+    </Page>
+</mvc:View>

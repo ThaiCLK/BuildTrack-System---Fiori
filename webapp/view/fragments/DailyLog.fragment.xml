@@ -1,148 +1,339 @@
+<!--
+    DailyLog.fragment.xml
+    Daily Construction Log — Fragment used in the "Daily Log" tab of WBSDetail.view.xml
+    Layout: Two-column Splitter
+      ► Left  (380 px): List of log entries by date / WBS
+      ► Right (rest)  : Detail form for the selected log entry
+-->
 <core:FragmentDefinition
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
     xmlns:l="sap.ui.layout"
     xmlns:f="sap.ui.layout.form">
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- OUTER SPLITTER                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <l:Splitter height="100%" width="100%">
-        
+
+        <!-- ╔══════════════════════════════════════╗ -->
+        <!-- ║  LEFT PANEL — Log entry list         ║ -->
+        <!-- ╚══════════════════════════════════════╝ -->
         <VBox height="100%">
-            <layoutData><l:SplitterLayoutData size="400px" minSize="350px"/></layoutData>
-            
+            <layoutData><l:SplitterLayoutData size="380px" minSize="300px"/></layoutData>
+
+            <!-- Toolbar: title + add button -->
             <OverflowToolbar design="Solid">
-                <Title text="Nhật ký ({= ${dailyLogModel>/ZLOG_WORK}.length || 0})" level="H3"/>
+                <Title text="Daily Log" level="H3"/>
                 <ToolbarSpacer/>
-                <Button text="Download Template" icon="sap-icon://download" press=".onDownloadTemplate"/>
-                <Button text="Import Excel" icon="sap-icon://excel-attachment" type="Transparent" press=".onImportExcel"/>
-                <Button text="Thêm" icon="sap-icon://add" type="Emphasized" press=".onAddLog"/>
+                <Button
+                    text="Add Log"
+                    icon="sap-icon://add"
+                    type="Emphasized"
+                    press=".onAddLog"/>
             </OverflowToolbar>
 
-            <Table 
-                id="idDailyLogList" 
-                items="{dailyLogModel>/ZLOG_WORK}" 
-                mode="SingleSelectMaster" 
+            <!-- Log list table bound to OData DailyLogSet -->
+            <Table
+                id="idDailyLogList"
+                mode="SingleSelectMaster"
                 selectionChange=".onLogItemSelect"
                 growing="true"
-                sticky="ColumnHeaders">
+                growingThreshold="20"
+                sticky="ColumnHeaders"
+                noDataText="No log entries found. Click 'Add Log' to create one.">
                 <columns>
-                    <Column><Text text="Hạng mục"/></Column>
-                    <Column hAlign="End" width="90px"><Text text="Ngày"/></Column>
+                    <Column><Text text="Log Date"/></Column>
+                    <Column hAlign="End" width="120px"><Text text="Qty Done"/></Column>
                 </columns>
                 <items>
-                    <ColumnListItem type="Navigation">
+                    <ColumnListItem type="Active">
                         <cells>
-                            <ObjectIdentifier title="{dailyLogModel>wbs_name}"/>
-                            <Text text="{path: 'dailyLogModel>log_date', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}"/>
+                            <Text text="{
+                                path: 'LogDate',
+                                type: 'sap.ui.model.type.Date',
+                                formatOptions: { pattern: 'dd/MM/yyyy' }
+                            }"/>
+                            <ObjectNumber
+                                number="{QuantityDone}"
+                                unit="{UnitCode}"
+                                state="None"/>
                         </cells>
                     </ColumnListItem>
                 </items>
             </Table>
         </VBox>
 
+        <!-- ╔══════════════════════════════════════════════════════════╗ -->
+        <!-- ║  RIGHT PANEL — Log detail                               ║ -->
+        <!-- ╚══════════════════════════════════════════════════════════╝ -->
         <VBox id="idDailyLogDetailContainer" height="100%" backgroundDesign="Translucent">
+
+            <!-- ── Top toolbar: title + edit/delete buttons ── -->
             <OverflowToolbar design="Solid">
-                <Title text="Chi tiết nhật ký" level="H3"/>
+                <Title text="Log Detail" level="H3"/>
                 <ToolbarSpacer/>
-                <Button text="Sửa" icon="sap-icon://edit" press=".onToggleEditMode" 
-                        visible="{dailyLogModel>/ui/isSelected}" enabled="{= !${dailyLogModel>/ui/editMode}}"/>
-                <Button text="Xóa" icon="sap-icon://delete" type="Reject" press=".onDeleteLog" 
-                        visible="{dailyLogModel>/ui/isSelected}" enabled="{= !${dailyLogModel>/ui/editMode}}"/>
+                <Button
+                    text="Edit"
+                    icon="sap-icon://edit"
+                    press=".onToggleEditMode"
+                    visible="{dailyLogModel>/ui/isSelected}"
+                    enabled="{= !${dailyLogModel>/ui/editMode} }"/>
+                <Button
+                    text="Delete"
+                    icon="sap-icon://delete"
+                    type="Reject"
+                    press=".onDeleteLog"
+                    visible="{dailyLogModel>/ui/isSelected}"
+                    enabled="{= !${dailyLogModel>/ui/editMode} }"/>
             </OverflowToolbar>
 
-            <ScrollContainer height="100%" vertical="true" visible="{dailyLogModel>/ui/isSelected}">
-                <f:SimpleForm 
-                    editable="true"
-                    layout="ResponsiveGridLayout"
-                    labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
-                    adjustLabelSpan="false"
-                    emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
-                    columnsXL="2" columnsL="2" columnsM="2"
-                    singleContainerFullSize="false">
-                    <f:content>
-                        
-                        <core:Title text="Thông tin chung" />
-                        
-                        <Label text="Ngày thực hiện" />
-                        <DatePicker value="{path: 'dailyLogModel>log_date', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" editable="false"/>
+            <!-- Placeholder when no log is selected -->
+            <VBox
+                visible="{= !${dailyLogModel>/ui/isSelected} }"
+                justifyContent="Center"
+                alignItems="Center"
+                height="300px">
+                <core:Icon src="sap-icon://document" size="3rem" color="#bbb"/>
+                <Text text="Select a log entry to view details" class="sapUiSmallMarginTop"/>
+            </VBox>
 
-                        <Label text="Hạng mục (WBS)" />
-                        <Input value="{dailyLogModel>wbs_name}" editable="false"/>
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- SCROLL CONTAINER — full detail form                 -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <ScrollContainer
+                height="100%"
+                vertical="true"
+                visible="{dailyLogModel>/ui/isSelected}">
 
-                        <Label text="Thời tiết (Sáng)" />
-                        <RadioButtonGroup columns="3" selectedIndex="{dailyLogModel>weather_am_idx}" editable="{dailyLogModel>/ui/editMode}">
-                            <RadioButton text="Nắng" /> <RadioButton text="Mát mẻ" /> <RadioButton text="Mưa" />
-                        </RadioButtonGroup>
+                <!-- ┌────────────────────────────────────────────────┐ -->
+                <!-- │  BLOCK 1: REPORT HEADER                        │ -->
+                <!-- └────────────────────────────────────────────────┘ -->
+                <VBox class="sapUiSmallMargin">
+                    <Panel headerText="General Information" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
+                        <f:SimpleForm
+                            editable="true"
+                            layout="ResponsiveGridLayout"
+                            labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
+                            adjustLabelSpan="false"
+                            columnsXL="2" columnsL="2" columnsM="1"
+                            singleContainerFullSize="false">
+                            <f:content>
+                                <Label text="Report Date" required="true"/>
+                                <DatePicker
+                                    value="{
+                                        path: 'dailyLogModel>/selectedLog/LogDate',
+                                        type: 'sap.ui.model.type.Date',
+                                        formatOptions: { pattern: 'dd/MM/yyyy' }
+                                    }"
+                                    editable="false"
+                                    displayFormat="dd/MM/yyyy"
+                                    valueFormat="dd/MM/yyyy"/>
 
-                        <Label text="Thời tiết (Chiều)" />
-                        <RadioButtonGroup columns="3" selectedIndex="{dailyLogModel>weather_pm_idx}" editable="{dailyLogModel>/ui/editMode}">
-                            <RadioButton text="Nắng" /> <RadioButton text="Mát mẻ" /> <RadioButton text="Mưa" />
-                        </RadioButtonGroup>
+                                <Label text="Quantity Done"/>
+                                <HBox alignItems="Center">
+                                    <Input
+                                        value="{dailyLogModel>/selectedLog/QuantityDone}"
+                                        editable="{dailyLogModel>/ui/editMode}"
+                                        width="120px"
+                                        type="Number"/>
+                                    <Input
+                                        value="{dailyLogModel>/selectedLog/UnitCode}"
+                                        editable="{dailyLogModel>/ui/editMode}"
+                                        width="80px"
+                                        placeholder="Unit"
+                                        class="sapUiTinyMarginBegin"/>
+                                </HBox>
+                            </f:content>
+                        </f:SimpleForm>
+                    </Panel>
 
-                        <Label text="CBKT" />
-                        <Input value="{dailyLogModel>man_cbkt}" type="Number" placeholder="CBKT" editable="{dailyLogModel>/ui/editMode}">
-                            <layoutData><l:GridData span="XL2 L2 M2 S4"/></layoutData>
-                        </Input>
+                    <!-- ┌────────────────────────────────────────────────┐ -->
+                    <!-- │  BLOCK 2: WEATHER                              │ -->
+                    <!-- └────────────────────────────────────────────────┘ -->
+                    <Panel headerText="Weather" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
+                        <f:SimpleForm
+                            editable="true"
+                            layout="ResponsiveGridLayout"
+                            labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
+                            adjustLabelSpan="false"
+                            columnsXL="2" columnsL="2" columnsM="1"
+                            singleContainerFullSize="false">
+                            <f:content>
+                                <!-- Weather Morning -->
+                                <Label text="Morning" required="true"/>
+                                <Select
+                                    selectedKey="{dailyLogModel>/selectedLog/WeatherAm}"
+                                    enabled="{dailyLogModel>/ui/editMode}"
+                                    width="100%">
+                                    <items>
+                                        <core:Item key="SUNNY"  text="Sunny "/>
+                                        <core:Item key="CLOUDY" text="Cloudy "/>
+                                        <core:Item key="RAINY"  text="Rainy "/>
+                                        <core:Item key="STORM"  text="Storm "/>
+                                    </items>
+                                </Select>
 
-                        <Label text="CN" />
-                        <Input value="{dailyLogModel>man_cn}" type="Number" placeholder="CN" editable="{dailyLogModel>/ui/editMode}">
-                            <layoutData><l:GridData span="XL2 L2 M2 S4"/></layoutData>
-                        </Input>
+                                <!-- Weather Afternoon -->
+                                <Label text="Afternoon" required="true"/>
+                                <Select
+                                    selectedKey="{dailyLogModel>/selectedLog/WeatherPm}"
+                                    enabled="{dailyLogModel>/ui/editMode}"
+                                    width="100%">
+                                    <items>
+                                        <core:Item key="SUNNY"  text="Sunny "/>
+                                        <core:Item key="CLOUDY" text="Cloudy "/>
+                                        <core:Item key="RAINY"  text="Rainy "/>
+                                        <core:Item key="STORM"  text="Storm "/>
+                                    </items>
+                                </Select>
+                            </f:content>
+                        </f:SimpleForm>
+                    </Panel>
 
-                        <core:Title text="Tài nguyên sử dụng" />
-                        
-                        <Label text=""/>
-                        <VBox>
-                            <Button 
-                                text="Thêm tài nguyên" 
-                                icon="sap-icon://add" 
-                                type="Transparent"
+                    <!-- ┌────────────────────────────────────────────────┐ -->
+                    <!-- │  BLOCK 3: RESOURCE USAGE (Vật tư / Thiết bị)  │ -->
+                    <!-- └────────────────────────────────────────────────┘ -->
+                    <Panel headerText="Resource Usage" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
+                        <!-- Toolbar: resource table add button -->
+                        <OverflowToolbar design="Transparent">
+                            <ToolbarSpacer/>
+                            <Button
+                                text="Add Resource"
+                                icon="sap-icon://add"
+                                type="Ghost"
                                 visible="{dailyLogModel>/ui/editMode}"
-                                press=".onAddResourceInDetail"/>
-                            <Table 
-                                items="{dailyLogModel>resources}" 
-                                mode="{= ${dailyLogModel>/ui/editMode} ? 'Delete' : 'None' }"
-                                delete=".onDeleteResourceInDetail"
-                                width="100%">
-                                <columns>
-                                    <Column width="45%"><Text text="Tên tài nguyên"/></Column>
-                                    <Column width="30%"><Text text="Đơn vị"/></Column>
-                                    <Column width="25%"><Text text="Số lượng"/></Column>
-                                </columns>
-                                <items>
-                                    <ColumnListItem>
-                                        <cells>
-                                            <Input value="{dailyLogModel>resource_name}" editable="{dailyLogModel>/ui/editMode}"/>
-                                            <Input value="{dailyLogModel>unit}" editable="{dailyLogModel>/ui/editMode}"/>
-                                            <Input value="{dailyLogModel>quantity}" type="Number" editable="{dailyLogModel>/ui/editMode}"/>
-                                        </cells>
-                                    </ColumnListItem>
-                                </items>
-                            </Table>
-                        </VBox>
+                                press=".onAddResourceUse"/>
+                        </OverflowToolbar>
 
-                        <core:Title text="Chi tiết thực hiện" />
-                        
-                        <Label text="Mô tả công việc" />
-                        <TextArea value="{dailyLogModel>description}" rows="4" editable="{dailyLogModel>/ui/editMode}"/>
+                        <!-- Resource usage table -->
+                        <Table
+                            id="idResourceUseTable"
+                            items="{dailyLogModel>/resourceUseList}"
+                            mode="{= ${dailyLogModel>/ui/editMode} ? 'Delete' : 'None' }"
+                            delete=".onDeleteResourceUse"
+                            width="100%"
+                            noDataText="No resources added."
+                            sticky="ColumnHeaders">
+                            <columns>
+                                <Column width="40%"><Text text="Resource"/></Column>
+                                <Column width="20%"><Text text="Type"/></Column>
+                                <Column width="20%" hAlign="Center"><Text text="Quantity"/></Column>
+                                <Column width="20%"><Text text="Unit"/></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <!-- CELL 1: Resource select / display -->
+                                        <VBox>
+                                            <Select
+                                                selectedKey="{dailyLogModel>ResourceId}"
+                                                enabled="{dailyLogModel>/ui/editMode}"
+                                                visible="{dailyLogModel>/ui/editMode}"
+                                                width="100%"
+                                                items="{
+                                                    path: '/ResourceSet',
+                                                    templateShareable: false
+                                                }"
+                                                change=".onResourceIdChange">
+                                                <core:ListItem
+                                                    key="{ResourceId}"
+                                                    text="{ResourceName}"/>
+                                            </Select>
+                                            <Text
+                                                text="{dailyLogModel>ResourceName}"
+                                                visible="{= !${dailyLogModel>/ui/editMode} }"
+                                                wrapping="false"/>
+                                        </VBox>
 
-                        <Label text="Note An toàn vệ sinh" />
-                        <TextArea value="{dailyLogModel>note_safety}" rows="3" editable="{dailyLogModel>/ui/editMode}" placeholder="Ghi chú về an toàn vệ sinh lao động"/>
+                                        <!-- CELL 2: Resource type (read-only) -->
+                                        <Text text="{dailyLogModel>ResourceType}"/>
 
-                        <Label text="Ý kiến tư vấn giám sát" />
-                        <TextArea value="{dailyLogModel>consultant_note}" rows="3" editable="{dailyLogModel>/ui/editMode}" placeholder="Ý kiến của tư vấn giám sát"/>
+                                        <!-- CELL 3: Quantity -->
+                                        <StepInput
+                                            value="{dailyLogModel>Quantity}"
+                                            min="0" max="99999" step="1"
+                                            editable="{dailyLogModel>/ui/editMode}"
+                                            width="100px"/>
 
-                        <Label text="Ý kiến nhà thầu" />
-                        <TextArea value="{dailyLogModel>contractor_note}" rows="3" editable="{dailyLogModel>/ui/editMode}" placeholder="Ý kiến của nhà thầu thi công"/>
+                                        <!-- CELL 4: Unit (from resource master) -->
+                                        <Text text="{dailyLogModel>UnitCode}"/>
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </Panel>
 
-                    </f:content>
-                </f:SimpleForm>
-            </ScrollContainer>
+                    <!-- ┌────────────────────────────────────────────────┐ -->
+                    <!-- │  BLOCK 4: NOTES                                │ -->
+                    <!-- └────────────────────────────────────────────────┘ -->
+                    <Panel headerText="Notes" width="auto" expandable="true" expanded="true">
+                        <f:SimpleForm
+                            editable="true"
+                            layout="ResponsiveGridLayout"
+                            labelSpanXL="2" labelSpanL="2" labelSpanM="3" labelSpanS="12"
+                            adjustLabelSpan="false"
+                            columnsXL="1" columnsL="1" columnsM="1"
+                            singleContainerFullSize="false">
+                            <f:content>
+                                <Label text="General Note"/>
+                                <TextArea
+                                    value="{dailyLogModel>/selectedLog/GeneralNote}"
+                                    growing="true"
+                                    growingMaxLines="10"
+                                    rows="2"
+                                    width="100%"
+                                    editable="{dailyLogModel>/ui/editMode}"
+                                    placeholder="Enter general notes for this work day..."/>
 
-            <OverflowToolbar visible="{dailyLogModel>/ui/editMode}" design="Transparent">
+                                <Label text="Safety Note"/>
+                                <TextArea
+                                    value="{dailyLogModel>/selectedLog/SafeNote}"
+                                    growing="true"
+                                    growingMaxLines="6"
+                                    rows="2"
+                                    width="100%"
+                                    editable="{dailyLogModel>/ui/editMode}"
+                                    placeholder="Enter safety and environment notes..."/>
+
+                                <Label text="Contractor Note"/>
+                                <TextArea
+                                    value="{dailyLogModel>/selectedLog/ContractorNote}"
+                                    growing="true"
+                                    growingMaxLines="6"
+                                    rows="2"
+                                    width="100%"
+                                    editable="{dailyLogModel>/ui/editMode}"
+                                    placeholder="Enter contractor representative notes..."/>
+                            </f:content>
+                        </f:SimpleForm>
+                    </Panel>
+                </VBox>
+            </ScrollContainer><!-- end ScrollContainer -->
+
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- FOOTER TOOLBAR — actions (visible when isSelected)  -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <OverflowToolbar
+                design="Solid"
+                visible="{= ${dailyLogModel>/ui/isSelected} }">
                 <ToolbarSpacer/>
-                <Button text="Lưu thay đổi" type="Emphasized" icon="sap-icon://save" press=".onSaveEdit"/>
-                <Button text="Hủy bỏ" press=".onCancelEdit"/>
+                <!-- Save Log -->
+                <Button
+                    text="Save"
+                    icon="sap-icon://save"
+                    type="Emphasized"
+                    enabled="{dailyLogModel>/ui/editMode}"
+                    press=".onSaveLog"/>
+                <!-- Cancel: discard changes -->
+                <Button
+                    text="Cancel"
+                    type="Transparent"
+                    press=".onCancelEdit"/>
             </OverflowToolbar>
-        </VBox>
+
+        </VBox><!-- end Right Panel -->
+
     </l:Splitter>
+
 </core:FragmentDefinition>

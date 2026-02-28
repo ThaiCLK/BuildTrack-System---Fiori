@@ -1,0 +1,38 @@
+[
+    {
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000002",
+        "WbsId": "00000000-0000-0000-0000-000000000101",
+        "TotalQuantityDone": "120.000",
+        "Status": "COMPLETED"
+    },
+    {
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000003",
+        "WbsId": "00000000-0000-0000-0000-000000000102",
+        "TotalQuantityDone": "500.000",
+        "Status": "COMPLETED"
+    },
+    {
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000004",
+        "WbsId": "00000000-0000-0000-0000-000000000103",
+        "TotalQuantityDone": "800.000",
+        "Status": "COMPLETED"
+    },
+    {
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000005",
+        "WbsId": "00000000-0000-0000-0000-000000000104",
+        "TotalQuantityDone": "300.000",
+        "Status": "COMPLETED"
+    },
+    {
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000006",
+        "WbsId": "00000000-0000-0000-0000-000000000201",
+        "TotalQuantityDone": "2000.000",
+        "Status": "COMPLETED"
+    },
+    {
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000007",
+        "WbsId": "00000000-0000-0000-0000-000000000302",
+        "TotalQuantityDone": "4.000",
+        "Status": "IN_PROGRESS"
+    }
+]

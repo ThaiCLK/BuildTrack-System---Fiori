@@ -4,39 +4,57 @@
     xmlns="sap.m"
     xmlns:f="sap.f">
     <Page 
-        title="Danh sách Site của Project: {project_name}" 
+        title="Site List — Project: {ProjectName}" 
         showNavButton="true" 
         navButtonPress="onNavBack">
         <content>
             <Table 
-    id="siteTable" 
-    items="{to_Sites}" 
-    headerText="Các Site liên quan">
-    <columns>
-        <Column><Text text="Mã Site" /></Column>
-        <Column><Text text="Tên Site" /></Column>
-        <Column><Text text="Địa chỉ" /></Column>
-        <Column><Text text="Trạng thái" /></Column>
-        <Column><Text text="Ngày tạo" /></Column>
-    </columns>
-    <items>
-        <ColumnListItem type="Navigation" press=".onSitePress">
-            <cells>
-                <Text text="{site_code}" /> 
-                <Text text="{site_name}" />
-                <Text text="{address}" />
-                <ObjectStatus 
-                    text="{status}" 
-                    state="{= ${status} === 'OPEN' ? 'Success' : 'Warning' }" />
-                <Text text="{
-                    path: 'created_on',
-                    type: 'sap.ui.model.type.Date',
-                    formatOptions: { pattern: 'dd/MM/yyyy' }
-                }" />
-            </cells>
-        </ColumnListItem>
-    </items>
-</Table>
+                id="siteTable" 
+                items="{ToSites}">
+                <headerToolbar>
+                    <OverflowToolbar>
+                        <Title text="Site List" level="H3"/>
+                        <ToolbarSpacer/>
+                        <Button 
+                            id="btnAddSite"
+                            text="Add Site"
+                            type="Emphasized"
+                            icon="sap-icon://add"
+                            press=".onAddSite"/>
+                    </OverflowToolbar>
+                </headerToolbar>
+                <columns>
+                    <Column><Text text="Site Code" /></Column>
+                    <Column><Text text="Site Name" /></Column>
+                    <Column><Text text="Address" /></Column>
+                    <Column><Text text="Status" /></Column>
+                    <Column><Text text="Created On" /></Column>
+                    <Column width="8rem"><Text text="Actions" /></Column>
+                </columns>
+                <items>
+                    <ColumnListItem type="Navigation" press=".onSitePress">
+                        <cells>
+                            <Text text="{SiteCode}" />
+                            <Text text="{SiteName}" />
+                            <Text text="{Address}" />
+                            <ObjectStatus
+                                text="{Status}"
+                                icon="{ path: 'Status', formatter: '.formatStatusIcon' }"
+                                state="{ path: 'Status', formatter: '.formatStatusState' }"
+                                inverted="true"/>
+                            <Text text="{
+                                path: 'CreatedOn',
+                                type: 'sap.ui.model.type.Date',
+                                formatOptions: { pattern: 'dd/MM/yyyy' }
+                            }" />
+                            <HBox>
+                                <Button icon="sap-icon://edit"   type="Transparent" press=".onEditSite"   />
+                                <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteSite" />
+                            </HBox>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
         </content>
     </Page>
 </mvc:View>

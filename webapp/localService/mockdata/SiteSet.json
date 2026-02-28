@@ -1,0 +1,44 @@
+[
+    {
+        "SiteId": "20000000-0000-0000-0000-000000000001",
+        "ProjectId": "10000000-0000-0000-0000-000000000001",
+        "SiteCode": "SITE-SRT-01",
+        "SiteName": "Block A - Tháp chính 30 tầng",
+        "Address": "Lô A1, KĐT Sunrise, Quận 7, TP.HCM",
+        "Status": "ACTIVE",
+        "CreatedBy": "MANAGER01",
+        "CreatedOn": "/Date(1735689600000)/",
+        "CreatedAt": "PT09H00M00S",
+        "UpdatedBy": "MANAGER01",
+        "UpdatedOn": "/Date(1771977600000)/",
+        "UpdatedAt": "PT10H00M00S"
+    },
+    {
+        "SiteId": "20000000-0000-0000-0000-000000000002",
+        "ProjectId": "10000000-0000-0000-0000-000000000001",
+        "SiteCode": "SITE-SRT-02",
+        "SiteName": "Block B - Tháp phụ 20 tầng",
+        "Address": "Lô A2, KĐT Sunrise, Quận 7, TP.HCM",
+        "Status": "OPEN",
+        "CreatedBy": "MANAGER01",
+        "CreatedOn": "/Date(1735689600000)/",
+        "CreatedAt": "PT10H00M00S",
+        "UpdatedBy": "MANAGER01",
+        "UpdatedOn": "/Date(1735689600000)/",
+        "UpdatedAt": "PT10H00M00S"
+    },
+    {
+        "SiteId": "20000000-0000-0000-0000-000000000003",
+        "ProjectId": "10000000-0000-0000-0000-000000000001",
+        "SiteCode": "SITE-SRT-03",
+        "SiteName": "Hạ tầng kỹ thuật & Cảnh quan",
+        "Address": "Khu vực ngoài trời, KĐT Sunrise, Quận 7, TP.HCM",
+        "Status": "OPEN",
+        "CreatedBy": "MANAGER01",
+        "CreatedOn": "/Date(1735689600000)/",
+        "CreatedAt": "PT10H30M00S",
+        "UpdatedBy": "MANAGER01",
+        "UpdatedOn": "/Date(1735689600000)/",
+        "UpdatedAt": "PT10H30M00S"
+    }
+]

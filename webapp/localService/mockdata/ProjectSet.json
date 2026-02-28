@@ -1,0 +1,17 @@
+[
+    {
+        "ProjectId": "10000000-0000-0000-0000-000000000001",
+        "ProjectCode": "PRJ-2025-001",
+        "ProjectName": "Xây dựng chung cư cao cấp Sunrise Tower 30 tầng",
+        "ProjectType": "Building",
+        "StartDate": "/Date(1736899200000)/",
+        "EndDate": "/Date(1782777600000)/",
+        "Status": "ACTIVE",
+        "CreatedBy": "MANAGER01",
+        "CreatedOn": "/Date(1735689600000)/",
+        "CreatedAt": "PT08H30M00S",
+        "UpdatedBy": "MANAGER01",
+        "UpdatedOn": "/Date(1771977600000)/",
+        "UpdatedAt": "PT09H00M00S"
+    }
+]

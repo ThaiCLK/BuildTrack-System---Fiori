@@ -59,19 +59,28 @@ sap.ui.define([
                 if (node.children && node.children.length > 0) {
                     that._enrichWbsDates(node.children);
 
+                    // Only auto-derive parent dates from children when the parent
+                    // doesn't have explicitly set dates.  Never overwrite dates that
+                    // came from the server — this was causing edited EndDate values to
+                    // be reset to children's max every time data reloaded.
+                    var bNeedsStart = !node.StartDate;
+                    var bNeedsEnd = !node.EndDate;
+
+                    if (!bNeedsStart && !bNeedsEnd) return; // both already exist, skip
+
                     var minStart = null;
                     var maxEnd = null;
 
                     node.children.forEach(function (child) {
-                        var dStart = that._parseDate(child.PlanStartDate);
-                        var dEnd = that._parseDate(child.PlanEndDate);
+                        var dStart = that._parseDate(child.StartDate);
+                        var dEnd = that._parseDate(child.EndDate);
 
                         if (dStart && (!minStart || dStart < minStart)) minStart = dStart;
                         if (dEnd && (!maxEnd || dEnd > maxEnd)) maxEnd = dEnd;
                     });
 
-                    if (minStart) node.PlanStartDate = minStart;
-                    if (maxEnd) node.PlanEndDate = maxEnd;
+                    if (bNeedsStart && minStart) node.StartDate = minStart;
+                    if (bNeedsEnd && maxEnd) node.EndDate = maxEnd;
                 }
             });
         },
@@ -86,8 +95,9 @@ sap.ui.define([
 
             var collectDates = function (nodes) {
                 nodes.forEach(function (node) {
-                    var dStart = that._parseDate(node.start_date);
-                    var dEnd = that._parseDate(node.end_date);
+                    // CŨ: node.start_date / node.end_date (snake_case không khớp data)
+                    var dStart = that._parseDate(node.StartDate);
+                    var dEnd = that._parseDate(node.EndDate);
 
                     if (dStart) {
                         if (!minDate || dStart < minDate) minDate = dStart;
@@ -176,15 +186,20 @@ sap.ui.define([
          * Logic: parent_id là null
          */
         isRootNode: function (vParentId) {
-            return vParentId === null;
+            // SAP backend returns GUID zero for root nodes instead of null
+            if (!vParentId) return true;
+            var sClean = vParentId.replace(/-/g, "");
+            return /^0+$/.test(sClean);
         },
 
         /**
          * Formatter: Kiểm tra có phải Node Con không
-         * Logic: parent_id KHÁC null
+         * Logic: parent_id KHÁC null và không phải GUID zero
          */
         isChildNode: function (vParentId) {
-            return vParentId !== null;
+            if (!vParentId) return false;
+            var sClean = vParentId.replace(/-/g, "");
+            return !/^0+$/.test(sClean);
         },
         /**
          * Tính toán khoảng cách từ lề trái chart đến điểm bắt đầu của task
@@ -212,7 +227,7 @@ sap.ui.define([
 
             dStart.setHours(0, 0, 0, 0);
             dEnd.setHours(0, 0, 0, 0);
-            
+
             var diffDays = Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 3600 * 24));
             return ((diffDays + 1) * this._pixelsPerDay) + "px";
         },
@@ -236,7 +251,7 @@ sap.ui.define([
                 this._pWBSPopover = Fragment.load({
                     id: oView.getId(),
                     name: "com.bts.zbts.view.fragments.wbs.WBSDetailPopover",
-                    controller: oController 
+                    controller: oController
                 }).then(function (oPopover) {
                     oView.addDependent(oPopover);
                     return oPopover;

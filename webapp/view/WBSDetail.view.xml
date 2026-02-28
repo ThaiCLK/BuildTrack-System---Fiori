@@ -3,16 +3,17 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
-    xmlns:form="sap.ui.layout.form"> <Page title="WBS Detail: {wbs_name}" showNavButton="true" navButtonPress="onNavBack">
+    xmlns:form="sap.ui.layout.form">
+    <Page title="WBS Detail: {WbsName}" showNavButton="true" navButtonPress="onNavBack">
         <content>
-            <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding" select="onIconTabBarSelect">
+            <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding">
                 <items>
                     <IconTabFilter icon="sap-icon://hint" text="Information">
                         
                         <form:SimpleForm 
                             editable="false"
                             layout="ResponsiveGridLayout"
-                            title="Chi tiết công việc"
+                            title="Work Item Details"
                             labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
                             adjustLabelSpan="false"
                             emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
@@ -20,61 +21,103 @@
                             singleContainerFullSize="false">
                             <form:content>
                                 
-                                <core:Title text="Định danh" />
+                                <core:Title text="Identification" />
                                 
-                                <Label text="Tên công việc (Name)" design="Bold" />
-                                <Text text="{wbs_name}" />
+                                <Label text="WBS Name" design="Bold" />
+                                <Text text="{WbsName}" />
 
-                                <Label text="Mã công việc (Code)" />
-                                <Text text="{wbs_code}" />
+                                <Label text="WBS Code" />
+                                <Text text="{WbsCode}" />
 
                                 <Label text="WBS ID" />
-                                <Text text="{wbs_id}" />
+                                <Text text="{WbsId}" />
 
-                                <core:Title text="Tiến độ (Kế hoạch vs Thực tế)" />
+                                <core:Title text="Schedule (Planned vs Actual)" />
 
-                                <Label text="Ngày bắt đầu (Plan)" />
-                                <Text text="{path: 'start_date', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <Label text="Planned Start" />
+                                <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
 
-                                <Label text="Ngày kết thúc (Plan)" />
-                                <Text text="{path: 'end_date', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <Label text="Planned End" />
+                                <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
 
-                                <Label text="Bắt đầu thực tế (Actual)" />
-                                <Text text="{path: 'start_actual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <Label text="Actual Start" />
+                                <Text text="{path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
 
-                                <Label text="Kết thúc thực tế (Actual)" />
-                                <Text text="{path: 'end_actual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <Label text="Actual End" />
+                                <Text text="{path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
 
-                                <core:Title text="Chỉ số &amp; Trạng thái" />
+                                <core:Title text="Metrics &amp; Status" />
 
                                 <Label text="Quantity" />
+                                <ObjectNumber
+                                    number="{
+                                        path: 'Quantity',
+                                        type: 'sap.ui.model.type.Float',
+                                        formatOptions: {
+                                            minFractionDigits: 0,
+                                            maxFractionDigits: 0,
+                                            groupingEnabled: true
+                                        }
+                                    }"
+                                    unit="{UnitCode}"
+                                    state="None" />
 
-<ObjectNumber
-    number="{
-        path: 'quantity',
-        type: 'sap.ui.model.type.Float',
-        formatOptions: {
-            minFractionDigits: 0,
-            maxFractionDigits: 0,
-            groupingEnabled: true
-        }
-    }"
-    unit="{unit_code}"
-    state="None" />
-
-                                <Label text="Trạng thái" />
+                                <Label text="Status" />
                                 <ObjectStatus 
-                                    text="{status}" 
-                                    state="{= ${status} === 'COMPLETED' ? 'Success' : 'Warning' }" 
-                                    icon="{= ${status} === 'COMPLETED' ? 'sap-icon://accept' : 'sap-icon://pending' }" />
+                                    text="{Status}" 
+                                    state="{= ${Status} === 'COMPLETED' ? 'Success' : 'Warning' }" 
+                                    icon="{= ${Status} === 'COMPLETED' ? 'sap-icon://accept' : 'sap-icon://pending' }" />
 
+                            </form:content>
+                        </form:SimpleForm>
+
+                        <!-- Location Info -->
+                        <form:SimpleForm
+                            editable="false"
+                            layout="ResponsiveGridLayout"
+                            title="📍 Work Location"
+                            labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
+                            adjustLabelSpan="false"
+                            emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
+                            columnsXL="2" columnsL="2" columnsM="1"
+                            singleContainerFullSize="false"
+                            class="sapUiSmallMarginTop"
+                            visible="{= !!${locationModel>/LocationName} }">
+                            <form:content>
+                                <core:Title text="Location" />
+
+                                <Label text="Location Name" design="Bold" />
+                                <Text text="{locationModel>/LocationName}" />
+
+                                <Label text="Location Code" />
+                                <Text text="{locationModel>/LocationCode}" />
+
+                                <Label text="Location Type" />
+                                <ObjectStatus
+                                    text="{locationModel>/LocationType}"
+                                    state="{= ${locationModel>/LocationType} === 'FLOOR' ? 'Information' : ${locationModel>/LocationType} === 'ZONE' ? 'Success' : ${locationModel>/LocationType} === 'SHAFT' ? 'Warning' : 'None' }"/>
+
+                                <core:Title text="Position (m)" />
+
+                                <Label text="Horizontal Range" />
+                                <Text text="{locationModel>/PosStart} → {locationModel>/PosEnd} {locationModel>/UnitCode}" />
+
+                                <Label text="Vertical Range" />
+                                <Text text="{locationModel>/PosBot} → {locationModel>/PosTop} {locationModel>/UnitCode}" />
                             </form:content>
                         </form:SimpleForm>
 
                     </IconTabFilter>
                     
-                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://Chart-Tree-Map" text="Daily Log">
-                        <!-- Fragment will be loaded programmatically when tab is selected -->
+                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Daily Log">
+                        <!-- Fragment được include trực tiếp — không cần lazy load -->
+                        <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.DailyLog" type="XML"/>
+                    </IconTabFilter>
+                    <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="Work Summary" key="workSummaryTab">
+                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WorkSummary" type="XML" />
+                    </IconTabFilter>
+                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Approval Log" key="approvalLogTab">
+                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.ApprovalLog" type="XML" />
                     </IconTabFilter>
                 </items>
             </IconTabBar>

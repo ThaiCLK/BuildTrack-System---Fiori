@@ -1,0 +1,159 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+    xmlns:html="http://www.w3.org/1999/xhtml">
+
+    <HBox height="100%" width="100%" renderType="Bare" class="approvalLogSplitter">
+        <!-- ── MASTER: List of logs (Versions) ─────────────────────────── -->
+        <VBox width="300px" height="100%" class="approvalLogMasterPanel">
+            <Toolbar design="Transparent">
+                <Title text="Lịch sử nghiệm thu" level="H5" />
+                <ToolbarSpacer />
+                <Button icon="sap-icon://sort" type="Transparent" />
+            </Toolbar>
+            <List id="idApprovalLogList" mode="SingleSelectMaster" selectionChange="onLogSelectionChange">
+                <items>
+                    <StandardListItem 
+                        title="Biên bản số 01 (Final)" 
+                        description="10/02/2026 - Trần Văn B" 
+                        info="Approved" 
+                        infoState="Success" 
+                        icon="sap-icon://accept" />
+                    <StandardListItem 
+                        title="Biên bản số 01 (V2)" 
+                        description="09/02/2026 - Trần Văn B" 
+                        info="Rejected" 
+                        infoState="Error" 
+                        icon="sap-icon://decline" />
+                    <StandardListItem 
+                        title="Biên bản số 01 (V1)" 
+                        description="08/02/2026 - Nguyễn Văn A" 
+                        info="Drafted" 
+                        infoState="None" 
+                        icon="sap-icon://edit" />
+                </items>
+            </List>
+        </VBox>
+
+        <!-- ── DETAIL: A4 Document View ────────────────────────────────── -->
+        <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false" class="approvalLogDetailArea">
+            <VBox class="paperA4">
+                
+                <VBox alignItems="Center" class="sapUiMediumMarginTopBottom">
+                    <Label text="CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" design="Bold"/>
+                    <Label text="Độc lập - Tự do - Hạnh phúc" design="Bold"/>
+                    
+                    <html:hr style="width: 150px; border-top: 1px solid black; margin-bottom: 20px;"/>
+                    
+                    <Title text="BIÊN BẢN NGHIỆM THU KHỐI LƯỢNG" titleStyle="H2" class="sapUiMediumMarginTop"/>
+                    <Text text="Số: 01/BB-NT / 2026" />
+                    <Text text="(Giai đoạn: 01/02/2026 - 10/02/2026)" class="sapUiTinyMarginBottom"/>
+                </VBox>
+
+                <f:SimpleForm editable="false" layout="ResponsiveGridLayout"
+                    labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12"
+                    adjustLabelSpan="false" singleContainerFullSize="false">
+                    <f:content>
+                        <core:Title text="I. THÔNG TIN CHUNG" />
+                        
+                        <Label text="Dự án" design="Bold"/>
+                        <Text text="Khu Đô Thị Vinhomes Smart City - Phân khu S1" />
+                        
+                        <Label text="Hạng mục (WBS)" design="Bold"/>
+                        <Text text="Thi công cọc khoan nhồi D1200 (Mã: WBS-FD-01)" />
+
+                        <Label text="Địa điểm" design="Bold"/>
+                        <Text text="Lô đất H1, Km 120+500" />
+                        
+                        <Label text="Nhà thầu" design="Bold"/>
+                        <Text text="Công ty Xây dựng Delta" />
+                    </f:content>
+                </f:SimpleForm>
+
+                <VBox class="sapUiSmallMargin">
+                    <Title text="II. NỘI DUNG NGHIỆM THU" titleStyle="H5" class="sapUiTinyMarginBottom"/>
+                    
+                    <Table inset="false" class="sapUiSizeCompact">
+                        <columns>
+                            <Column><Text text="Nội dung công việc" /></Column>
+                            <Column width="5rem" hAlign="Center"><Text text="ĐVT" /></Column>
+                            <Column width="6rem" hAlign="End"><Text text="Kế hoạch" /></Column>
+                            <Column width="6rem" hAlign="End"><Text text="Thực tế" /></Column>
+                            <Column width="6rem" hAlign="Center"><Text text="Đánh giá" /></Column>
+                        </columns>
+                        <items>
+                            <ColumnListItem>
+                                <cells>
+                                    <Text text="Khoan tạo lỗ cọc D1200" />
+                                    <Text text="md" />
+                                    <ObjectNumber number="150" />
+                                    <ObjectNumber number="150" state="Success" />
+                                    <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
+                                </cells>
+                            </ColumnListItem>
+                            <ColumnListItem>
+                                <cells>
+                                    <Text text="Lắp đặt lồng thép" />
+                                    <Text text="kg" />
+                                    <ObjectNumber number="5000" />
+                                    <ObjectNumber number="5000" state="Success" />
+                                    <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
+                                </cells>
+                            </ColumnListItem>
+                             <ColumnListItem>
+                                <cells>
+                                    <Text text="Đổ bê tông thương phẩm M300" />
+                                    <Text text="m3" />
+                                    <ObjectNumber number="120" />
+                                    <ObjectNumber number="118" state="Warning" />
+                                    <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
+                                </cells>
+                            </ColumnListItem>
+                        </items>
+                    </Table>
+                </VBox>
+
+                <f:SimpleForm editable="false" layout="ResponsiveGridLayout">
+                    <f:content>
+                        <core:Title text="III. KẾT LUẬN" />
+                        <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên. Đạt yêu cầu kỹ thuật để triển khai công việc tiếp theo." />
+                    </f:content>
+                </f:SimpleForm>
+
+                <l:Grid defaultSpan="L4 M4 S12" class="sapUiLargeMarginTop">
+                    <l:content>
+                        <VBox alignItems="Center">
+                            <Label text="KỸ SƯ PHỤ TRÁCH" design="Bold"/>
+                            <Label text="(Ký, ghi rõ họ tên)" />
+                            <VBox height="80px" justifyContent="Center">
+                                <Text text="[Đã ký: Nguyễn Văn A]" class="signatureStamp" />
+                            </VBox>
+                            <Label text="Nguyễn Văn A" design="Bold"/>
+                        </VBox>
+
+                        <VBox alignItems="Center">
+                            <Label text="TƯ VẤN GIÁM SÁT" design="Bold"/>
+                            <Label text="(Ký, ghi rõ họ tên)" />
+                            <VBox height="80px" justifyContent="Center">
+                                <Text text="[Đã ký: Trần Văn B]" class="signatureStamp" />
+                            </VBox>
+                            <Label text="Trần Văn B" design="Bold"/>
+                        </VBox>
+
+                        <VBox alignItems="Center">
+                            <Label text="ĐẠI DIỆN CHỦ ĐẦU TƯ" design="Bold"/>
+                            <Label text="(Ký, ghi rõ họ tên)" />
+                            <VBox height="80px" justifyContent="Center">
+                                <Text text="[Chờ ký]" class="signaturePending" />
+                            </VBox>
+                            <Label text="Lê Văn C" design="Bold"/>
+                        </VBox>
+                    </l:content>
+                </l:Grid>
+
+            </VBox>
+        </ScrollContainer>
+    </HBox>
+</core:FragmentDefinition>

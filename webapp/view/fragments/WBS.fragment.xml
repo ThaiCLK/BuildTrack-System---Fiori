@@ -4,14 +4,38 @@
     xmlns:t="sap.ui.table"
     xmlns:rowmodes="sap.ui.table.rowmodes">
 
+    <!-- Toolbar WBS CRUD -->
+    <OverflowToolbar style="Clear" class="sapUiSmallMarginBottom">
+        <Title text="WBS &amp; Gantt Schedule" level="H4"/>
+        <ToolbarSpacer/>
+        <Button
+            id="btnAddWbs"
+            text="Create WBS"
+            icon="sap-icon://add"
+            type="Emphasized"
+            press=".onAddWbs"
+            tooltip="Create root WBS, or child WBS if a row is selected"/>
+        <Button
+            id="btnEditWbs"
+            text="Edit"
+            icon="sap-icon://edit"
+            type="Default"
+            press=".onEditWbs"/>
+        <Button
+            id="btnDeleteWbs"
+            text="Delete"
+            icon="sap-icon://delete"
+            type="Reject"
+            press=".onDeleteWbs"/>
+    </OverflowToolbar>
+
     <t:TreeTable id="wbsTreeTable"
         rows="{path: 'viewData>/WBS', parameters: {arrayNames: ['children'], numberOfExpandedLevels: 2}}"
         selectionMode="Single"
-        class="myCustomWideContent"
         cellClick=".onGanttTaskClick">
 
         <t:rowMode>
-            <rowmodes:Fixed rowCount="20" rowContentHeight="32" />
+            <rowmodes:Fixed rowCount="18" rowContentHeight="32" />
         </t:rowMode>
 
         <t:columns>
@@ -22,7 +46,7 @@
                         <core:Icon src="{= ${viewData>Type} === 'WBS' ? 'sap-icon://folder-blank' : 'sap-icon://activity-items'}"
                                    class="sapUiTinyMarginEnd" 
                                    color="{= ${viewData>Type} === 'WBS' ? '#346187' : '#e67e22'}"/>
-                        <Text text="{viewData>wbs_name}" wrapping="false" tooltip="{viewData>wbs_name}"/>
+                        <Text text="{viewData>WbsName}" wrapping="false" tooltip="{viewData>WbsName}"/>
                     </HBox>
                 </t:template>
             </t:Column>
@@ -30,14 +54,14 @@
             <t:Column width="6rem" hAlign="Center">
                 <t:label><Label text="Start"/></t:label>
                 <t:template>
-                    <Text text="{path: 'viewData>start_date', formatter: '.formatDate'}"/>
+                    <Text text="{path: 'viewData>StartDate', formatter: '.formatDate'}"/>
                 </t:template>
             </t:Column>
 
             <t:Column width="6rem" hAlign="Center">
                 <t:label><Label text="End"/></t:label>
                 <t:template>
-                    <Text text="{path: 'viewData>end_date', formatter: '.formatDate'}"/>
+                    <Text text="{path: 'viewData>EndDate', formatter: '.formatDate'}"/>
                 </t:template>
             </t:Column>
 
@@ -76,28 +100,28 @@
                     <FlexBox width="{viewConfig>/totalWidth}" renderType="Bare" direction="Column" class="gantt-row-container">
                         
                         <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height"
-                                 visible="{path: 'viewData>parent_id', formatter: '.isRootNode'}">
-                            <FlexBox width="{path: 'viewData>start_date', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
-                            <FlexBox width="{parts: ['viewData>start_date', 'viewData>end_date'], formatter: '.calcWidth'}" 
+                                 visible="{path: 'viewData>ParentId', formatter: '.isRootNode'}">
+                            <FlexBox width="{path: 'viewData>StartDate', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
+                            <FlexBox width="{parts: ['viewData>StartDate', 'viewData>EndDate'], formatter: '.calcWidth'}" 
                                      class="gantt-bar-root gantt-no-shrink" renderType="Bare" />
                         </FlexBox>
 
-                        <VBox renderType="Bare" visible="{path: 'viewData>parent_id', formatter: '.isChildNode'}">
+                        <VBox renderType="Bare" visible="{path: 'viewData>ParentId', formatter: '.isChildNode'}">
                             
                             <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height-half">
-                                <FlexBox width="{path: 'viewData>start_date', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
-                                <FlexBox width="{parts: ['viewData>start_date', 'viewData>end_date'], formatter: '.calcWidth'}" 
+                                <FlexBox width="{path: 'viewData>StartDate', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
+                                <FlexBox width="{parts: ['viewData>StartDate', 'viewData>EndDate'], formatter: '.calcWidth'}" 
                                          class="gantt-bar-plan gantt-no-shrink" renderType="Bare" />
                                          <Text 
-                text="{path: 'viewData>quantity', formatter: '.formatLabelNC'}"
-                visible="{= ${viewData>quantity} !== null &amp;&amp; ${viewData>quantity} !== undefined }"
-                class="sapUiTinyMarginBegin gantt-label-nc" />
+                        text="{parts: ['viewData>Quantity', 'viewData>UnitCode'], formatter: '.formatWorkVolume'}"
+                        visible="{= ${viewData>Quantity} !== null &amp;&amp; ${viewData>Quantity} !== undefined }"
+                        class="sapUiTinyMarginBegin gantt-label-nc" />
                             </FlexBox>
 
                             <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height-half"
-                                     visible="{= !!${viewData>start_actual} }">
-                                <FlexBox width="{path: 'viewData>start_actual', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
-                                <FlexBox width="{parts: ['viewData>start_actual', 'viewData>end_actual'], formatter: '.calcWidth'}" 
+                                     visible="{= !!${viewData>StartActual} }">
+                                <FlexBox width="{path: 'viewData>StartActual', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
+                                <FlexBox width="{parts: ['viewData>StartActual', 'viewData>EndActual'], formatter: '.calcWidth'}" 
                                          class="gantt-bar-actual gantt-no-shrink" renderType="Bare">
                                 </FlexBox>
                             </FlexBox>

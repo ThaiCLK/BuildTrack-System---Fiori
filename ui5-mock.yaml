@@ -16,7 +16,7 @@ server:
             - /test-resources
           url: https://ui5.sap.com
         backend:
-          - path: /here
+          - path: /sap
             url: http://localhost
     - name: fiori-tools-appreload
       afterMiddleware: compression
@@ -34,7 +34,7 @@ server:
       configuration:
         mountPath: /
         services:
-          - urlPath: /here/goes/your/serviceurl
+          - urlPath: /sap/opu/odata/sap/ZBT_ODATA_SRV
             metadataPath: ./webapp/localService/mainService/metadata.xml
             mockdataPath: ./webapp/localService/mockdata
             generateMockData: false

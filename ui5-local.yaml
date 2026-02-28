@@ -10,6 +10,9 @@ framework:
   libraries:
     - name: sap.m
     - name: sap.ui.core
+    - name: sap.f
+    - name: sap.ui.layout
+    - name: sap.ui.table
     - name: sap.ushell
     - name: themelib_sap_horizon
 server:
@@ -28,17 +31,9 @@ server:
     - name: fiori-tools-proxy
       afterMiddleware: compression
       configuration:
-        ignoreCertErrors: false # If set to true, certificate errors will be ignored. E.g. self-signed certificates will be accepted
+        ignoreCertErrors: true # Bỏ qua lỗi SSL certificate của SAP server
         backend:
-          - path: /here
-            url: http://localhost
-    - name: sap-fe-mockserver
-      beforeMiddleware: csp
-      configuration:
-        mountPath: /
-        services:
-          - urlPath: /here/goes/your/serviceurl
-            metadataPath: ./webapp/localService/mainService/metadata.xml
-            mockdataPath: ./webapp/localService/mainService/data
-            generateMockData: true
-        annotations: []
+          - path: /sap
+            url: https://s35.gb.ucc.cit.tum.de
+            client: "302"
+            authenticationType: "basic"

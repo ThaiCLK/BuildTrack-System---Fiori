@@ -1,981 +1,668 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
-    "sap/ui/model/json/JSONModel",
-    "sap/m/MessageToast",
     "sap/m/MessageBox",
-    "sap/m/Dialog",
-    "sap/m/Button",
-    "sap/m/Label",
-    "sap/m/Input",
-    "sap/m/DatePicker",
-    "sap/m/TextArea",
-    "sap/m/ComboBox",
-    "sap/m/RadioButton",
-    "sap/m/RadioButtonGroup",
-    "sap/ui/core/Item",
-    "sap/ui/core/Title",
-    "sap/ui/layout/form/SimpleForm",
-    "sap/ui/layout/GridData",
-    "sap/m/VBox",
-    "sap/m/HBox",
-    "sap/m/Table",
-    "sap/m/Column",
-    "sap/m/ColumnListItem",
-    "sap/m/Text",
-    "sap/ui/core/Fragment",
-    "z/bts/buildtrack/utils/ExcelHelper"
-], function (Controller, History, JSONModel, MessageToast, MessageBox, Dialog, Button, Label, Input, DatePicker, TextArea, ComboBox, RadioButton, RadioButtonGroup, Item, Title, SimpleForm, GridData, VBox, HBox, Table, Column, ColumnListItem, Text, Fragment, ExcelHelper) {
+    "sap/m/MessageToast",
+    "sap/ui/model/json/JSONModel",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
+    "sap/ui/model/Sorter"
+], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter) {
     "use strict";
+
+
 
     return Controller.extend("z.bts.buildtrack.controller.WBSDetail", {
 
-        /**
-         * Hàm khởi tạo
-         */
-        onInit: function () {
-            // 1. Lấy Router từ Component
-            var oRouter = this.getOwnerComponent().getRouter();
+        /* =========================================================== */
+        /* LIFECYCLE                                                    */
+        /* =========================================================== */
 
-            // 2. Lắng nghe route "WBSDetail" (tên đã khai báo trong manifest.json)
+        onInit: function () {
+            // Route matching
+            var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("WBSDetail").attachPatternMatched(this._onObjectMatched, this);
 
-            // 3. Khởi tạo model cho Daily Log
-            this._initDailyLogModel();
+            // Local UI-state model — no mock data
+            var oUIModel = new JSONModel({
+                selectedLog: null,
+                resourceUseList: [],
+                ui: {
+                    isSelected: false,
+                    editMode: false,
+                    isNewRecord: false,
+                    busy: false
+                }
+            });
+            oUIModel.setDefaultBindingMode("TwoWay");
+            this.getView().setModel(oUIModel, "dailyLogModel");
+
+            // Location model for WBS location info
+            var oLocationModel = new JSONModel({});
+            this.getView().setModel(oLocationModel, "locationModel");
+
+            // Work Summary model
+            var oWSModel = new JSONModel({});
+            this.getView().setModel(oWSModel, "workSummaryModel");
         },
-        
-        /**
-         * Sau khi view được render
-         */
-        onAfterRendering: function() {
-            if (!this._dailyLogFragmentLoaded) {
-                // Load fragment sau một chút để đảm bảo DOM đã sẵn sàng
-                setTimeout(this._loadDailyLogFragment.bind(this), 100);
-            }
+
+        /* =========================================================== */
+        /* ROUTING                                                      */
+        /* =========================================================== */
+
+        _onObjectMatched: function (oEvent) {
+            var sWbsId = oEvent.getParameter("arguments").wbsId;
+            this._sWbsId = sWbsId;
+
+            // Bind the WBS detail form — WbsId is Edm.Guid so use guid'' syntax
+            var sObjectPath = "/WBSSet(guid'" + sWbsId + "')";
+            this.getView().bindElement({
+                path: sObjectPath,
+                events: {
+                    dataRequested: function () { this.getView().setBusy(true); }.bind(this),
+                    dataReceived: function () { this.getView().setBusy(false); }.bind(this)
+                }
+            });
+
+            // Bind daily log list
+            this._bindDailyLogList(sWbsId);
+
+            // Load location info
+            this._loadLocation(sWbsId);
+
+            // Load Work Summary info
+            this._loadWorkSummary(sWbsId);
+
+            // Reset detail panel
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            oUIModel.setProperty("/ui/isSelected", false);
+            oUIModel.setProperty("/ui/editMode", false);
+            oUIModel.setProperty("/selectedLog", null);
         },
-        
+
         /**
-         * Handler khi tab được chọn
+         * Bind (or re-filter) the Log list table for the current WBS.
+         * On first call: full bindItems with template from XML aggregation.
+         * On subsequent calls: just update filter + sorter on existing binding.
          */
-        onIconTabBarSelect: function(oEvent) {
-            var sKey = oEvent.getParameter("key");
-            if (sKey === "dailyLogTab" && !this._dailyLogFragmentLoaded) {
-                this._loadDailyLogFragment();
-            }
+        _bindDailyLogList: function (sWbsId) {
+            var oTable = this.byId("idDailyLogList");
+            if (!oTable) { return; }
+
+            var oFilter = new Filter("WbsId", FilterOperator.EQ, sWbsId);
+            var oSorter = new Sorter("LogDate", false);
+
+            // Always unbind and rebind to ensure the list is fresh
+            oTable.unbindAggregation("items");
+
+            // Build template programmatically
+            var oTemplate = new sap.m.ColumnListItem({
+                type: "Active",
+                cells: [
+                    new sap.m.Text({
+                        text: {
+                            path: "LogDate",
+                            type: "sap.ui.model.type.Date",
+                            formatOptions: { pattern: "dd/MM/yyyy" }
+                        }
+                    }),
+                    new sap.m.ObjectNumber({
+                        number: "{QuantityDone}",
+                        unit: "{UnitCode}",
+                        state: "None"
+                    })
+                ]
+            });
+
+            oTable.bindItems({
+                path: "/DailyLogSet",
+                filters: [oFilter],
+                sorter: oSorter,
+                template: oTemplate,
+                templateShareable: false
+            });
         },
-        
+
         /**
-         * Load Daily Log Fragment programmatically
+         * Load the single location record for a WBS.
          */
-        _loadDailyLogFragment: function() {
+        _loadLocation: function (sWbsId) {
             var that = this;
-            if (!this._dailyLogFragment) {
-                console.log("Loading Daily Log fragment...");
-                Fragment.load({
-                    id: this.getView().getId(),
-                    name: "z.bts.buildtrack.view.fragments.DailyLog",
-                    controller: this
-                }).then(function(oFragment) {
-                    that._dailyLogFragment = oFragment;
-                    that._dailyLogFragmentLoaded = true;
-                    var oDailyLogTab = that.byId("idDailyLogTab");
-                    if (oDailyLogTab) {
-                        oDailyLogTab.removeAllContent();
-                        oDailyLogTab.addContent(oFragment);
-                        console.log("Daily Log fragment loaded successfully");
-                    } else {
-                        console.error("Daily Log tab not found");
+            var oModel = this.getOwnerComponent().getModel();
+            var oLocationModel = this.getView().getModel("locationModel");
+
+            // Reset
+            oLocationModel.setData({});
+
+            oModel.read("/LocationSet", {
+                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                success: function (oData) {
+                    if (oData.results && oData.results.length > 0) {
+                        oLocationModel.setData(oData.results[0]);
                     }
-                }).catch(function(error) {
-                    console.error("Error loading DailyLog fragment:", error);
-                    MessageBox.error("Không thể load Daily Log fragment: " + error.message);
+                },
+                error: function () {
+                    // No location data — form stays hidden
+                }
+            });
+        },
+
+        /**
+         * Load the work summary record for a WBS.
+         * Aggregates TotalQuantityDone live from DailyLogSet.
+         */
+        _loadWorkSummary: function (sWbsId) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oWSModel = this.getView().getModel("workSummaryModel");
+
+            // Reset
+            oWSModel.setData({});
+
+            // 1) Load all daily logs for this WBS to calculate the actual total quantity
+            oModel.read("/DailyLogSet", {
+                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                success: function (oLogData) {
+                    var fTotalDone = 0;
+                    (oLogData.results || []).forEach(function (log) {
+                        fTotalDone += parseFloat(log.QuantityDone || 0);
+                    });
+
+                    // 2) Load the WorkSummary record to get its base structure
+                    oModel.read("/WorkSummarySet", {
+                        filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                        success: function (oWSData) {
+                            var oData = {};
+                            if (oWSData.results && oWSData.results.length > 0) {
+                                oData = oWSData.results[0];
+                            }
+
+                            // 3) Override the stored TotalQuantityDone with the live calculated sum
+                            oData.TotalQuantityDone = fTotalDone;
+                            oWSModel.setData(oData);
+                        },
+                        error: function () {
+                            oWSModel.setData({ TotalQuantityDone: fTotalDone });
+                        }
+                    });
+                },
+                error: function () {
+                    // Fallback
+                    oModel.read("/WorkSummarySet", {
+                        filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                        success: function (oWSData) {
+                            if (oWSData.results && oWSData.results.length > 0) {
+                                oWSModel.setData(oWSData.results[0]);
+                            }
+                        }
+                    });
+                }
+            });
+        },
+
+        onNavBack: function () {
+            var sPrev = History.getInstance().getPreviousHash();
+            if (sPrev !== undefined) {
+                window.history.go(-1);
+            } else {
+                this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
+            }
+        },
+
+        /* =========================================================== */
+        /* Formatter Methods for Work Summary                          */
+        /* =========================================================== */
+
+        formatPercentage: function (sActual, sTarget) {
+            var fActual = parseFloat(sActual);
+            var fTarget = parseFloat(sTarget);
+            if (isNaN(fActual) || isNaN(fTarget) || fTarget === 0) {
+                return "0.0%";
+            }
+            return ((fActual / fTarget) * 100).toFixed(1) + "%";
+        },
+
+        formatProgress: function (sActual, sTarget) {
+            var fActual = parseFloat(sActual);
+            var fTarget = parseFloat(sTarget);
+            if (isNaN(fActual) || isNaN(fTarget) || fTarget === 0) {
+                return 0;
+            }
+            return (fActual / fTarget) * 100;
+        },
+
+        formatQuantityState: function (sActual, sTarget) {
+            var fActual = parseFloat(sActual);
+            var fTarget = parseFloat(sTarget);
+            if (isNaN(fActual) || isNaN(fTarget) || fTarget === 0) {
+                return "Warning";
+            }
+            return fActual >= fTarget ? "Success" : "Warning";
+        },
+
+        formatProgressDisplay: function (sActual, sTarget, sUnit) {
+            var fActual = parseFloat(sActual) || 0;
+            var fTarget = parseFloat(sTarget) || 0;
+            var sU = sUnit ? " " + sUnit : "";
+            return fActual + " / " + fTarget + sU;
+        },
+
+        /* =========================================================== */
+        /* DAILY LOG — LIST PANEL                                       */
+        /* =========================================================== */
+
+        /** Select a log entry from the list → load detail on right */
+        onLogItemSelect: function (oEvent) {
+            var oCtx = oEvent.getParameter("listItem").getBindingContext();
+            var oODataLog = oCtx.getObject();
+            var oUIModel = this.getView().getModel("dailyLogModel");
+
+            // Deep-copy OData record into selectedLog for local editing
+            var oLog = {
+                LogId: oODataLog.LogId,
+                WbsId: oODataLog.WbsId,
+                LogDate: oODataLog.LogDate,
+                WeatherAm: oODataLog.WeatherAm || "SUNNY",
+                WeatherPm: oODataLog.WeatherPm || "SUNNY",
+                QuantityDone: oODataLog.QuantityDone || 0,
+                UnitCode: oODataLog.UnitCode || "",
+                SafeNote: oODataLog.SafeNote || "",
+                GeneralNote: oODataLog.GeneralNote || "",
+                ContractorNote: oODataLog.ContractorNote || ""
+            };
+            oUIModel.setProperty("/selectedLog", oLog);
+            oUIModel.setProperty("/ui/isSelected", true);
+            oUIModel.setProperty("/ui/editMode", false);
+            oUIModel.setProperty("/ui/isNewRecord", false);
+
+            // Load linked resource usages from OData
+            this._loadResourceUse(oODataLog.LogId);
+        },
+
+        /**
+         * Load resource usage items for a given log via OData (ZBT_RESOURCE_USE).
+         * Joins with ResourceSet client-side to obtain name/type/unit.
+         */
+        _loadResourceUse: function (sLogId) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oUIModel = this.getView().getModel("dailyLogModel");
+
+            // Read resource master into a map first, then read usages
+            oModel.read("/ResourceSet", {
+                success: function (oResData) {
+                    var mResource = {};
+                    (oResData.results || []).forEach(function (r) {
+                        mResource[r.ResourceId] = r;
+                    });
+
+                    oModel.read("/ResourceUseSet", {
+                        filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
+                        success: function (oData) {
+                            oUIModel.setProperty("/resourceUseList",
+                                (oData.results || []).map(function (u) {
+                                    var oRes = mResource[u.ResourceId] || {};
+                                    return {
+                                        ResourceUseId: u.ResourceUseId,
+                                        ResourceId: u.ResourceId,
+                                        LogId: u.LogId,
+                                        WbsId: u.WbsId,
+                                        Quantity: parseFloat(u.Quantity) || 0,
+                                        ResourceName: oRes.ResourceName || u.ResourceId,
+                                        ResourceType: oRes.ResourceType || "",
+                                        UnitCode: oRes.UnitCode || ""
+                                    };
+                                })
+                            );
+                        },
+                        error: function () {
+                            oUIModel.setProperty("/resourceUseList", []);
+                        }
+                    });
+                },
+                error: function () {
+                    oUIModel.setProperty("/resourceUseList", []);
+                }
+            });
+        },
+
+        /** Open a blank form to create a new log entry */
+        onAddLog: function () {
+            var oUIModel = this.getView().getModel("dailyLogModel");
+
+            // Clear list selection to ensure clicking the same item again triggers selectionChange
+            var oTable = this.byId("idDailyLogList");
+            if (oTable) {
+                oTable.removeSelections(true);
+            }
+
+            // Get WBS UnitCode from the header context (passed from Dashboard)
+            var oWbsContext = this.getView().getBindingContext();
+            var sWbsUnitCode = oWbsContext ? oWbsContext.getProperty("UnitCode") : "";
+
+            oUIModel.setProperty("/selectedLog", {
+                LogId: "",
+                WbsId: this._sWbsId || "",
+                LogDate: new Date(),
+                WeatherAm: "SUNNY",
+                WeatherPm: "SUNNY",
+                QuantityDone: 0,
+                UnitCode: sWbsUnitCode,
+                SafeNote: "",
+                GeneralNote: "",
+                ContractorNote: ""
+            });
+            oUIModel.setProperty("/resourceUseList", []);
+            oUIModel.setProperty("/ui/isSelected", true);
+            oUIModel.setProperty("/ui/editMode", true);
+            oUIModel.setProperty("/ui/isNewRecord", true);
+        },
+
+        /** Delete the currently selected log entry */
+        onDeleteLog: function () {
+            var that = this;
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var sLogId = oUIModel.getProperty("/selectedLog/LogId");
+
+            if (!sLogId) {
+                MessageToast.show("No entry selected.");
+                return;
+            }
+
+            MessageBox.confirm("Are you sure you want to delete this log entry?", {
+                title: "Delete Confirmation",
+                onClose: function (sAction) {
+                    if (sAction !== MessageBox.Action.OK) { return; }
+
+                    var oModel = that.getOwnerComponent().getModel();
+                    oModel.remove("/DailyLogSet(guid'" + sLogId + "')", {
+                        success: function () {
+                            oUIModel.setProperty("/ui/isSelected", false);
+                            oUIModel.setProperty("/selectedLog", null);
+                            that._bindDailyLogList(that._sWbsId);
+                            // Recalculate WBS actual dates after deletion
+                            that._updateWbsActualDates(that._sWbsId);
+                            MessageToast.show("Log entry deleted.");
+                        },
+                        error: function () {
+                            MessageBox.error("Could not delete the log entry. Please try again.");
+                        }
+                    });
+                }
+            });
+        },
+
+        /* =========================================================== */
+        /* DAILY LOG — DETAIL PANEL: Edit mode                         */
+        /* =========================================================== */
+
+        /** Enable edit mode */
+        onToggleEditMode: function () {
+            this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", true);
+        },
+
+        /** Cancel: discard changes, exit edit mode */
+        onCancelEdit: function () {
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var bIsNew = oUIModel.getProperty("/ui/isNewRecord");
+            if (bIsNew) {
+                // Discard the new form entirely
+                oUIModel.setProperty("/ui/isSelected", false);
+                oUIModel.setProperty("/selectedLog", null);
+
+                // Clear list selection
+                var oTable = this.byId("idDailyLogList");
+                if (oTable) {
+                    oTable.removeSelections(true);
+                }
+            } else {
+                oUIModel.setProperty("/ui/editMode", false);
+            }
+        },
+
+        /* =========================================================== */
+        /* DAILY LOG — RESOURCE USE TABLE                              */
+        /* =========================================================== */
+
+        /** Add a new resource usage row */
+        onAddResourceUse: function () {
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var aList = oUIModel.getProperty("/resourceUseList") || [];
+            aList = aList.concat([{
+                ResourceUseId: "",
+                LogId: oUIModel.getProperty("/selectedLog/LogId") || "",
+                WbsId: oUIModel.getProperty("/selectedLog/WbsId") || "",
+                ResourceId: "",
+                ResourceName: "",
+                ResourceType: "",
+                UnitCode: "",
+                Quantity: 1
+            }]);
+            oUIModel.setProperty("/resourceUseList", aList);
+        },
+
+        /** Delete a resource usage row */
+        onDeleteResourceUse: function (oEvent) {
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var oCtx = oEvent.getParameter("listItem").getBindingContext("dailyLogModel");
+            var idx = parseInt(oCtx.getPath().split("/").pop(), 10);
+            var aList = oUIModel.getProperty("/resourceUseList").slice();
+            aList.splice(idx, 1);
+            oUIModel.setProperty("/resourceUseList", aList);
+        },
+
+        /** Sync ResourceName/Type/Unit when the Select resource changes */
+        onResourceIdChange: function (oEvent) {
+            var oSelectedItem = oEvent.getParameter("selectedItem");
+            if (!oSelectedItem) { return; }
+            var sResourceId = oSelectedItem.getKey();
+            var oCtx = oEvent.getSource().getBindingContext("dailyLogModel");
+            var oUIModel = this.getView().getModel("dailyLogModel");
+
+            // Look up resource master from OData model
+            var oODataModel = this.getOwnerComponent().getModel();
+            oODataModel.read("/ResourceSet('" + sResourceId + "')", {
+                success: function (oRes) {
+                    oUIModel.setProperty(oCtx.getPath() + "/ResourceId", oRes.ResourceId);
+                    oUIModel.setProperty(oCtx.getPath() + "/ResourceName", oRes.ResourceName || "");
+                    oUIModel.setProperty(oCtx.getPath() + "/ResourceType", oRes.ResourceType || "");
+                    oUIModel.setProperty(oCtx.getPath() + "/UnitCode", oRes.UnitCode || "");
+                }
+            });
+        },
+
+        /* =========================================================== */
+        /* DAILY LOG — FOOTER ACTIONS                                   */
+        /* =========================================================== */
+
+        /** Save log entry directly */
+        onSaveLog: function () {
+            this._persistLog("Log saved successfully.");
+        },
+
+        /* =========================================================== */
+        /* INTERNAL — persist log to OData                             */
+        /* =========================================================== */
+
+        /**
+         * Create or update a DailyLog record via OData, then
+         * save/update the linked equipment records.
+         * @param {string} sToast    - success toast message
+         */
+        _persistLog: function (sToast) {
+            var that = this;
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var oLog = oUIModel.getProperty("/selectedLog");
+            var aResourceUse = oUIModel.getProperty("/resourceUseList") || [];
+            var oModel = this.getOwnerComponent().getModel();
+            var bIsNew = oUIModel.getProperty("/ui/isNewRecord");
+
+            if (!oLog) { return; }
+
+            // Build OData payload — matches ZBT_DAILY_LOG columns
+            var oPayload = {
+                WbsId: oLog.WbsId || "",
+                LogDate: oLog.LogDate instanceof Date ? oLog.LogDate : new Date(oLog.LogDate),
+                WeatherAm: oLog.WeatherAm || "SUNNY",
+                WeatherPm: oLog.WeatherPm || "SUNNY",
+                QuantityDone: String(parseFloat(oLog.QuantityDone) || 0),
+                UnitCode: oLog.UnitCode || "",
+                SafeNote: oLog.SafeNote || "",
+                GeneralNote: oLog.GeneralNote || "",
+                ContractorNote: oLog.ContractorNote || ""
+            };
+
+            oUIModel.setProperty("/ui/busy", true);
+
+            var fnAfterLog = function (sLogId) {
+                // Save resource usage rows
+                that._saveResourceUse(sLogId, aResourceUse, function () {
+                    oUIModel.setProperty("/ui/busy", false);
+                    oUIModel.setProperty("/ui/editMode", false);
+                    oUIModel.setProperty("/ui/isNewRecord", false);
+                    oUIModel.setProperty("/selectedLog/LogId", sLogId);
+                    that._bindDailyLogList(that._sWbsId);
+                    // Update WBS actual dates based on all daily logs
+                    that._updateWbsActualDates(that._sWbsId);
+                    MessageToast.show(sToast);
+                });
+            };
+
+            if (bIsNew) {
+                oModel.create("/DailyLogSet", oPayload, {
+                    success: function (oCreated) {
+                        fnAfterLog(oCreated.LogId);
+                    },
+                    error: function () {
+                        oUIModel.setProperty("/ui/busy", false);
+                        MessageBox.error("Could not save the log entry. Please try again.");
+                    }
+                });
+            } else {
+                oModel.update("/DailyLogSet(guid'" + oLog.LogId + "')", oPayload, {
+                    success: function () {
+                        fnAfterLog(oLog.LogId);
+                    },
+                    error: function () {
+                        oUIModel.setProperty("/ui/busy", false);
+                        MessageBox.error("Could not update the log entry. Please try again.");
+                    }
                 });
             }
         },
 
         /**
-         * Khởi tạo Daily Log Model
+         * Save resource usage list for a log (ZBT_RESOURCE_USE):
+         *  - Delete all existing ResourceUse records for the log,
+         *  - Then re-create from the current resourceUseList array.
+         * @param {string}   sLogId      - GUID of the parent DailyLog
+         * @param {Array}    aResUse     - resourceUseList array from UI model
+         * @param {function} fnSuccess   - callback when done
          */
-        _initDailyLogModel: function () {
-            var oData = {
-                ui: {
-                    editMode: false,
-                    isSelected: false
-                },
-                ZLOG_WORK: [
-                    { 
-                        log_id: "LOG001",
-                        wbs_id: "WBS01", wbs_name: "Cọc khoan nhồi T1", 
-                        log_date: new Date("2026-02-09"), location_name: "Trụ T1", 
-                        description: "Thi công cọc khoan nhồi đại trà cọc D1500",
-                        weather_am_idx: 0, weather_pm_idx: 1, 
-                        man_cbkt: 2, man_cn: 15,
-                        resources: [
-                            { resource_name: "Máy xúc", unit: "chiếc", quantity: 2 },
-                            { resource_name: "Cần cẩu", unit: "chiếc", quantity: 1 },
-                            { resource_name: "Máy hàn", unit: "cái", quantity: 2 },
-                            { resource_name: "Đầm dùi", unit: "cái", quantity: 4 },
-                            { resource_name: "Ô tô", unit: "chiếc", quantity: 5 }
-                        ],
-                        qty_done: 10, unit: "md",
-                        note_safety: "Đã kiểm tra an toàn khu vực thi công",
-                        consultant_note: "Đồng ý tiến độ, yêu cầu kiểm tra chất lượng cọc",
-                        contractor_note: "Đảm bảo tiến độ theo kế hoạch"
-                    },
-                    { 
-                        log_id: "LOG002",
-                        wbs_id: "WBS02", wbs_name: "Đổ bê tông lót móng", 
-                        log_date: new Date("2026-02-10"), location_name: "Hố móng T1", 
-                        description: "Đổ bê tông lót móng M100 dày 10cm",
-                        weather_am_idx: 2, weather_pm_idx: 2, 
-                        man_cbkt: 1, man_cn: 8,
-                        resources: [
-                            { resource_name: "Xe bồn", unit: "chiếc", quantity: 2 }
-                        ],
-                        qty_done: 25, unit: "m3",
-                        note_safety: "Đã kiểm tra an toàn và vệ sinh công trường",
-                        consultant_note: "Chất lượng tốt",
-                        contractor_note: "Hoàn thành theo tiến độ"
-                    },
-                    { 
-                        log_id: "LOG003",
-                        wbs_id: "WBS03", wbs_name: "Lắp dựng cốt thép bệ", 
-                        log_date: new Date("2026-02-11"), location_name: "Bệ trụ T1", 
-                        description: "Gia công và lắp dựng cốt thép bệ trụ",
-                        weather_am_idx: 0, weather_pm_idx: 0,
-                        man_cbkt: 2, man_cn: 20,
-                        resources: [
-                            { resource_name: "Cần cẩu", unit: "chiếc", quantity: 1 },
-                            { resource_name: "Máy cắt sắt", unit: "cái", quantity: 2 },
-                            { resource_name: "Máy hàn", unit: "cái", quantity: 4 }
-                        ],
-                        qty_done: 5.5, unit: "tấn",
-                        note_safety: "Trang bị bảo hộ đầy đủ cho công nhân",
-                        consultant_note: "Kiểm tra cốt thép đạt yêu cầu",
-                        contractor_note: "Tiếp tục theo kế hoạch"
-                    },
-                    { 
-                        log_id: "LOG004",
-                        wbs_id: "WBS04", wbs_name: "Lắp dựng ván khuôn", 
-                        log_date: new Date("2026-02-12"), location_name: "Bệ trụ T1", 
-                        description: "Lắp dựng ván khuôn thép định hình",
-                        weather_am_idx: 1, weather_pm_idx: 1, 
-                        man_cbkt: 1, man_cn: 12,
-                        resources: [
-                            { resource_name: "Cần cẩu", unit: "chiếc", quantity: 1 },
-                            { resource_name: "Máy hàn", unit: "cái", quantity: 2 },
-                            { resource_name: "Xe tải", unit: "chiếc", quantity: 1 }
-                        ],
-                        qty_done: 40, unit: "m2",
-                        note_safety: "Khu vực thi công được rào chắn",
-                        consultant_note: "Ván khuôn lắp chính xác",
-                        contractor_note: "Đúng tiến độ"
-                    },
-                    { 
-                        log_id: "LOG005",
-                        wbs_id: "WBS05", wbs_name: "Đổ bê tông bệ trụ", 
-                        log_date: new Date("2026-02-13"), location_name: "Bệ trụ T1", 
-                        description: "Đổ bê tông thương phẩm M300",
-                        weather_am_idx: 0, weather_pm_idx: 2, 
-                        man_cbkt: 3, man_cn: 15,
-                        resources: [
-                            { resource_name: "Cần cẩu", unit: "chiếc", quantity: 1 },
-                            { resource_name: "Đầm dùi", unit: "cái", quantity: 4 },
-                            { resource_name: "Xe bồn bê tông", unit: "chiếc", quantity: 6 }
-                        ],
-                        qty_done: 120, unit: "m3",
-                        note_safety: "Đảm bảo an toàn khi đổ bê tông",
-                        consultant_note: "Kiểm tra chất lượng bê tông tốt",
-                        contractor_note: "Đổ liên tục, không ngắt quãng"
-                    },
-                    { 
-                        log_id: "LOG006",
-                        wbs_id: "WBS06", wbs_name: "Tháo dỡ ván khuôn", 
-                        log_date: new Date("2026-02-15"), location_name: "Bệ trụ T1", 
-                        description: "Tháo dỡ ván khuôn và bảo dưỡng bê tông",
-                        weather_am_idx: 1, weather_pm_idx: 1, 
-                        man_cbkt: 1, man_cn: 6,
-                        resources: [
-                            { resource_name: "Cần cẩu", unit: "chiếc", quantity: 1 },
-                            { resource_name: "Xe tải", unit: "chiếc", quantity: 1 }
-                        ],
-                        qty_done: 1, unit: "ca",
-                        note_safety: "An toàn khi làm việc trên cao",
-                        consultant_note: "Bảo dưỡng bê tông đúng quy trình",
-                        contractor_note: "Hoàn thành đúng thời gian"
-                    }
-                ],
-                MasterData: {
-                    ZWBS: [
-                        { wbs_id: "WBS01", wbs_name: "Cọc khoan nhồi T1" },
-                        { wbs_id: "WBS02", wbs_name: "Đổ bê tông lót móng" },
-                        { wbs_id: "WBS03", wbs_name: "Lắp dựng cốt thép bệ" },
-                        { wbs_id: "WBS04", wbs_name: "Lắp dựng ván khuôn" },
-                        { wbs_id: "WBS05", wbs_name: "Đổ bê tông bệ trụ" },
-                        { wbs_id: "WBS06", wbs_name: "Tháo dỡ ván khuôn" }
-                    ]
-                }
-            };
-            this.getView().setModel(new JSONModel(oData), "dailyLogModel");
-        },
+        _saveResourceUse: function (sLogId, aResUse, fnSuccess) {
+            var oModel = this.getOwnerComponent().getModel();
 
-        /**
-         * Xử lý khi Route khớp (Trang được load)
-         * @param {sap.ui.base.Event} oEvent
-         */
-        _onObjectMatched: function (oEvent) {
-            // 1. Lấy ID từ URL (được truyền từ trang trước)
-            var sWbsId = oEvent.getParameter("arguments").wbsId;
+            oModel.read("/ResourceUseSet", {
+                filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
+                success: function (oData) {
+                    var aOld = oData.results || [];
+                    var iTotal = aOld.length + aResUse.length;
+                    var iDone = 0;
 
-            // 2. Tạo đường dẫn (Path) tới Entity trong OData
-            // Giả sử EntitySet của bạn tên là "zbt_wbs"
-            // Cú pháp chuẩn OData V2: /EntitySet('Key')
-            var sObjectPath = "/zbt_wbs('" + sWbsId + "')";
+                    var fnCheck = function () {
+                        iDone++;
+                        if (iDone >= iTotal) { fnSuccess(); }
+                    };
 
-            // 3. Thực hiện Bind Element cho View
-            this.getView().bindElement({
-                path: sObjectPath,
-                events: {
-                    change: this._onBindingChange.bind(this), // (Tuỳ chọn) Gọi khi binding xong
-                    dataRequested: function () {
-                        // (Tuỳ chọn) Hiện BusyIndicator khi đang tải
-                        this.getView().setBusy(true);
-                    }.bind(this),
-                    dataReceived: function () {
-                        // (Tuỳ chọn) Tắt BusyIndicator khi tải xong
-                        this.getView().setBusy(false);
-                    }.bind(this)
-                }
-            });
-        },
-        _onBindingChange: function () {
-            var oView = this.getView();
-            var oElementBinding = oView.getElementBinding();
+                    if (iTotal === 0) { fnSuccess(); return; }
 
-            // Nếu không tìm thấy dữ liệu (ví dụ ID sai) thì chuyển trang báo lỗi
-            if (!oElementBinding.getBoundContext()) {
-                // this.getOwnerComponent().getRouter().getTargets().display("objectNotFound");
-                return;
-            }
-        },
-
-        /**
-         * Hàm quay lại trang trước (Back button)
-         */
-        onNavBack: function () {
-            var oHistory = History.getInstance();
-            var sPreviousHash = oHistory.getPreviousHash();
-
-            // Nếu có lịch sử thì Back như bình thường
-            if (sPreviousHash !== undefined) {
-                window.history.go(-1);
-            } else {
-                // Nếu F5 mất lịch sử, dùng site_id đã lưu để điều hướng chính xác
-                var oRouter = this.getOwnerComponent().getRouter();
-
-                // Kiểm tra an toàn
-                if (this._sParentSiteId) {
-                    oRouter.navTo("SiteDetail", {
-                        site_id: this._sParentSiteId
-                    }, true);
-                } else {
-                    // Trường hợp xấu nhất không tìm thấy ID cha, về trang chủ
-                    oRouter.navTo("RouteMain", {}, true);
-                }
-            }
-        },
-
-        // ==================== DAILY LOG FUNCTIONS ====================
-
-        onLogItemSelect: function(oEvent) {
-            var oItem = oEvent.getParameter("listItem");
-            var oContext = oItem.getBindingContext("dailyLogModel");
-            
-            var oDetail = this.byId("idDailyLogDetailContainer");
-            oDetail.setBindingContext(oContext, "dailyLogModel");
-
-            var oModel = this.getView().getModel("dailyLogModel");
-            oModel.setProperty("/ui/isSelected", true);
-            oModel.setProperty("/ui/editMode", false);
-        },
-
-        onAddLog: function() {
-            console.log("onAddLog called!");
-            MessageToast.show("Đang mở popup thêm nhật ký...");
-            
-            try {
-                var that = this;
-                var oModel = this.getView().getModel("dailyLogModel");
-                
-                if (!oModel) {
-                    MessageBox.error("Model dailyLogModel chưa được khởi tạo!");
-                    return;
-                }
-            
-                var oNewModel = new JSONModel({
-                log_id: "", log_date: new Date(), wbs_id: "", 
-                weather_am_idx: 0, weather_pm_idx: 0, 
-                man_cbkt: 0, man_cn: 0,
-                resources: [], // Flexible resources array
-                description: "", location_name: "", qty_done: 0, unit: "",
-                note_safety: "", consultant_note: "", contractor_note: ""
-            });
-
-            // Create resources table
-            var oResourcesTable = new Table({
-                growing: false,
-                width: "100%",
-                mode: "Delete",
-                delete: function(oEvent) {
-                    var oItem = oEvent.getParameter("listItem");
-                    var iIndex = oResourcesTable.indexOfItem(oItem);
-                    var aResources = oNewModel.getProperty("/resources");
-                    aResources.splice(iIndex, 1);
-                    oNewModel.setProperty("/resources", aResources);
-                },
-                columns: [
-                    new Column({ header: new Label({ text: "Tên tài nguyên", required: true }), width: "40%" }),
-                    new Column({ header: new Label({ text: "Đơn vị" }), width: "30%" }),
-                    new Column({ header: new Label({ text: "Số lượng", required: true }), width: "30%" })
-                ],
-                items: {
-                    path: "new>/resources",
-                    template: new ColumnListItem({
-                        cells: [
-                            new Input({ value: "{new>resource_name}", required: true }),
-                            new Input({ value: "{new>unit}" }),
-                            new Input({ value: "{new>quantity}", type: "Number", required: true })
-                        ]
-                    })
-                }
-            });
-
-            var oAddResourceBtn = new Button({
-                text: "Thêm tài nguyên",
-                icon: "sap-icon://add",
-                press: function() {
-                    var aResources = oNewModel.getProperty("/resources");
-                    aResources.push({ resource_name: "", unit: "", quantity: 0 });
-                    oNewModel.setProperty("/resources", aResources);
-                }
-            });
-
-            var oForm = new SimpleForm({
-                editable: true,
-                layout: "ResponsiveGridLayout",
-                labelSpanXL: 4, labelSpanL: 4, labelSpanM: 4,
-                adjustLabelSpan: false,
-                columnsXL: 2, columnsL: 2, columnsM: 2,
-                content: [
-                    // 1. THÔNG TIN CHUNG
-                    new Title({ text: "Thông tin chung" }),
-                    
-                    new Label({ text: "Mã nhật ký" }),
-                    new Input({ value: "{new>/log_id}", placeholder: "VD: LOG001" }),
-
-                    new Label({ text: "Ngày báo cáo", required: true }),
-                    new DatePicker({ 
-                        value: {
-                            path: "new>/log_date",
-                            type: "sap.ui.model.type.Date",
-                            formatOptions: { pattern: "dd/MM/yyyy" }
-                        },
-                        displayFormat: "dd/MM/yyyy"
-                    }),
-
-                    new Label({ text: "Hạng mục", required: true }),
-                    new ComboBox({ 
-                        width: "100%", 
-                        selectedKey: "{new>/wbs_id}", 
-                        items: { 
-                            path: "dailyLogModel>/MasterData/ZWBS", 
-                            template: new Item({ key: "{dailyLogModel>wbs_id}", text: "{dailyLogModel>wbs_name}" }) 
-                        } 
-                    }),
-
-                    new Label({ text: "Thời tiết (Sáng)" }),
-                    new RadioButtonGroup({ 
-                        columns: 3, 
-                        selectedIndex: "{new>/weather_am_idx}", 
-                        buttons: [ new RadioButton({text:"Nắng"}), new RadioButton({text:"Mát mẻ"}), new RadioButton({text:"Mưa"}) ] 
-                    }),
-
-                    new Label({ text: "Thời tiết (Chiều)" }),
-                    new RadioButtonGroup({ 
-                        columns: 3, 
-                        selectedIndex: "{new>/weather_pm_idx}", 
-                        buttons: [ new RadioButton({text:"Nắng"}), new RadioButton({text:"Mát mẻ"}), new RadioButton({text:"Mưa"}) ] 
-                    }),
-
-                    new Label({ text: "Nhân lực (CBKT/CN)" }),
-                    new Input({ value: "{new>/man_cbkt}", type: "Number", placeholder: "CBKT", layoutData: new GridData({ span: "XL2 L2 M2 S4" }) }),
-                    new Input({ value: "{new>/man_cn}", type: "Number", placeholder: "CN", layoutData: new GridData({ span: "XL2 L2 M2 S4" }) }),
-
-                    // 3. CHI TIẾT
-                    new Title({ text: "Chi tiết thực hiện" }),
-                    
-                    new Label({ text: "Mô tả công việc" }),
-                    new TextArea({ value: "{new>/description}", rows: 3 }),
-
-                    new Label({ text: "Note An toàn vệ sinh" }),
-                    new TextArea({ value: "{new>/note_safety}", rows: 2, placeholder: "Ghi chú về an toàn vệ sinh lao động" }),
-
-                    new Label({ text: "Ý kiến tư vấn giám sát" }),
-                    new TextArea({ value: "{new>/consultant_note}", rows: 2, placeholder: "Ý kiến của tư vấn giám sát" }),
-
-                    new Label({ text: "Ý kiến nhà thầu" }),
-                    new TextArea({ value: "{new>/contractor_note}", rows: 2, placeholder: "Ý kiến của nhà thầu thi công" }),
-                ]
-            });
-
-            var oDialog = new Dialog({
-                title: "Thêm Nhật Ký Thi Công",
-                contentWidth: "900px",
-                contentHeight: "80%",
-                content: [ 
-                    new VBox({
-                        items: [
-                            oForm,
-                            new Label({ text: "Tài nguyên sử dụng", design: "Bold" }).addStyleClass("sapUiMediumMarginTop"),
-                            oAddResourceBtn,
-                            oResourcesTable
-                        ]
-                    })
-                ],
-                beginButton: new Button({
-                    text: "Lưu", type: "Emphasized",
-                    press: function() {
-                        var oNewData = oNewModel.getData();
-                        if (!oNewData.wbs_id) { MessageToast.show("Vui lòng chọn Hạng mục!"); return; }
-                        
-                        var oWbs = oModel.getProperty("/MasterData/ZWBS").find(function(i) { return i.wbs_id === oNewData.wbs_id; });
-                        oNewData.wbs_name = oWbs ? oWbs.wbs_name : "";
-                        
-                        // Auto-generate log_id if empty
-                        if (!oNewData.log_id) {
-                            var aLogs = oModel.getProperty("/ZLOG_WORK");
-                            oNewData.log_id = "LOG" + String(aLogs.length + 1).padStart(3, "0");
-                        }
-                        
-                        var aLogs = oModel.getProperty("/ZLOG_WORK");
-                        aLogs.push(oNewData);
-                        oModel.setProperty("/ZLOG_WORK", aLogs);
-                        
-                        oDialog.close();
-                        MessageToast.show("Thêm thành công!");
-                    }
-                }),
-                endButton: new Button({ text: "Hủy", press: function() { oDialog.close(); } }),
-                afterClose: function() { oDialog.destroy(); }
-            });
-
-            oDialog.setModel(oNewModel, "new");
-            oDialog.setModel(oModel, "dailyLogModel");
-            oDialog.open();
-            
-            } catch (error) {
-                console.error("Error in onAddLog:", error);
-                MessageBox.error("Lỗi khi mở popup: " + error.message);
-            }
-        },
-
-        // --- CÁC HÀM SỬA / XÓA ---
-        onToggleEditMode: function() {
-            this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", true);
-        },
-        onSaveEdit: function() {
-            this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", false);
-            MessageToast.show("Đã lưu thay đổi!");
-        },
-        onCancelEdit: function() {
-            this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", false);
-        },
-        onAddResourceInDetail: function() {
-            var oTable = this.byId("idDailyLogList");
-            var oItem = oTable.getSelectedItem();
-            if (!oItem) return;
-            
-            var oContext = oItem.getBindingContext("dailyLogModel");
-            var aResources = oContext.getProperty("resources") || [];
-            aResources.push({ resource_name: "", unit: "", quantity: 0 });
-            oContext.getModel().setProperty(oContext.getPath() + "/resources", aResources);
-        },
-        onDeleteResourceInDetail: function(oEvent) {
-            var oItem = oEvent.getParameter("listItem");
-            var oResourceContext = oItem.getBindingContext("dailyLogModel");
-            var sResourcePath = oResourceContext.getPath();
-            
-            // Get parent daily log context
-            var aPathParts = sResourcePath.split("/");
-            var iResourceIdx = parseInt(aPathParts.pop());
-            aPathParts.pop(); // remove "resources"
-            var sParentPath = aPathParts.join("/");
-            
-            var oModel = this.getView().getModel("dailyLogModel");
-            var aResources = oModel.getProperty(sParentPath + "/resources");
-            aResources.splice(iResourceIdx, 1);
-            oModel.setProperty(sParentPath + "/resources", aResources);
-        },
-        onDeleteLog: function() {
-            var that = this;
-            var oTable = this.byId("idDailyLogList");
-            var oItem = oTable.getSelectedItem();
-            if (!oItem) return;
-            MessageBox.confirm("Bạn có chắc muốn xóa nhật ký này?", { 
-                onClose: function(oAction) {
-                    if (oAction === MessageBox.Action.OK) {
-                        var sPath = oItem.getBindingContext("dailyLogModel").getPath();
-                        var i = parseInt(sPath.split("/").pop());
-                        var aData = that.getView().getModel("dailyLogModel").getProperty("/ZLOG_WORK");
-                        aData.splice(i, 1);
-                        that.getView().getModel("dailyLogModel").setProperty("/ZLOG_WORK", aData);
-                        that.getView().getModel("dailyLogModel").setProperty("/ui/isSelected", false);
-                        oTable.removeSelections();
-                        MessageToast.show("Đã xóa!");
-                    }
-                }
-            });
-        },
-
-        // ========== EXCEL IMPORT/EXPORT ==========
-        
-        /**
-         * Download Excel template
-         */
-        onDownloadTemplate: function() {
-            var that = this;
-            this._loadXLSXLibrary().then(function() {
-                ExcelHelper.downloadTemplate();
-            }).catch(function(error) {
-                MessageBox.error("Không thể tải thư viện XLSX: " + error.message);
-            });
-        },
-
-        /**
-         * Import Excel file
-         */
-        onImportExcel: function() {
-            var that = this;
-            
-            this._loadXLSXLibrary().then(function() {
-                // Tạo HTML5 file input ẩn
-                var fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.accept = '.xlsx,.xls';
-                fileInput.style.display = 'none';
-                
-                fileInput.onchange = function(e) {
-                    var file = e.target.files[0];
-                    if (!file) return;
-                    
-                    that.getView().setBusy(true);
-                    
-                    ExcelHelper.parseExcelFile(file)
-                        .then(function(data) {
-                            that.getView().setBusy(false);
-                            var transformedData = ExcelHelper.transformExcelData(
-                                data.dailyLogs,
-                                data.resources
-                            );
-                            that._showPreviewDialog(transformedData);
-                        })
-                        .catch(function(error) {
-                            that.getView().setBusy(false);
-                            MessageBox.error("Lỗi khi đọc file Excel:\n" + error.message);
+                    // Delete old records
+                    aOld.forEach(function (u) {
+                        oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
+                            success: fnCheck,
+                            error: fnCheck
                         });
-                    
-                    // Xóa input sau khi xử lý xong
-                    document.body.removeChild(fileInput);
-                };
-                
-                // Thêm vào body và trigger click
-                document.body.appendChild(fileInput);
-                fileInput.click();
-                
-            }).catch(function(error) {
-                MessageBox.error("Không thể tải thư viện XLSX: " + error.message);
-            });
-        },
+                    });
 
-        _showPreviewDialog: function(aImportedData) {
-            var that = this;
-            
-            if (!aImportedData || aImportedData.length === 0) {
-                MessageToast.show("Không có dữ liệu để import!");
-                return;
-            }
-
-            var oPreviewModel = new JSONModel({ items: aImportedData });
-
-            var oDialog = new Dialog({
-                title: "Xem trước dữ liệu Import (" + aImportedData.length + " bản ghi)",
-                contentWidth: "95%",
-                contentHeight: "85%",
-                resizable: true,
-                draggable: true,
-                content: [
-                    new VBox({
-                        items: [
-                            new Table({
-                                growing: true,
-                                growingThreshold: 20,
-                                width: "100%",
-                                mode: "None",
-                                columns: [
-                                    new Column({ header: new Label({ text: "STT" }), width: "50px" }),
-                                    new Column({ header: new Label({ text: "Ngày" }), width: "90px" }),
-                                    new Column({ header: new Label({ text: "WBS" }), width: "140px" }),
-                                    new Column({ header: new Label({ text: "Thời tiết S/C" }), width:"100px" }),
-                                    new Column({ header: new Label({ text: "Nhân lực" }), width: "75px" }),
-                                    new Column({ header: new Label({ text: "Máy móc thiết bị" }), width: "190px" }),
-                                    new Column({ header: new Label({ text: "Mô tả" }), width: "180px" }),
-                                    new Column({ header: new Label({ text: "Note ATVS" }), width: "160px" }),
-                                    new Column({ header: new Label({ text: "Ý kiến TVGS" }), width: "160px" }),
-                                    new Column({ header: new Label({ text: "Ý kiến NCC" }), width: "160px" }),
-                                    new Column({ header: new Label({ text: "Thao tác" }), width: "120px", hAlign: "Center" })
-                                ],
-                                items: {
-                                    path: "preview>/items",
-                                    template: new ColumnListItem({
-                                        cells: [
-                                            new Text({ 
-                                                text: "{= ${preview>index} !== undefined ? ${preview>index} + 1 : '' }"
-                                            }),
-                                            new Text({ 
-                                                text: "{path: 'preview>log_date', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" 
-                                            }),
-                                            new VBox({
-                                                items: [
-                                                    new Text({ text: "{preview>wbs_id}", wrapping: false }),
-                                                    new Text({ text: "{preview>wbs_name}", wrapping: false })
-                                                ]
-                                            }),
-                                            new VBox({
-                                                items: [
-                                                    new Text({ 
-                                                        text: "{= 'S: ' + (${preview>weather_am_idx} === 0 ? 'Nắng' : (${preview>weather_am_idx} === 1 ? 'Mát' : 'Mưa')) }"
-                                                    }),
-                                                    new Text({ 
-                                                        text: "{= 'C: ' + (${preview>weather_pm_idx} === 0 ? 'Nắng' : (${preview>weather_pm_idx} === 1 ? 'Mát' : 'Mưa')) }"
-                                                    })
-                                                ]
-                                            }),
-                                            new VBox({
-                                                items: [
-                                                    new Text({ text: "CBKT: {preview>man_cbkt}" }),
-                                                    new Text({ text: "CN: {preview>man_cn}" })
-                                                ]
-                                            }),
-                                            new VBox({
-                                                items: {
-                                                    path: "preview>resources",
-                                                    template: new Text({ 
-                                                        text: "{= ${preview>resource_name} + ': ' + ${preview>quantity} + ' ' + ${preview>unit} }",
-                                                        wrapping: false
-                                                    }),
-                                                    templateShareable: false
-                                                }
-                                            }),
-                                            new Text({ text: "{preview>description}", wrapping: true, maxLines: 3 }),
-                                            new Text({ text: "{preview>note_safety}", wrapping: true, maxLines: 3 }),
-                                            new Text({ text: "{preview>consultant_note}", wrapping: true, maxLines: 3 }),
-                                            new Text({ text: "{preview>contractor_note}", wrapping: true, maxLines: 3 }),
-                                            new HBox({
-                                                justifyContent: "Center",
-                                                items: [
-                                                    new Button({
-                                                        icon: "sap-icon://edit",
-                                                        type: "Transparent",
-                                                        tooltip: "Sửa",
-                                                        press: function(oEvent) {
-                                                            var oContext = oEvent.getSource().getBindingContext("preview");
-                                                            that._editPreviewItem(oContext, oPreviewModel);
-                                                        }
-                                                    }),
-                                                    new Button({
-                                                        icon: "sap-icon://delete",
-                                                        type: "Transparent",
-                                                        tooltip: "Xóa",
-                                                        press: function(oEvent) {
-                                                            var oContext = oEvent.getSource().getBindingContext("preview");
-                                                            that._deletePreviewItem(oContext, oPreviewModel, oDialog);
-                                                        }
-                                                    })
-                                                ]
-                                            })
-                                        ]
-                                    })
-                                }
-                            })
-                        ]
-                    })
-                ],
-                beginButton: new Button({
-                    text: "Lưu ({0} bản ghi)".replace("{0}", aImportedData.length),
-                    type: "Emphasized",
-                    icon: "sap-icon://save",
-                    press: function() {
-                        var aCurrentData = oPreviewModel.getProperty("/items");
-                        if (aCurrentData.length === 0) {
-                            MessageToast.show("Không có dữ liệu để lưu!");
-                            return;
-                        }
-                        that._saveImportedData(aCurrentData);
-                        oDialog.close();
-                    }
-                }),
-                endButton: new Button({
-                    text: "Hủy",
-                    press: function() {
-                        oDialog.close();
-                    }
-                }),
-                afterClose: function() {
-                    oDialog.destroy();
-                }
-            });
-
-            // Add index to each item for display
-            aImportedData.forEach(function(item, index) {
-                item.index = index;
-            });
-
-            oDialog.setModel(oPreviewModel, "preview");
-            oDialog.open();
-        },
-
-        _saveImportedData: function(aImportedData) {
-            var oModel = this.getView().getModel("dailyLogModel");
-            var aCurrentLogs = oModel.getProperty("/ZLOG_WORK");
-            var aNewLogs = aImportedData.concat(aCurrentLogs);
-            oModel.setProperty("/ZLOG_WORK", aNewLogs);
-            MessageToast.show("Đã import thành công " + aImportedData.length + " bản ghi!");
-        },
-
-        /**
-         * Edit preview item
-         */
-        _editPreviewItem: function(oContext, oPreviewModel) {
-            var that = this;
-            var sPath = oContext.getPath();
-            var oItem = oContext.getObject();
-            
-            console.log("Editing item:", oItem);
-            
-            // Clone item for editing - ensure resources is an array and convert date
-            var oItemCopy = JSON.parse(JSON.stringify(oItem));
-            
-            // Convert date string back to Date object if needed
-            if (oItemCopy.log_date && typeof oItemCopy.log_date === "string") {
-                oItemCopy.log_date = new Date(oItemCopy.log_date);
-            } else if (oItemCopy.log_date && typeof oItemCopy.log_date === "object" && oItemCopy.log_date.__edmType) {
-                // Handle OData date format
-                oItemCopy.log_date = new Date(oItemCopy.log_date);
-            }
-            
-            if (!oItemCopy.resources) {
-                oItemCopy.resources = [];
-            }
-            
-            var oEditModel = new JSONModel(oItemCopy);
-            
-            console.log("Edit model data:", oEditModel.getData());
-
-            // Create resources table
-            var oResourcesTable = new Table({
-                growing: false,
-                width: "100%",
-                mode: "Delete",
-                delete: function(oEvent) {
-                    var oItem = oEvent.getParameter("listItem");
-                    var iIndex = oResourcesTable.indexOfItem(oItem);
-                    var aResources = oEditModel.getProperty("/resources");
-                    aResources.splice(iIndex, 1);
-                    oEditModel.setProperty("/resources", aResources);
-                },
-                columns: [
-                    new Column({ header: new Label({ text: "Tên tài nguyên", required: true }), width: "40%" }),
-                    new Column({ header: new Label({ text: "Đơn vị" }), width: "30%" }),
-                    new Column({ header: new Label({ text: "Số lượng", required: true }), width: "30%" })
-                ],
-                items: {
-                    path: "edit>/resources",
-                    template: new ColumnListItem({
-                        cells: [
-                            new Input({ value: "{edit>resource_name}", required: true }),
-                            new Input({ value: "{edit>unit}" }),
-                            new Input({ value: "{edit>quantity}", type: "Number", required: true })
-                        ]
-                    })
-                }
-            });
-
-            var oAddResourceBtn = new Button({
-                text: "Thêm tài nguyên",
-                icon: "sap-icon://add",
-                press: function() {
-                    var aResources = oEditModel.getProperty("/resources");
-                    aResources.push({ resource_name: "", unit: "", quantity: 0 });
-                    oEditModel.setProperty("/resources", aResources);
-                }
-            });
-
-            var oForm = new SimpleForm({
-                editable: true,
-                layout: "ResponsiveGridLayout",
-                labelSpanXL: 4, labelSpanL: 4, labelSpanM: 4,
-                adjustLabelSpan: false,
-                columnsXL: 2, columnsL: 2, columnsM: 2,
-                content: [
-                    new Title({ text: "Thông tin chung" }),
-                    
-                    new Label({ text: "Mã nhật ký" }),
-                    new Input({ value: "{edit>/log_id}", placeholder: "VD: LOG001" }),
-
-                    new Label({ text: "Ngày báo cáo" }),
-                    new DatePicker({ 
-                        value: {
-                            path: "edit>/log_date",
-                            type: "sap.ui.model.type.Date",
-                            formatOptions: { pattern: "dd/MM/yyyy" }
-                        },
-                        displayFormat: "dd/MM/yyyy"
-                    }),
-
-                    new Label({ text: "Mã WBS" }),
-                    new Input({ value: "{edit>/wbs_id}" }),
-
-                    new Label({ text: "Tên hạng mục" }),
-                    new Input({ value: "{edit>/wbs_name}" }),
-
-                    new Label({ text: "Thời tiết (Sáng)" }),
-                    new RadioButtonGroup({ 
-                        columns: 3, 
-                        selectedIndex: "{edit>/weather_am_idx}",
-                        buttons: [ 
-                            new RadioButton({text:"Nắng"}), 
-                            new RadioButton({text:"Mát mẻ"}), 
-                            new RadioButton({text:"Mưa"}) 
-                        ] 
-                    }),
-
-                    new Label({ text: "Thời tiết (Chiều)" }),
-                    new RadioButtonGroup({ 
-                        columns: 3, 
-                        selectedIndex: "{edit>/weather_pm_idx}",
-                        buttons: [ 
-                            new RadioButton({text:"Nắng"}), 
-                            new RadioButton({text:"Mát mẻ"}), 
-                            new RadioButton({text:"Mưa"}) 
-                        ] 
-                    }),
-
-                    new Label({ text: "CBKT" }),
-                    new Input({ value: "{edit>/man_cbkt}", type: "Number" }),
-
-                    new Label({ text: "CN" }),
-                    new Input({ value: "{edit>/man_cn}", type: "Number" }),
-
-                    new Title({ text: "Chi tiết thực hiện" }),
-                    
-                    new Label({ text: "Mô tả công việc" }),
-                    new TextArea({ value: "{edit>/description}", rows: 3 }),
-
-                    new Label({ text: "Note An toàn vệ sinh" }),
-                    new TextArea({ value: "{edit>/note_safety}", rows: 2 }),
-
-                    new Label({ text: "Ý kiến tư vấn giám sát" }),
-                    new TextArea({ value: "{edit>/consultant_note}", rows: 2 }),
-
-                    new Label({ text: "Ý kiến nhà thầu" }),
-                    new TextArea({ value: "{edit>/contractor_note}", rows: 2 })
-                ]
-            });
-
-            var oEditDialog = new Dialog({
-                title: "Chỉnh sửa dữ liệu",
-                contentWidth: "900px",
-                contentHeight: "80%",
-                verticalScrolling: true,
-                content: [ 
-                    oForm,
-                    new Label({ text: "Tài nguyên sử dụng", design: "Bold" }),
-                    oAddResourceBtn,
-                    oResourcesTable
-                ],
-                beginButton: new Button({
-                    text: "Lưu", 
-                    type: "Emphasized",
-                    press: function() {
-                        var oEditedItem = oEditModel.getData();
-                        oPreviewModel.setProperty(sPath, oEditedItem);
-                        MessageToast.show("Đã cập nhật!");
-                        oEditDialog.close();
-                    }
-                }),
-                endButton: new Button({ 
-                    text: "Hủy", 
-                    press: function() { 
-                        oEditDialog.close(); 
-                    } 
-                }),
-                afterClose: function() { 
-                    oEditDialog.destroy(); 
-                }
-            });
-
-            console.log("Opening edit dialog...");
-            oEditDialog.setModel(oEditModel, "edit");
-            oEditDialog.open();
-            console.log("Edit dialog opened");
-        },
-
-        /**
-         * Delete preview item
-         */
-        _deletePreviewItem: function(oContext, oPreviewModel, oParentDialog) {
-            var that = this;
-            var sPath = oContext.getPath();
-            var iIndex = parseInt(sPath.split("/").pop());
-            
-            MessageBox.confirm("Bạn có chắc muốn xóa bản ghi này khỏi danh sách import?", {
-                onClose: function(oAction) {
-                    if (oAction === MessageBox.Action.OK) {
-                        var aItems = oPreviewModel.getProperty("/items");
-                        aItems.splice(iIndex, 1);
-                        
-                        // Re-index
-                        aItems.forEach(function(item, index) {
-                            item.index = index;
+                    // Create new records
+                    aResUse.forEach(function (u) {
+                        var oPayload = {
+                            ResourceUseId: "00000000-0000-0000-0000-000000000000",
+                            ResourceId: u.ResourceId,
+                            WbsId: u.WbsId,
+                            LogId: sLogId,
+                            Quantity: String(parseFloat(u.Quantity) || 0)
+                        };
+                        oModel.create("/ResourceUseSet", oPayload, {
+                            success: fnCheck,
+                            error: fnCheck
                         });
-                        
-                        oPreviewModel.setProperty("/items", aItems);
-                        
-                        // Update dialog title
-                        oParentDialog.setTitle("Xem trước dữ liệu Import (" + aItems.length + " bản ghi)");
-                        
-                        MessageToast.show("Đã xóa bản ghi!");
-                    }
+                    });
+                },
+                error: function () {
+                    var iTotal = aResUse.length;
+                    var iDone = 0;
+                    if (iTotal === 0) { fnSuccess(); return; }
+                    aResUse.forEach(function (u) {
+                        var oPayload = {
+                            ResourceUseId: "00000000-0000-0000-0000-000000000000",
+                            ResourceId: u.ResourceId,
+                            WbsId: u.WbsId,
+                            LogId: sLogId,
+                            Quantity: String(parseFloat(u.Quantity) || 0)
+                        };
+                        oModel.create("/ResourceUseSet", oPayload, {
+                            success: function () { if (++iDone >= iTotal) { fnSuccess(); } },
+                            error: function () { if (++iDone >= iTotal) { fnSuccess(); } }
+                        });
+                    });
                 }
             });
         },
 
-        _loadXLSXLibrary: function() {
-            return new Promise(function(resolve, reject) {
-                if (window.XLSX) {
-                    resolve();
-                    return;
+        /**
+         * Read all DailyLogs for a WBS, compute min/max LogDate,
+         * then update WBS.StartActual and WBS.EndActual accordingly.
+         * This makes the Gantt "actual" green bar appear.
+         */
+        _updateWbsActualDates: function (sWbsId) {
+            var oModel = this.getOwnerComponent().getModel();
+
+            oModel.read("/DailyLogSet", {
+                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                sorters: [new Sorter("LogDate", false)], // ascending
+                success: function (oData) {
+                    var aLogs = oData.results || [];
+                    var oUpdate = {};
+
+                    if (aLogs.length > 0) {
+                        // First log (earliest) → StartActual
+                        // Last log (latest) → EndActual
+                        oUpdate.StartActual = aLogs[0].LogDate instanceof Date
+                            ? aLogs[0].LogDate
+                            : new Date(aLogs[0].LogDate);
+                        oUpdate.EndActual = aLogs[aLogs.length - 1].LogDate instanceof Date
+                            ? aLogs[aLogs.length - 1].LogDate
+                            : new Date(aLogs[aLogs.length - 1].LogDate);
+                    } else {
+                        // No logs → clear actual dates
+                        oUpdate.StartActual = null;
+                        oUpdate.EndActual = null;
+                    }
+
+                    oModel.update("/WBSSet(guid'" + sWbsId + "')", oUpdate, {
+                        merge: true, // PATCH — only update these fields
+                        success: function () {
+                            console.log("WBS actual dates updated successfully.");
+                        },
+                        error: function (oErr) {
+                            console.error("Failed to update WBS actual dates:", oErr);
+                        }
+                    });
+                },
+                error: function (oErr) {
+                    console.error("Failed to read DailyLogs for actual date calc:", oErr);
                 }
-                var script = document.createElement('script');
-                script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js';
-                script.onload = function() {
-                    resolve();
-                };
-                script.onerror = function() {
-                    reject(new Error("Không thể tải thư viện XLSX từ CDN"));
-                };
-                document.head.appendChild(script);
             });
         }
+
     });
 });
