@@ -1,0 +1,55 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form">
+    
+    <VBox class="sapUiSmallMargin">
+        <ObjectHeader
+            title="{SiteName}"
+            intro="{SiteCode}"
+            icon="sap-icon://building"
+            iconActive="false">
+            <statuses>
+                <ObjectStatus
+                    text="{Status}"
+                    state="{= ${Status} === 'ACTIVE' || ${Status} === 'OPEN' ? 'Success' : 'Warning' }"/>
+            </statuses>
+            <attributes>
+                <ObjectAttribute text="{Address}" icon="sap-icon://map-2" />
+            </attributes>
+        </ObjectHeader>
+
+        <f:SimpleForm 
+            editable="false" 
+            layout="ResponsiveGridLayout" 
+            title="Overview Information"
+            labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12" 
+            adjustLabelSpan="false" 
+            emptySpanXL="4" emptySpanL="4" emptySpanM="4" emptySpanS="0" 
+            columnsXL="1" columnsL="1" columnsM="1" 
+            singleContainerFullSize="false" 
+            class="sapUiSmallMarginTop">
+            <f:content>
+                <Label text="Site ID" />
+                <Text text="{SiteId}" />
+
+                <Label text="Project ID" />
+                <Text text="{ProjectId}" />
+
+                <Label text="Site Code" />
+                <Text text="{SiteCode}" />
+
+                <Label text="Address" />
+                <Text text="{Address}" />
+
+                <Label text="Status" />
+                <ObjectStatus 
+                    class="sapUiNoMargin"
+                    text="{Status}" 
+                    state="{= ${Status} === 'ACTIVE' || ${Status} === 'OPEN' ? 'Success' : 'Warning' }" />
+            </f:content>
+        </f:SimpleForm>
+    </VBox>
+
+</core:FragmentDefinition>

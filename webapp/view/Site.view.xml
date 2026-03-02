@@ -9,8 +9,10 @@
         navButtonPress="onNavBack">
         <content>
             <Table 
-                id="siteTable" 
-                items="{ToSites}">
+                id="siteTable"
+                items="{
+                    path: '/SiteSet'
+                }">
                 <headerToolbar>
                     <OverflowToolbar>
                         <Title text="Site List" level="H3"/>

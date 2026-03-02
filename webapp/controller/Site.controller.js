@@ -11,9 +11,11 @@ sap.ui.define([
     "sap/ui/core/Item",
     "sap/m/VBox",
     "sap/m/HBox",
-    "sap/ui/layout/form/SimpleForm"
+    "sap/ui/layout/form/SimpleForm",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator"
 ], function (Controller, History, MessageToast, MessageBox,
-    Dialog, Button, Label, Input, Select, Item, VBox, HBox, SimpleForm) {
+    Dialog, Button, Label, Input, Select, Item, VBox, HBox, SimpleForm, Filter, FilterOperator) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.Site", {
@@ -49,13 +51,15 @@ sap.ui.define([
             this._sCurrentProjectId = sProjectId;
             var oView = this.getView();
             oView.bindElement({
-                path: "/ProjectSet(guid'" + sProjectId + "')",
-                parameters: { expand: "ToSites" },
-                events: {
-                    dataRequested: function () { oView.setBusy(true); },
-                    dataReceived: function () { oView.setBusy(false); }
-                }
+                path: "/ProjectSet(guid'" + sProjectId + "')"
             });
+
+            // 2. Filter the existing SiteSet binding initialized by XML
+            var oTable = this.byId("siteTable");
+            var oBinding = oTable.getBinding("items");
+            if (oBinding) {
+                oBinding.filter([new Filter("ProjectId", FilterOperator.EQ, sProjectId)]);
+            }
         },
 
         onSitePress: function (oEvent) {
