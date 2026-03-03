@@ -51,15 +51,38 @@ sap.ui.define([
             this._sCurrentProjectId = sProjectId;
             var oView = this.getView();
             oView.bindElement({
-                path: "/ProjectSet(guid'" + sProjectId + "')"
+                path: "/ProjectSet(guid'" + sProjectId + "')",
+                parameters: { expand: "ToSites" },
+                events: {
+                    dataRequested: function () { oView.setBusy(true); },
+                    dataReceived: function () { oView.setBusy(false); }
+                }
             });
+        },
 
-            // 2. Filter the existing SiteSet binding initialized by XML
-            var oTable = this.byId("siteTable");
-            var oBinding = oTable.getBinding("items");
-            if (oBinding) {
-                oBinding.filter([new Filter("ProjectId", FilterOperator.EQ, sProjectId)]);
-            }
+        // ── SEARCH ──────────────────────────────────────────────────────────
+        onSearch: function (oEvent) {
+            var sQuery = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
+            clearTimeout(this._searchTimer);
+            this._searchTimer = setTimeout(function () {
+                var aFilters = [];
+                // Since expand="ToSites" is used, the items binding natively has a filter option if we pass it to the table, 
+                // but wait, $expand does not support $filter directly on the expanded collection in V2 unless done via an association.
+                // However, UI5 local filtering works on the expanded array.
+                if (sQuery && sQuery.length > 0) {
+                    var sUpperQuery = sQuery.toUpperCase();
+                    if (sUpperQuery.indexOf("-") !== -1 || sUpperQuery.indexOf("PRJ") !== -1 || sUpperQuery.indexOf("SITE") !== -1) {
+                        aFilters.push(new Filter("SiteCode", FilterOperator.EQ, sQuery));
+                    } else {
+                        aFilters.push(new Filter("SiteName", FilterOperator.EQ, sQuery));
+                    }
+                }
+                var oTable = this.byId("siteTable");
+                var oBinding = oTable.getBinding("items");
+                if (oBinding) {
+                    oBinding.filter(aFilters);
+                }
+            }.bind(this), 500);
         },
 
         onSitePress: function (oEvent) {

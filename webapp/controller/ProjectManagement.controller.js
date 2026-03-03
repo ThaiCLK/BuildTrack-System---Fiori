@@ -56,25 +56,25 @@ sap.ui.define([
 
         // ── SEARCH ──────────────────────────────────────────────────────────
         onSearch: function (oEvent) {
-            var sQuery = oEvent.getParameter("newValue");
+            var sQuery = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
             clearTimeout(this._searchTimer);
             this._searchTimer = setTimeout(function () {
                 var aFilters = [];
                 if (sQuery && sQuery.length > 0) {
-                    aFilters.push(new Filter({
-                        filters: [
-                            new Filter("ProjectName", FilterOperator.Contains, sQuery),
-                            new Filter("ProjectCode", FilterOperator.Contains, sQuery)
-                        ],
-                        and: false
-                    }));
+                    var sUpperQuery = sQuery.toUpperCase();
+                    // Smart detection: If query contains '-' or 'PRJ' or 'SITE', treat it as a Code. Otherwise, Name.
+                    if (sUpperQuery.indexOf("-") !== -1 || sUpperQuery.indexOf("PRJ") !== -1 || sUpperQuery.indexOf("SITE") !== -1) {
+                        aFilters.push(new Filter("ProjectCode", FilterOperator.EQ, sQuery));
+                    } else {
+                        aFilters.push(new Filter("ProjectName", FilterOperator.EQ, sQuery));
+                    }
                 }
                 var oTable = this.byId("projectTable");
                 var oBinding = oTable.getBinding("items");
                 if (oBinding) {
                     oBinding.filter(aFilters);
                 }
-            }.bind(this), 300);
+            }.bind(this), 500);
         },
 
         // ── NAVIGATE ─────────────────────────────────────────────────────────

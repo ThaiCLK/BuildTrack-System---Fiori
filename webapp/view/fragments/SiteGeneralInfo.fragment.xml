@@ -31,12 +31,6 @@
             singleContainerFullSize="false" 
             class="sapUiSmallMarginTop">
             <f:content>
-                <Label text="Site ID" />
-                <Text text="{SiteId}" />
-
-                <Label text="Project ID" />
-                <Text text="{ProjectId}" />
-
                 <Label text="Site Code" />
                 <Text text="{SiteCode}" />
 

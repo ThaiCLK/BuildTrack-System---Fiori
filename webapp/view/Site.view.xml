@@ -10,13 +10,18 @@
         <content>
             <Table 
                 id="siteTable"
-                items="{
-                    path: '/SiteSet'
-                }">
+                items="{ToSites}"
+                noDataText="No sites found.">
                 <headerToolbar>
                     <OverflowToolbar>
                         <Title text="Site List" level="H3"/>
                         <ToolbarSpacer/>
+                        <SearchField
+                            id="searchSite"
+                            width="22rem"
+                            placeholder="Search by name or code…"
+                            liveChange=".onSearch"
+                            search=".onSearch"/>
                         <Button 
                             id="btnAddSite"
                             text="Add Site"

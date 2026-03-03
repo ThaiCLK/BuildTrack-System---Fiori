@@ -7,8 +7,8 @@
         <content>
             <IconTabBar id="idIconTabBar" class="sapUiResponsiveContentPadding">
                 <items>
-                    <IconTabFilter icon="sap-icon://hint" text="General Info">
-                        <Text text="General information about the site..." />
+                    <IconTabFilter icon="sap-icon://hint" text="Information">
+                        <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.SiteGeneralInfo" type="XML" />
                     </IconTabFilter>
                     
                     <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="WBS &amp; Schedule">
