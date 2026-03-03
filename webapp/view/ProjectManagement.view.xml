@@ -102,11 +102,11 @@
                             <!-- Status badge with semantic colours -->
                             <ObjectStatus id="objStatus"
                                 text="{Status}"
-                                icon="{= ${Status} === 'ACTIVE'   ? 'sap-icon://status-positive'  :
+                                icon="{= ${Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
                                        ${Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
                                        ${Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
-                                                                   'sap-icon://status-inactive' }"
-                                state="{= ${Status} === 'ACTIVE'   ? 'Success'     :
+                                                                    'sap-icon://status-inactive' }"
+                                state="{= ${Status} === 'IN_PROGRESS' ? 'Success'     :
                                         ${Status} === 'PLANNING' ? 'Warning'     :
                                         ${Status} === 'CLOSED'   ? 'Error'       :
                                                                     'None' }"

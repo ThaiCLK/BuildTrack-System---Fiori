@@ -122,7 +122,6 @@
                 </Key>
                 <Property Name="ResourceUseId" Type="Edm.Guid"    Nullable="false" sap:label="Resource Use UUID" />
                 <Property Name="ResourceId"    Type="Edm.String"  MaxLength="20"   sap:label="Resource Code" />
-                <Property Name="WbsId"         Type="Edm.Guid"    sap:label="WBS UUID" />
                 <Property Name="LogId"         Type="Edm.Guid"    sap:label="Log UUID" />
                 <Property Name="Quantity"      Type="Edm.Decimal" Precision="7" Scale="3" sap:label="Quantity" />
                 <NavigationProperty Name="ToResource" Relationship="ZBT_ODATA_SRV.ResourceUse_to_Resource" FromRole="FromResourceUse" ToRole="ToResource" />

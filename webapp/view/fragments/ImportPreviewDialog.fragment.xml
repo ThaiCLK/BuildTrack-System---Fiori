@@ -1,0 +1,106 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout">
+
+    <Dialog
+        id="importPreviewDialog"
+        title="Import Preview"
+        contentWidth="700px"
+        draggable="true"
+        resizable="true">
+
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <!-- Summary bar -->
+                <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+                    <Label
+                        text="{= ${importPreviewModel>/logs}.length + ' log(s) found in file'}"
+                        design="Bold"/>
+                    <Label
+                        text="Tick the logs you want to import"
+                        class="sapUiTinyMarginBegin"/>
+                </HBox>
+
+                <!-- Log preview table (multi-select) -->
+                <Table
+                    id="importPreviewTable"
+                    mode="MultiSelect"
+                    items="{importPreviewModel>/logs}"
+                    growing="true"
+                    growingThreshold="20"
+                    noDataText="No logs found in file.">
+                    <headerToolbar>
+                        <OverflowToolbar>
+                            <Title text="Logs to Import" level="H5"/>
+                            <ToolbarSpacer/>
+                            <Button
+                                text="Select All"
+                                type="Transparent"
+                                press=".onImportPreviewSelectAll"/>
+                            <Button
+                                text="Deselect All"
+                                type="Transparent"
+                                press=".onImportPreviewDeselectAll"/>
+                        </OverflowToolbar>
+                    </headerToolbar>
+                    <columns>
+                        <Column width="5rem">
+                            <Text text="Log Num"/>
+                        </Column>
+                        <Column width="8rem">
+                            <Text text="Date"/>
+                        </Column>
+                        <Column width="7rem" hAlign="End">
+                            <Text text="Qty Done"/>
+                        </Column>
+                        <Column width="7rem">
+                            <Text text="Weather AM"/>
+                        </Column>
+                        <Column width="7rem">
+                            <Text text="Weather PM"/>
+                        </Column>
+                        <Column width="5rem" hAlign="End">
+                            <Text text="Resources"/>
+                        </Column>
+                    </columns>
+                    <items>
+                        <ColumnListItem>
+                            <cells>
+                                <Text text="{importPreviewModel>log_num}"/>
+                                <Text text="{
+                                    path: 'importPreviewModel>log_date',
+                                    formatter: '.formatImportDate'
+                                }"/>
+                                <ObjectNumber
+                                    number="{importPreviewModel>qty_done}"
+                                    unit="{importPreviewModel>unit_code}"
+                                    state="None"/>
+                                <Text text="{importPreviewModel>weather_am}"/>
+                                <Text text="{importPreviewModel>weather_pm}"/>
+                                <ObjectNumber
+                                    number="{= ${importPreviewModel>resources}.length }"
+                                    state="{= ${importPreviewModel>resources}.length > 0 ? 'Information' : 'None' }"/>
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+            </VBox>
+        </content>
+
+        <beginButton>
+            <Button
+                text="Import Selected"
+                type="Emphasized"
+                icon="sap-icon://upload"
+                press=".onConfirmImport"/>
+        </beginButton>
+        <endButton>
+            <Button
+                text="Cancel"
+                type="Default"
+                press=".onCancelImport"/>
+        </endButton>
+
+    </Dialog>
+</core:FragmentDefinition>

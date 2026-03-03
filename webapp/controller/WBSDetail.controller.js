@@ -6,8 +6,9 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
-    "sap/ui/model/Sorter"
-], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter) {
+    "sap/ui/model/Sorter",
+    "z/bts/buildtrack/utils/DailyLogExcelHandler"
+], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter, DailyLogExcelHandler) {
     "use strict";
 
 
@@ -44,6 +45,12 @@ sap.ui.define([
             // Work Summary model
             var oWSModel = new JSONModel({});
             this.getView().setModel(oWSModel, "workSummaryModel");
+
+            // Import Preview model
+            var oImportPreviewModel = new JSONModel({
+                logs: []
+            });
+            this.getView().setModel(oImportPreviewModel, "importPreviewModel");
         },
 
         /* =========================================================== */
@@ -51,8 +58,11 @@ sap.ui.define([
         /* =========================================================== */
 
         _onObjectMatched: function (oEvent) {
-            var sWbsId = oEvent.getParameter("arguments").wbsId;
+            var oArgs = oEvent.getParameter("arguments");
+            var sWbsId = oArgs.wbsId;
+            var sSiteId = oArgs.site_id;
             this._sWbsId = sWbsId;
+            this._sSiteId = sSiteId;   // remember for onNavBack
 
             // Bind the WBS detail form — WbsId is Edm.Guid so use guid'' syntax
             var sObjectPath = "/WBSSet(guid'" + sWbsId + "')";
@@ -149,62 +159,44 @@ sap.ui.define([
 
         /**
          * Load the work summary record for a WBS.
-         * Aggregates TotalQuantityDone live from DailyLogSet.
+         * TotalQuantityDone is aggregated by the backend — FE just GETs it.
          */
         _loadWorkSummary: function (sWbsId) {
             var oModel = this.getOwnerComponent().getModel();
             var oWSModel = this.getView().getModel("workSummaryModel");
 
-            // Reset
             oWSModel.setData({});
 
-            // 1) Load all daily logs for this WBS to calculate the actual total quantity
-            oModel.read("/DailyLogSet", {
+            oModel.read("/WorkSummarySet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                success: function (oLogData) {
-                    var fTotalDone = 0;
-                    (oLogData.results || []).forEach(function (log) {
-                        fTotalDone += parseFloat(log.QuantityDone || 0);
-                    });
-
-                    // 2) Load the WorkSummary record to get its base structure
-                    oModel.read("/WorkSummarySet", {
-                        filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                        success: function (oWSData) {
-                            var oData = {};
-                            if (oWSData.results && oWSData.results.length > 0) {
-                                oData = oWSData.results[0];
-                            }
-
-                            // 3) Override the stored TotalQuantityDone with the live calculated sum
-                            oData.TotalQuantityDone = fTotalDone;
-                            oWSModel.setData(oData);
-                        },
-                        error: function () {
-                            oWSModel.setData({ TotalQuantityDone: fTotalDone });
-                        }
-                    });
+                success: function (oData) {
+                    if (oData.results && oData.results.length > 0) {
+                        oWSModel.setData(oData.results[0]);
+                    }
                 },
                 error: function () {
-                    // Fallback
-                    oModel.read("/WorkSummarySet", {
-                        filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                        success: function (oWSData) {
-                            if (oWSData.results && oWSData.results.length > 0) {
-                                oWSModel.setData(oWSData.results[0]);
-                            }
-                        }
-                    });
+                    console.error("Failed to load WorkSummary for WBS:", sWbsId);
                 }
             });
         },
 
         onNavBack: function () {
-            var sPrev = History.getInstance().getPreviousHash();
-            if (sPrev !== undefined) {
-                window.history.go(-1);
+            // Always navigate explicitly back to SiteDetail using the known site_id.
+            // Using window.history.go(-1) is unreliable because OData operations
+            // (element-binding refresh, batch calls) can inject extra browser-history
+            // entries, causing the user to overshoot past the SiteDetail page.
+            if (this._sSiteId) {
+                this.getOwnerComponent().getRouter().navTo("SiteDetail", {
+                    site_id: this._sSiteId
+                }, true);
             } else {
-                this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
+                // Fallback: SAP router history or root
+                var sPrev = History.getInstance().getPreviousHash();
+                if (sPrev !== undefined) {
+                    window.history.go(-1);
+                } else {
+                    this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
+                }
             }
         },
 
@@ -253,6 +245,17 @@ sap.ui.define([
         /** Select a log entry from the list → load detail on right */
         onLogItemSelect: function (oEvent) {
             var oCtx = oEvent.getParameter("listItem").getBindingContext();
+            this._showLogDetail(oCtx);
+        },
+
+        /** Called when user clicks directly on a row (not the checkbox) */
+        onLogRowPress: function (oEvent) {
+            var oCtx = oEvent.getSource().getBindingContext();
+            this._showLogDetail(oCtx);
+        },
+
+        /** Shared logic: populate the right panel with the selected log */
+        _showLogDetail: function (oCtx) {
             var oODataLog = oCtx.getObject();
             var oUIModel = this.getView().getModel("dailyLogModel");
 
@@ -354,6 +357,271 @@ sap.ui.define([
             oUIModel.setProperty("/ui/isSelected", true);
             oUIModel.setProperty("/ui/editMode", true);
             oUIModel.setProperty("/ui/isNewRecord", true);
+        },
+
+        /** Export checked daily log(s) to Excel */
+        onExportExcel: function () {
+            var oTable = this.byId("idDailyLogList");
+            var aSelectedItems = oTable ? oTable.getSelectedItems() : [];
+
+            if (!aSelectedItems || aSelectedItems.length === 0) {
+                MessageToast.show("Please select at least one log entry first.");
+                return;
+            }
+
+            // Build array of log objects from each selected OData context
+            var aLogs = aSelectedItems.map(function (oItem) {
+                var oObj = oItem.getBindingContext().getObject();
+                return {
+                    LogId: oObj.LogId,
+                    LogDate: oObj.LogDate,
+                    QuantityDone: oObj.QuantityDone,
+                    WeatherAm: oObj.WeatherAm,
+                    WeatherPm: oObj.WeatherPm,
+                    GeneralNote: oObj.GeneralNote,
+                    SafeNote: oObj.SafeNote,
+                    ContractorNote: oObj.ContractorNote
+                };
+            });
+
+            var oModel = this.getOwnerComponent().getModel();
+            var aAllResources = [];
+
+            // Read ResourceUseSet per LogId, then enrich with ResourceSet details
+            var fnFetchNext = function (iIdx) {
+                if (iIdx >= aLogs.length) {
+                    // Enrich: fetch ResourceSet for each unique ResourceId so that
+                    // ResourceName, ResourceType, UnitCode appear in the Resource Master sheet
+                    var aUniqueIds = [];
+                    aAllResources.forEach(function (r) {
+                        if (r.ResourceId && aUniqueIds.indexOf(r.ResourceId) === -1) {
+                            aUniqueIds.push(r.ResourceId);
+                        }
+                    });
+
+                    if (aUniqueIds.length === 0) {
+                        DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources);
+                        return;
+                    }
+
+                    var iDone = 0;
+                    var oResCache = {}; // { ResourceId: { Name, Type, Unit } }
+                    aUniqueIds.forEach(function (sResId) {
+                        oModel.read("/ResourceSet('" + sResId + "')", {
+                            success: function (oRes) {
+                                oResCache[sResId] = {
+                                    ResourceName: oRes.ResourceName || "",
+                                    ResourceType: oRes.ResourceType || "MATERIAL",
+                                    UnitCode: oRes.UnitCode || ""
+                                };
+                                if (++iDone >= aUniqueIds.length) {
+                                    // Patch all resource-use records with the fetched details
+                                    aAllResources.forEach(function (r) {
+                                        var oDetail = oResCache[r.ResourceId] || {};
+                                        r.ResourceName = oDetail.ResourceName || "";
+                                        r.ResourceType = oDetail.ResourceType || "MATERIAL";
+                                        r.UnitCode = oDetail.UnitCode || "";
+                                    });
+                                    DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources);
+                                }
+                            },
+                            error: function () {
+                                if (++iDone >= aUniqueIds.length) {
+                                    DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources);
+                                }
+                            }
+                        });
+                    });
+                    return;
+                }
+                oModel.read("/ResourceUseSet", {
+                    filters: [new Filter("LogId", FilterOperator.EQ, aLogs[iIdx].LogId)],
+                    success: function (oResData) {
+                        aAllResources = aAllResources.concat(oResData.results || []);
+                        fnFetchNext(iIdx + 1);
+                    },
+                    error: function () {
+                        fnFetchNext(iIdx + 1);
+                    }
+                });
+            };
+
+            fnFetchNext(0);
+        },
+
+        /** Download a blank Excel template for importing Daily Logs */
+        onDownloadTemplate: function () {
+            DailyLogExcelHandler.exportDailyLogs([], []);
+        },
+
+        /** Open a hidden file input to pick an Excel file, then import */
+        onImportExcel: function () {
+            var that = this;
+            // Create and trigger a file input
+            var oFileInput = document.createElement("input");
+            oFileInput.type = "file";
+            oFileInput.accept = ".xlsx,.xls";
+            oFileInput.onchange = function (oEvent) {
+                var oFile = oEvent.target.files[0];
+                if (!oFile) { return; }
+
+                MessageToast.show("Importing " + oFile.name + "...");
+
+                DailyLogExcelHandler.parseExcelFile(oFile).then(function (oParsed) {
+                    var aLogs = DailyLogExcelHandler.transformExcelData(
+                        oParsed.dailyLogs,
+                        oParsed.resourceUses,
+                        oParsed.resourceMasters
+                    );
+
+                    if (!aLogs || aLogs.length === 0) {
+                        MessageToast.show("No valid data found in the file.");
+                        return;
+                    }
+
+                    // Open preview dialog instead of importing directly
+                    that.getView().getModel("importPreviewModel").setProperty("/logs", aLogs);
+                    that._openImportPreviewDialog();
+                }).catch(function (e) {
+                    MessageBox.error("Failed to parse Excel file: " + e.message);
+                });
+            };
+            oFileInput.click();
+        },
+
+        _openImportPreviewDialog: function () {
+            var oView = this.getView();
+            if (!this._pImportPreviewDialog) {
+                this._pImportPreviewDialog = sap.ui.core.Fragment.load({
+                    id: oView.getId(),
+                    name: "z.bts.buildtrack.view.fragments.ImportPreviewDialog",
+                    controller: this
+                }).then(function (oDialog) {
+                    oView.addDependent(oDialog);
+                    return oDialog;
+                });
+            }
+            this._pImportPreviewDialog.then(function (oDialog) {
+                oDialog.open();
+                // Check all items by default when opened
+                var oTable = this.byId("importPreviewTable");
+                if (oTable) {
+                    // Timeout needed so table has time to render new items before selection
+                    setTimeout(function () { oTable.selectAll(); }, 50);
+                }
+            }.bind(this));
+        },
+
+        onImportPreviewSelectAll: function () {
+            var oTable = this.byId("importPreviewTable");
+            if (oTable) { oTable.selectAll(); }
+        },
+
+        onImportPreviewDeselectAll: function () {
+            var oTable = this.byId("importPreviewTable");
+            if (oTable) { oTable.removeSelections(true); }
+        },
+
+        onConfirmImport: function () {
+            var oTable = this.byId("importPreviewTable");
+            var aSelectedItems = oTable ? oTable.getSelectedItems() : [];
+
+            if (aSelectedItems.length === 0) {
+                MessageToast.show("Please select at least one log to import.");
+                return;
+            }
+
+            var aSelectedLogs = aSelectedItems.map(function (oItem) {
+                return oItem.getBindingContext("importPreviewModel").getObject();
+            });
+
+            this.byId("importPreviewDialog").close();
+            MessageToast.show("Importing " + aSelectedLogs.length + " selected logs...");
+            this._importLogsSequentially(aSelectedLogs, 0, 0);
+        },
+
+        onCancelImport: function () {
+            this.byId("importPreviewDialog").close();
+        },
+
+        formatImportDate: function (oDate) {
+            if (!oDate) return "";
+            var d = new Date(oDate);
+            return (d.getDate().toString().padStart(2, '0') + "/" +
+                (d.getMonth() + 1).toString().padStart(2, '0') + "/" +
+                d.getFullYear());
+        },
+
+        /** Recursively POST each parsed log to OData one-by-one */
+        _importLogsSequentially: function (aLogs, iIndex, iSuccess) {
+            if (iIndex >= aLogs.length) {
+                MessageToast.show(iSuccess + " log(s) imported successfully!");
+                this._bindDailyLogList(this._sWbsId);
+                // Update WBS actual dates + Work Summary after all logs imported
+                this._updateWbsActualDates(this._sWbsId);
+                this._loadWorkSummary(this._sWbsId);
+                return;
+            }
+
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            var oLog = aLogs[iIndex];
+
+            // Read UnitCode from the WBS context so imported logs have the correct unit
+            var oWbsCtx = this.getView().getBindingContext();
+            var sWbsUnit = oWbsCtx ? (oWbsCtx.getProperty("UnitCode") || "") : "";
+
+            // Build OData-compatible payload
+            var oPayload = {
+                WbsId: this._sWbsId,
+                LogDate: oLog.log_date || new Date(),
+                QuantityDone: oLog.qty_done ? oLog.qty_done.toString() : "0",
+                UnitCode: sWbsUnit,
+                WeatherAm: oLog.weather_am || "SUNNY",
+                WeatherPm: oLog.weather_pm || "SUNNY",
+                GeneralNote: oLog.general_note || "",
+                SafeNote: oLog.safe_note || "",
+                ContractorNote: oLog.contractor_note || ""
+            };
+
+            oModel.create("/DailyLogSet", oPayload, {
+                success: function (oCreated) {
+                    var sNewLogId = oCreated.LogId;
+                    var aResources = oLog.resources || [];
+
+                    // Save each resource row that came from the Excel file
+                    if (aResources.length === 0) {
+                        that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1);
+                        return;
+                    }
+
+                    var iDone = 0;
+                    var iTotal = aResources.length;
+                    aResources.forEach(function (res) {
+                        var oResPayload = {
+                            LogId: sNewLogId,
+                            ResourceId: res.resource_id || "",
+                            Quantity: String(parseFloat(res.quantity) || 0)
+                        };
+                        oModel.create("/ResourceUseSet", oResPayload, {
+                            success: function () {
+                                if (++iDone >= iTotal) {
+                                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1);
+                                }
+                            },
+                            error: function () {
+                                if (++iDone >= iTotal) {
+                                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1);
+                                }
+                            }
+                        });
+                    });
+                },
+                error: function () {
+                    // Skip failed rows and continue
+                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess);
+                }
+            });
         },
 
         /** Delete the currently selected log entry */
@@ -498,9 +766,13 @@ sap.ui.define([
             if (!oLog) { return; }
 
             // Build OData payload — matches ZBT_DAILY_LOG columns
+            // Convert LogDate to UTC midnight of the locally-selected day
+            // to avoid timezone-shift (e.g. GMT+7 sends 23:00 prev day UTC)
+            var dRaw = oLog.LogDate instanceof Date ? oLog.LogDate : new Date(oLog.LogDate);
+            var dUtcMidnight = new Date(Date.UTC(dRaw.getFullYear(), dRaw.getMonth(), dRaw.getDate()));
             var oPayload = {
                 WbsId: oLog.WbsId || "",
-                LogDate: oLog.LogDate instanceof Date ? oLog.LogDate : new Date(oLog.LogDate),
+                LogDate: dUtcMidnight,
                 WeatherAm: oLog.WeatherAm || "SUNNY",
                 WeatherPm: oLog.WeatherPm || "SUNNY",
                 QuantityDone: String(parseFloat(oLog.QuantityDone) || 0),
@@ -522,6 +794,8 @@ sap.ui.define([
                     that._bindDailyLogList(that._sWbsId);
                     // Update WBS actual dates based on all daily logs
                     that._updateWbsActualDates(that._sWbsId);
+                    // Refresh Work Summary (BE aggregates TotalQuantityDone)
+                    that._loadWorkSummary(that._sWbsId);
                     MessageToast.show(sToast);
                 });
             };
@@ -585,9 +859,7 @@ sap.ui.define([
                     // Create new records
                     aResUse.forEach(function (u) {
                         var oPayload = {
-                            ResourceUseId: "00000000-0000-0000-0000-000000000000",
                             ResourceId: u.ResourceId,
-                            WbsId: u.WbsId,
                             LogId: sLogId,
                             Quantity: String(parseFloat(u.Quantity) || 0)
                         };
@@ -603,9 +875,7 @@ sap.ui.define([
                     if (iTotal === 0) { fnSuccess(); return; }
                     aResUse.forEach(function (u) {
                         var oPayload = {
-                            ResourceUseId: "00000000-0000-0000-0000-000000000000",
                             ResourceId: u.ResourceId,
-                            WbsId: u.WbsId,
                             LogId: sLogId,
                             Quantity: String(parseFloat(u.Quantity) || 0)
                         };
@@ -619,39 +889,42 @@ sap.ui.define([
         },
 
         /**
-         * Read all DailyLogs for a WBS, compute min/max LogDate,
+         * Read all DailyLogs for a WBS, compute true min/max LogDate,
          * then update WBS.StartActual and WBS.EndActual accordingly.
          * This makes the Gantt "actual" green bar appear.
          */
         _updateWbsActualDates: function (sWbsId) {
             var oModel = this.getOwnerComponent().getModel();
+            var oView = this.getView(); // captured for use in callbacks
 
             oModel.read("/DailyLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                sorters: [new Sorter("LogDate", false)], // ascending
                 success: function (oData) {
                     var aLogs = oData.results || [];
                     var oUpdate = {};
 
                     if (aLogs.length > 0) {
-                        // First log (earliest) → StartActual
-                        // Last log (latest) → EndActual
-                        oUpdate.StartActual = aLogs[0].LogDate instanceof Date
-                            ? aLogs[0].LogDate
-                            : new Date(aLogs[0].LogDate);
-                        oUpdate.EndActual = aLogs[aLogs.length - 1].LogDate instanceof Date
-                            ? aLogs[aLogs.length - 1].LogDate
-                            : new Date(aLogs[aLogs.length - 1].LogDate);
+                        // Compute true min / max across all log dates
+                        var aDates = aLogs.map(function (l) {
+                            return l.LogDate instanceof Date ? l.LogDate : new Date(l.LogDate);
+                        });
+                        var dMin = aDates.reduce(function (a, b) { return a < b ? a : b; });
+                        var dMax = aDates.reduce(function (a, b) { return a > b ? a : b; });
+                        oUpdate.StartActual = dMin;
+                        oUpdate.EndActual = dMax;
                     } else {
                         // No logs → clear actual dates
                         oUpdate.StartActual = null;
                         oUpdate.EndActual = null;
                     }
 
+                    // PATCH only the actual-date fields
                     oModel.update("/WBSSet(guid'" + sWbsId + "')", oUpdate, {
-                        merge: true, // PATCH — only update these fields
                         success: function () {
-                            console.log("WBS actual dates updated successfully.");
+                            console.log("WBS actual dates updated: ", oUpdate.StartActual, "→", oUpdate.EndActual);
+                            // Refresh the view binding so the Information tab shows the new dates
+                            var oBinding = oView.getElementBinding();
+                            if (oBinding) { oBinding.refresh(); }
                         },
                         error: function (oErr) {
                             console.error("Failed to update WBS actual dates:", oErr);

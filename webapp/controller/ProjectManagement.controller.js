@@ -127,7 +127,13 @@ sap.ui.define([
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
 
-            var oInputCode = new Input({ placeholder: "e.g. PRJ-001" });
+            var oInputCode = new Input({
+                placeholder: "e.g. PRJ-001",
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValue(oSource.getValue().toUpperCase());
+                }
+            });
             var oInputName = new Input({ placeholder: "Project name" });
             // ComboBox allows selecting a preset type OR typing a custom value for "Other"
             var oComboType = new ComboBox({
@@ -145,13 +151,17 @@ sap.ui.define([
             var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
             var oSelectStatus = new Select({
                 width: "100%",
+                enabled: false, // Status can never be edited manually (always disabled)
                 items: [
-                    new Item({ key: "OPEN", text: "Open" }),
                     new Item({ key: "PLANNING", text: "Planning" }),
-                    new Item({ key: "ACTIVE", text: "Active" }),
+                    new Item({ key: "IN_PROGRESS", text: "In Progress" }),
                     new Item({ key: "CLOSED", text: "Closed" })
                 ]
             });
+            // Default to PLANNING for new projects
+            if (!bEdit) {
+                oSelectStatus.setSelectedKey("PLANNING");
+            }
 
             if (bEdit) {
                 oInputCode.setValue(oContext.getProperty("ProjectCode"));
@@ -169,19 +179,20 @@ sap.ui.define([
                 if (oEnd) oPickerEnd.setDateValue(oEnd);
             }
 
+            var aFormContent = [
+                new Label({ text: "Project Code", required: true }), oInputCode,
+                new Label({ text: "Project Name", required: true }), oInputName,
+                new Label({ text: "Project Type" }), oComboType,
+                new Label({ text: "Start Date" }), oPickerStart,
+                new Label({ text: "Est. End Date" }), oPickerEnd
+            ];
+
             var oForm = new SimpleForm({
                 editable: true,
                 layout: "ResponsiveGridLayout",
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
-                content: [
-                    new Label({ text: "Project Code", required: true }), oInputCode,
-                    new Label({ text: "Project Name", required: true }), oInputName,
-                    new Label({ text: "Project Type" }), oComboType,
-                    new Label({ text: "Start Date" }), oPickerStart,
-                    new Label({ text: "Est. End Date" }), oPickerEnd,
-                    new Label({ text: "Status" }), oSelectStatus
-                ]
+                content: aFormContent
             });
 
             var oDialog = new Dialog({

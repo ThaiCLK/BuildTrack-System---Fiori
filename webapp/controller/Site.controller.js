@@ -28,20 +28,24 @@ sap.ui.define([
         // ── FORMATTERS ──────────────────────────────────────────────────────
         formatStatusIcon: function (sStatus) {
             var m = {
-                "OPEN": "sap-icon://status-inactive",
                 "PLANNING": "sap-icon://status-in-process",
-                "ACTIVE": "sap-icon://status-positive",
-                "CLOSED": "sap-icon://status-negative"
+                "SUBMITTED": "sap-icon://paper-plane",
+                "REJECTED": "sap-icon://status-negative",
+                "READY": "sap-icon://status-positive",
+                "IN_PROGRESS": "sap-icon://play",
+                "COMPLETED": "sap-icon://accept"
             };
             return m[(sStatus || "").toUpperCase()] || "sap-icon://status-inactive";
         },
 
         formatStatusState: function (sStatus) {
             var m = {
-                "OPEN": "None",
                 "PLANNING": "Warning",
-                "ACTIVE": "Success",
-                "CLOSED": "Error"
+                "SUBMITTED": "Information",
+                "REJECTED": "Error",
+                "READY": "Success",
+                "IN_PROGRESS": "Warning",
+                "COMPLETED": "Success"
             };
             return m[(sStatus || "").toUpperCase()] || "None";
         },
@@ -137,24 +141,19 @@ sap.ui.define([
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
 
-            var oInputCode = new Input({ placeholder: "e.g. SITE-001" });
+            var oInputCode = new Input({
+                placeholder: "e.g. SITE-001",
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValue(oSource.getValue().toUpperCase());
+                }
+            });
             var oInputName = new Input({ placeholder: "Site name" });
             var oInputAddress = new Input({ placeholder: "Address" });
-            var oSelectStatus = new Select({
-                width: "100%",
-                items: [
-                    new Item({ key: "OPEN", text: "Open" }),
-                    new Item({ key: "PLANNING", text: "Planning" }),
-                    new Item({ key: "ACTIVE", text: "Active" }),
-                    new Item({ key: "CLOSED", text: "Closed" })
-                ]
-            });
-
             if (bEdit) {
                 oInputCode.setValue(oContext.getProperty("SiteCode"));
                 oInputName.setValue(oContext.getProperty("SiteName"));
                 oInputAddress.setValue(oContext.getProperty("Address"));
-                oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
             }
 
             var oForm = new SimpleForm({
@@ -165,8 +164,7 @@ sap.ui.define([
                 content: [
                     new Label({ text: "Site Code", required: true }), oInputCode,
                     new Label({ text: "Site Name", required: true }), oInputName,
-                    new Label({ text: "Address" }), oInputAddress,
-                    new Label({ text: "Status" }), oSelectStatus
+                    new Label({ text: "Address" }), oInputAddress
                 ]
             });
 
@@ -188,7 +186,7 @@ sap.ui.define([
                             SiteCode: sCode,
                             SiteName: sName,
                             Address: oInputAddress.getValue().trim(),
-                            Status: oSelectStatus.getSelectedKey()
+                            Status: bEdit ? oContext.getProperty("Status") : "PLANNING"
                         };
                         if (!bEdit) {
                             oPayload.ProjectId = that._sCurrentProjectId;

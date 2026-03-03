@@ -46,19 +46,22 @@ sap.ui.define([
                     var dailyLogData = [
                         ["CONSTRUCTION DAILY LOG"],
                         [],
-                        ["No.", "Report Date", "Quantity Done", "Morning Weather", "Afternoon Weather", "General Note", "Safety Note", "Contractor Note"]
+                        ["Log Num", "Report Date", "Quantity Done", "Morning Weather", "Afternoon Weather", "General Note", "Safety Note", "Contractor Note"]
                     ];
 
                     if (aLogs && aLogs.length > 0) {
-                        aLogs.forEach(function (log, index) {
+                        aLogs.forEach(function (log, idx) {
+                            var iLogNum = idx + 1;  // sequential 1-based number
                             var dD = log.LogDate;
                             var sDate = dD ? (dD.getDate().toString().padStart(2, '0') + "/" + (dD.getMonth() + 1).toString().padStart(2, '0') + "/" + dD.getFullYear()) : "";
                             var sAm = log.WeatherAm || "SUNNY";
                             var sPm = log.WeatherPm || "SUNNY";
-                            var sNo = (index + 1).toString();
+
+                            // Store the mapping LogId -> LogNum for resource linking
+                            log._exportNum = iLogNum;
 
                             dailyLogData.push([
-                                sNo,
+                                iLogNum,
                                 sDate,
                                 log.QuantityDone || 0,
                                 sAm,
@@ -70,12 +73,12 @@ sap.ui.define([
                         });
                     } else {
                         // Template fallback
-                        dailyLogData.push(["1", "28/02/2026", "100", "SUNNY", "COOL", "General construction work", "Safety checked", "On schedule"]);
+                        dailyLogData.push([1, "28/02/2026", "100", "SUNNY", "COOL", "General construction work", "Safety checked", "On schedule"]);
                     }
 
                     dailyLogData.push([]);
                     dailyLogData.push(["NOTES:"]);
-                    dailyLogData.push(["- No.: Reference Number to link Resources (Sheet 2) to this Log."]);
+                    dailyLogData.push(["- Log Num: Sequential number to link Resources to this Log. Do NOT change."]);
                     dailyLogData.push(["- Quantity Done: Number format required."]);
                     dailyLogData.push(["- Weather: Enter 'SUNNY', 'COOL', or 'RAINY'."]);
 
@@ -99,7 +102,7 @@ sap.ui.define([
                     var resourceUseData = [
                         ["RESOURCE USAGE"],
                         [],
-                        ["Log No.", "Resource ID", "Quantity"]
+                        ["Log Num", "Resource ID", "Quantity"]
                     ];
 
                     // Generate Resource Master Sheet Data
@@ -110,14 +113,21 @@ sap.ui.define([
                     ];
 
                     var oAddedResIds = {};
+                    // Build a reverse map: LogId -> LogNum (from enriched aLogs)
+                    var oLogNumMap = {};
+                    if (aLogs) {
+                        aLogs.forEach(function (log) {
+                            if (log.LogId && log._exportNum) {
+                                oLogNumMap[log.LogId] = log._exportNum;
+                            }
+                        });
+                    }
 
                     if (aResources && aResources.length > 0) {
                         aResources.forEach(function (res) {
-                            var iLogIndex = aLogs.findIndex(function (l) { return l.LogId === res.LogId; });
-                            var iLogNo = iLogIndex >= 0 ? (iLogIndex + 1) : 1;
-
+                            var iLogNum = oLogNumMap[res.LogId] || "";
                             resourceUseData.push([
-                                iLogNo.toString(),
+                                iLogNum,
                                 res.ResourceId || "",
                                 res.Quantity || 0
                             ]);
@@ -133,13 +143,13 @@ sap.ui.define([
                             }
                         });
                     } else {
-                        resourceUseData.push(["1", "XI_MANG", "1"]);
+                        resourceUseData.push([1, "XI_MANG", "1"]);
                         resourceMasterData.push(["XI_MANG", "Cement", "MATERIAL", "KG"]);
                     }
 
                     resourceUseData.push([]);
                     resourceUseData.push(["NOTES:"]);
-                    resourceUseData.push(["- Log No.: Must match the No. from the DailyLog sheet."]);
+                    resourceUseData.push(["- Log Num: Must match the Log Num from the DailyLog sheet."]);
                     resourceUseData.push(["- Resource ID: Required field. Must exist in Resource Master sheet."]);
 
                     var ws2 = XLSX.utils.aoa_to_sheet(resourceUseData);
@@ -289,18 +299,18 @@ sap.ui.define([
                     var resRow = resourceUseRows[i];
                     if (!resRow || resRow.length === 0) continue;
 
-                    var logId = resRow[0] ? resRow[0].toString().trim() : "";
-                    if (!logId || logId.indexOf("NOTES") >= 0 || logId.indexOf("LƯU Ý") >= 0) continue;
+                    var logNum = resRow[0] !== undefined ? resRow[0].toString().trim() : "";
+                    if (!logNum || logNum.indexOf("NOTES") >= 0 || logNum.indexOf("LƯU Ý") >= 0) continue;
 
-                    if (!resourceMap[logId]) {
-                        resourceMap[logId] = [];
+                    if (!resourceMap[logNum]) {
+                        resourceMap[logNum] = [];
                     }
 
                     var rId = resRow[1] ? resRow[1].toString() : "";
                     var mData = masterMap[rId] || {};
 
-                    resourceMap[logId].push({
-                        log_no: logId,
+                    resourceMap[logNum].push({
+                        log_num: logNum,
                         resource_id: rId,
                         resource_name: mData.resource_name || "",
                         resource_type: mData.resource_type || "MATERIAL",
@@ -320,16 +330,17 @@ sap.ui.define([
                     if (row[0] && (row[0].toString().indexOf("NOTES") >= 0 || row[0].toString().indexOf("LƯU Ý") >= 0)) break;
 
                     try {
-                        var logNo = row[0] ? row[0].toString().trim() : "";
+                        var logNum = row[0] !== undefined ? row[0].toString().trim() : "";
                         var dateStr = row[1] ? row[1].toString().trim() : "";
                         var logDate = this._parseDate(dateStr);
                         var qtyDone = parseFloat(row[2]) || 0;
 
-                        var resources = resourceMap[logNo] || [];
+                        // Resources keyed by Log Num (not GUID — GUID never stored)
+                        var resources = resourceMap[logNum] || [];
 
                         var dailyLog = {
-                            log_id: "", // Always force Create New
-                            wbs_id: "", // Supplied by controller from current view mode
+                            log_id: "",  // always empty — backend generates a new GUID
+                            wbs_id: "",  // supplied by controller
                             qty_done: qtyDone,
                             log_date: logDate,
                             weather_am: weatherMap[row[3]] || "SUNNY",

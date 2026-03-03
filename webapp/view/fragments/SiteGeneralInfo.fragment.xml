@@ -13,7 +13,7 @@
             <statuses>
                 <ObjectStatus
                     text="{Status}"
-                    state="{= ${Status} === 'ACTIVE' || ${Status} === 'OPEN' ? 'Success' : 'Warning' }"/>
+                    state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }"/>
             </statuses>
             <attributes>
                 <ObjectAttribute text="{Address}" icon="sap-icon://map-2" />
@@ -41,7 +41,7 @@
                 <ObjectStatus 
                     class="sapUiNoMargin"
                     text="{Status}" 
-                    state="{= ${Status} === 'ACTIVE' || ${Status} === 'OPEN' ? 'Success' : 'Warning' }" />
+                    state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }" />
             </f:content>
         </f:SimpleForm>
     </VBox>

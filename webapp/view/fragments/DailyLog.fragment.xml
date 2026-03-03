@@ -26,6 +26,32 @@
             <OverflowToolbar design="Solid">
                 <Title text="Daily Log" level="H3"/>
                 <ToolbarSpacer/>
+                <!-- Excel actions grouped in a dropdown MenuButton -->
+                <MenuButton
+                    text="Excel"
+                    icon="sap-icon://excel-attachment"
+                    type="Default"
+                    tooltip="Excel actions: Template / Import / Export"
+                    menuPosition="BeginBottom">
+                    <menu>
+                        <Menu>
+                            <items>
+                                <MenuItem
+                                    text="Download Template"
+                                    icon="sap-icon://document-text"
+                                    press=".onDownloadTemplate"/>
+                                <MenuItem
+                                    text="Import"
+                                    icon="sap-icon://upload"
+                                    press=".onImportExcel"/>
+                                <MenuItem
+                                    text="Export"
+                                    icon="sap-icon://download"
+                                    press=".onExportExcel"/>
+                            </items>
+                        </Menu>
+                    </menu>
+                </MenuButton>
                 <Button
                     text="Add Log"
                     icon="sap-icon://add"
@@ -36,7 +62,7 @@
             <!-- Log list table bound to OData DailyLogSet -->
             <Table
                 id="idDailyLogList"
-                mode="SingleSelectMaster"
+                mode="MultiSelect"
                 selectionChange=".onLogItemSelect"
                 growing="true"
                 growingThreshold="20"
@@ -47,7 +73,7 @@
                     <Column hAlign="End" width="120px"><Text text="Qty Done"/></Column>
                 </columns>
                 <items>
-                    <ColumnListItem type="Active">
+                    <ColumnListItem type="Active" press=".onLogRowPress">
                         <cells>
                             <Text text="{
                                 path: 'LogDate',
@@ -126,7 +152,7 @@
                                         type: 'sap.ui.model.type.Date',
                                         formatOptions: { pattern: 'dd/MM/yyyy' }
                                     }"
-                                    editable="false"
+                                    editable="{dailyLogModel>/ui/editMode}"
                                     displayFormat="dd/MM/yyyy"
                                     valueFormat="dd/MM/yyyy"/>
 
@@ -216,15 +242,19 @@
                             noDataText="No resources added."
                             sticky="ColumnHeaders">
                             <columns>
-                                <Column width="40%"><Text text="Resource"/></Column>
-                                <Column width="20%"><Text text="Type"/></Column>
+                                <Column width="20%"><Text text="Code"/></Column>
+                                <Column width="30%"><Text text="Resource"/></Column>
+                                <Column width="15%"><Text text="Type"/></Column>
                                 <Column width="20%" hAlign="Center"><Text text="Quantity"/></Column>
-                                <Column width="20%"><Text text="Unit"/></Column>
+                                <Column width="15%"><Text text="Unit"/></Column>
                             </columns>
                             <items>
                                 <ColumnListItem>
                                     <cells>
-                                        <!-- CELL 1: Resource select / display -->
+                                        <!-- CELL 1: Resource Code (ResourceId) -->
+                                        <Text text="{dailyLogModel>ResourceId}" wrapping="false"/>
+
+                                        <!-- CELL 2: Resource name select / display -->
                                         <VBox>
                                             <Select
                                                 selectedKey="{dailyLogModel>ResourceId}"
@@ -246,17 +276,17 @@
                                                 wrapping="false"/>
                                         </VBox>
 
-                                        <!-- CELL 2: Resource type (read-only) -->
+                                        <!-- CELL 3: Resource type (read-only) -->
                                         <Text text="{dailyLogModel>ResourceType}"/>
 
-                                        <!-- CELL 3: Quantity -->
+                                        <!-- CELL 4: Quantity -->
                                         <StepInput
                                             value="{dailyLogModel>Quantity}"
                                             min="0" max="99999" step="1"
                                             editable="{dailyLogModel>/ui/editMode}"
                                             width="100px"/>
 
-                                        <!-- CELL 4: Unit (from resource master) -->
+                                        <!-- CELL 5: Unit (from resource master) -->
                                         <Text text="{dailyLogModel>UnitCode}"/>
                                     </cells>
                                 </ColumnListItem>

@@ -68,8 +68,10 @@ sap.ui.define([
                         this._bMessageOpen = false;
                         MessageToast.show("Connection restored! Refreshing data...");
 
-                        // Force model refresh to reload all active bindings
-                        this._oModel.refresh(true, true);
+                        // Force a full page reload so the data refreshes completely
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 1000); // 1-second delay so the user can read the Toast message
                     }.bind(this),
                     error: function () {
                         // Still offline, schedule next ping
