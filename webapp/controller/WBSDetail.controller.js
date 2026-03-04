@@ -171,7 +171,16 @@ sap.ui.define([
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                 success: function (oData) {
                     if (oData.results && oData.results.length > 0) {
-                        oWSModel.setData(oData.results[0]);
+                        var fTotalQty = 0;
+                        oData.results.forEach(function (res) {
+                            fTotalQty += parseFloat(res.TotalQtyDone) || 0;
+                        });
+
+                        var oSummaryData = oData.results[0]; // Use first element as a base for other fields like Status
+                        oSummaryData.TotalQtyDone = fTotalQty.toString();
+                        oWSModel.setData(oSummaryData);
+                    } else {
+                        oWSModel.setData({ TotalQtyDone: "0", Status: "" }); // Empty status if no logs
                     }
                 },
                 error: function () {
@@ -238,14 +247,61 @@ sap.ui.define([
             return fActual + " / " + fTarget + sU;
         },
 
+        formatTotalQty: function (sActual) {
+            if (sActual === undefined || sActual === null || sActual === "") {
+                return "0";
+            }
+            var fActual = parseFloat(sActual);
+            if (isNaN(fActual)) return "0";
+            return sActual.toString(); // Keep original string with decimals if provided
+        },
+
+        formatWorkSummaryStatusState: function (sStatus) {
+            switch (sStatus) {
+                case "DRAFT":
+                case "DRAFTED": return "None";
+                case "SUBMITTED": return "Information";
+                case "APPROVED": return "Success";
+                case "REJECTED": return "Error";
+                default: return "None";
+            }
+        },
+
+        formatWorkSummaryStatusIcon: function (sStatus) {
+            switch (sStatus) {
+                case "DRAFT":
+                case "DRAFTED": return "sap-icon://document";
+                case "SUBMITTED": return "sap-icon://paper-plane";
+                case "APPROVED": return "sap-icon://accept";
+                case "REJECTED": return "sap-icon://decline";
+                default: return "sap-icon://sys-help";
+            }
+        },
+
         /* =========================================================== */
         /* DAILY LOG — LIST PANEL                                       */
         /* =========================================================== */
 
         /** Select a log entry from the list → load detail on right */
         onLogItemSelect: function (oEvent) {
-            var oCtx = oEvent.getParameter("listItem").getBindingContext();
-            this._showLogDetail(oCtx);
+            var oTable = oEvent.getSource();
+            var aSelectedItems = oTable.getSelectedItems();
+            this.getView().getModel("dailyLogModel").setProperty("/ui/selectedLogsCount", aSelectedItems.length);
+
+            // If user clicked a specific row, display its details on the right
+            var oParams = oEvent.getParameters();
+            if (oParams && oParams.listItem) {
+                var oCtx = oParams.listItem.getBindingContext();
+                this._showLogDetail(oCtx);
+            } else if (aSelectedItems.length > 0) {
+                // If selection changed but no specific listItem clicked (e.g. Select All), show the first selected
+                var oFirstCtx = aSelectedItems[0].getBindingContext();
+                this._showLogDetail(oFirstCtx);
+            } else {
+                // No items selected, hide detail
+                this.getView().getModel("dailyLogModel").setProperty("/ui/isSelected", false);
+                this.getView().getModel("dailyLogModel").setProperty("/selectedLog", null);
+            }
         },
 
         /** Called when user clicks directly on a row (not the checkbox) */
@@ -559,7 +615,22 @@ sap.ui.define([
                 this._bindDailyLogList(this._sWbsId);
                 // Update WBS actual dates + Work Summary after all logs imported
                 this._updateWbsActualDates(this._sWbsId);
-                this._loadWorkSummary(this._sWbsId);
+                // Trigger WorkSummary aggregation via POST, then reload UI
+                var oWSPayload = {
+                    WbsId: this._sWbsId,
+                    TotalQtyDone: "0.000",
+                    Status: "DRAFTED"
+                };
+                var oModel = this.getOwnerComponent().getModel();
+                oModel.create("/WorkSummarySet", oWSPayload, {
+                    success: function () {
+                        that._loadWorkSummary(that._sWbsId);
+                    },
+                    error: function (e) {
+                        console.error("Warning: Could not trigger WorkSummary update", e);
+                        that._loadWorkSummary(that._sWbsId);
+                    }
+                });
                 return;
             }
 
@@ -648,11 +719,98 @@ sap.ui.define([
                             that._bindDailyLogList(that._sWbsId);
                             // Recalculate WBS actual dates after deletion
                             that._updateWbsActualDates(that._sWbsId);
+                            // Trigger WorkSummary aggregation via POST, then reload UI
+                            var oWSPayload = {
+                                WbsId: that._sWbsId,
+                                TotalQtyDone: "0.000",
+                                Status: "DRAFT"
+                            };
+                            oModel.create("/WorkSummarySet", oWSPayload, {
+                                success: function () {
+                                    that._loadWorkSummary(that._sWbsId);
+                                },
+                                error: function (e) {
+                                    console.error("Warning: Could not trigger WorkSummary update", e);
+                                    that._loadWorkSummary(that._sWbsId);
+                                }
+                            });
                             MessageToast.show("Log entry deleted.");
                         },
                         error: function () {
                             MessageBox.error("Could not delete the log entry. Please try again.");
                         }
+                    });
+                }
+            });
+        },
+
+        /** Delete multiple selected log entries */
+        onDeleteMultipleLogs: function () {
+            var that = this;
+            var oTable = this.byId("idDailyLogList");
+            var aSelectedItems = oTable.getSelectedItems();
+
+            if (!aSelectedItems || aSelectedItems.length === 0) {
+                MessageToast.show("No logs selected.");
+                return;
+            }
+
+            MessageBox.confirm("Are you sure you want to delete " + aSelectedItems.length + " selected log(s)?", {
+                title: "Confirm Batch Delete",
+                onClose: function (sAction) {
+                    if (sAction !== MessageBox.Action.OK) { return; }
+
+                    var oModel = that.getOwnerComponent().getModel();
+                    var oUIModel = that.getView().getModel("dailyLogModel");
+                    oUIModel.setProperty("/ui/busy", true);
+
+                    var iTotal = aSelectedItems.length;
+                    var iDone = 0;
+                    var iSuccess = 0;
+
+                    var fnCheckDone = function () {
+                        if (iDone >= iTotal) {
+                            oUIModel.setProperty("/ui/busy", false);
+                            oUIModel.setProperty("/ui/isSelected", false);
+                            oUIModel.setProperty("/selectedLog", null);
+                            oTable.removeSelections(true);
+                            oUIModel.setProperty("/ui/selectedLogsCount", 0);
+
+                            that._bindDailyLogList(that._sWbsId);
+                            that._updateWbsActualDates(that._sWbsId);
+
+                            // Trigger WorkSummary aggregation via POST, then reload UI
+                            var oWSPayload = {
+                                WbsId: that._sWbsId,
+                                TotalQtyDone: "0.000",
+                                Status: "DRAFT"
+                            };
+                            oModel.create("/WorkSummarySet", oWSPayload, {
+                                success: function () { that._loadWorkSummary(that._sWbsId); },
+                                error: function () { that._loadWorkSummary(that._sWbsId); }
+                            });
+
+                            MessageToast.show("Deleted " + iSuccess + " out of " + iTotal + " logs.");
+                        }
+                    };
+
+                    aSelectedItems.forEach(function (oItem) {
+                        var oCtx = oItem.getBindingContext();
+                        if (!oCtx) {
+                            iDone++; fnCheckDone(); return;
+                        }
+                        var sLogId = oCtx.getProperty("LogId");
+                        oModel.remove("/DailyLogSet(guid'" + sLogId + "')", {
+                            success: function () {
+                                iSuccess++;
+                                iDone++;
+                                fnCheckDone();
+                            },
+                            error: function () {
+                                iDone++;
+                                fnCheckDone();
+                            }
+                        });
                     });
                 }
             });
@@ -794,8 +952,21 @@ sap.ui.define([
                     that._bindDailyLogList(that._sWbsId);
                     // Update WBS actual dates based on all daily logs
                     that._updateWbsActualDates(that._sWbsId);
-                    // Refresh Work Summary (BE aggregates TotalQuantityDone)
-                    that._loadWorkSummary(that._sWbsId);
+                    // Refresh Work Summary (trigger BE aggregation via POST, then GET)
+                    var oWSPayload = {
+                        WbsId: that._sWbsId,
+                        TotalQtyDone: oPayload.QuantityDone, // Send the qty from this log, BE aggregates later
+                        Status: "DRAFTED"
+                    };
+                    oModel.create("/WorkSummarySet", oWSPayload, {
+                        success: function () {
+                            that._loadWorkSummary(that._sWbsId);
+                        },
+                        error: function (e) {
+                            console.error("Warning: Could not trigger WorkSummary update", e);
+                            that._loadWorkSummary(that._sWbsId);
+                        }
+                    });
                     MessageToast.show(sToast);
                 });
             };

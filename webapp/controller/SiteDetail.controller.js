@@ -64,13 +64,12 @@ sap.ui.define([
         },
 
         onNavBack: function () {
-            var oHistory = History.getInstance();
-            if (oHistory.getPreviousHash() !== undefined) {
-                window.history.go(-1);
-            } else {
-                var oCtx = this.getView().getBindingContext();
-                var sProjectId = oCtx ? oCtx.getProperty("ProjectId") : "";
+            var oCtx = this.getView().getBindingContext();
+            var sProjectId = oCtx ? oCtx.getProperty("ProjectId") : "";
+            if (sProjectId) {
                 this.getOwnerComponent().getRouter().navTo("Site", { project_id: sProjectId }, true);
+            } else {
+                this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
             }
         },
 
@@ -139,7 +138,16 @@ sap.ui.define([
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
 
-            var oInputCode = new Input({ placeholder: "e.g. 1.1.1" });
+            var oInputCode = new Input({
+                placeholder: "e.g. 1.1.1",
+                liveChange: function (oEvent) {
+                    var oControl = oEvent.getSource();
+                    var sVal = oControl.getValue();
+                    if (sVal) {
+                        oControl.setValue(sVal.toUpperCase());
+                    }
+                }
+            });
             var oInputName = new Input({ placeholder: "Work item name" });
             var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
             var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
@@ -147,7 +155,6 @@ sap.ui.define([
             var oSelectUnit = new Select({
                 width: "100%",
                 items: [
-                    new Item({ key: "MAN", text: "Man-day (MAN)" }),
                     new Item({ key: "M3", text: "Cubic Meter (M3)" }),
                     new Item({ key: "M2", text: "Square Meter (M2)" }),
                     new Item({ key: "M", text: "Linear Meter (M)" }),
@@ -158,11 +165,12 @@ sap.ui.define([
             var oSelectStatus = new Select({
                 width: "100%",
                 items: [
-                    new Item({ key: "PLANNING", text: "Planning" }),
-                    new Item({ key: "RUNNING", text: "In Progress" }),
-                    new Item({ key: "COMPLETED", text: "Completed" }),
-                    new Item({ key: "ON_HOLD", text: "On Hold" })
-                ]
+                    new Item({ key: "NEW", text: "Planning" }),
+                    new Item({ key: "INP", text: "In Progress" }),
+                    new Item({ key: "DON", text: "Completed" }),
+                    new Item({ key: "CAN", text: "Canceled" })
+                ],
+                visible: false
             });
 
             var sDialogTitle;
@@ -182,7 +190,10 @@ sap.ui.define([
                 sDialogTitle = sParentId
                     ? "Add Child WBS of: " + sParentName
                     : "Create WBS (Root Level)";
+                oSelectStatus.setSelectedKey("NEW");
             }
+
+            var oStatusLabel = new Label({ text: "Status", visible: false });
 
             var oForm = new SimpleForm({
                 editable: true,
@@ -196,7 +207,7 @@ sap.ui.define([
                     new Label({ text: "End Date", required: true }), oPickerEnd,
                     new Label({ text: "Quantity", required: true }), oInputQty,
                     new Label({ text: "Unit" }), oSelectUnit,
-                    new Label({ text: "Status" }), oSelectStatus
+                    oStatusLabel, oSelectStatus
                 ]
             });
 

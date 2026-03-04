@@ -98,12 +98,7 @@ sap.ui.define([
         },
 
         onNavBack: function () {
-            var oHistory = History.getInstance();
-            if (oHistory.getPreviousHash() !== undefined) {
-                window.history.go(-1);
-            } else {
-                this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
-            }
+            this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
         },
 
         onAddSite: function () {

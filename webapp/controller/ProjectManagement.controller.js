@@ -46,12 +46,7 @@ sap.ui.define([
 
         // ── NAVIGATE BACK TO DASHBOARD ────────────────────────────────────────
         onNavBack: function () {
-            var oHistory = History.getInstance();
-            if (oHistory.getPreviousHash() !== undefined) {
-                window.history.go(-1);
-            } else {
-                this.getOwnerComponent().getRouter().navTo("Dashboard", {}, true);
-            }
+            this.getOwnerComponent().getRouter().navTo("Dashboard", {}, true);
         },
 
         // ── SEARCH ──────────────────────────────────────────────────────────

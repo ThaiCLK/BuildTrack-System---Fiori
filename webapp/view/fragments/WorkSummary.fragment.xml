@@ -29,13 +29,13 @@
                             <Text text="Vinhomes Smart City - Zone S1"/>
                         </VBox>
 
-                        <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom">
+                        <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom" visible="{= !!${workSummaryModel>/Status}}">
                             <Label text="Status" design="Bold"/>
                             <ObjectStatus 
-                                text="{= ${workSummaryModel>/TotalQuantityDone} >= ${Quantity} ? 'COMPLETED' : 'IN PROGRESS' }" 
-                                state="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatQuantityState'}" 
+                                text="{workSummaryModel>/Status}" 
+                                state="{path: 'workSummaryModel>/Status', formatter: '.formatWorkSummaryStatusState'}" 
                                 inverted="true" 
-                                icon="{= ${workSummaryModel>/TotalQuantityDone} >= ${Quantity} ? 'sap-icon://accept' : 'sap-icon://edit' }" />
+                                icon="{path: 'workSummaryModel>/Status', formatter: '.formatWorkSummaryStatusIcon'}" />
                         </VBox>
                     </HBox>
                 </content>
@@ -54,9 +54,9 @@
 
                         <Label text="Completed (Cumulative)" design="Bold"/>
                         <ObjectNumber 
-                            number="{workSummaryModel>/TotalQuantityDone}" 
+                            number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" 
                             unit="{UnitCode}" 
-                            state="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                            state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
 
                         <!-- <Label text="Completion Rate" />
                         <ProgressIndicator
@@ -75,15 +75,15 @@
                     <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
                         <Label text="Completion Rate (Target: {Quantity} {UnitCode})" design="Bold"/>
                         <ObjectStatus 
-                            text="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatPercentage'}" 
-                            state="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                            text="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}" 
+                            state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
                     </HBox>
                     
                     <ProgressIndicator
-                        percentValue="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatProgress'}"
-                        displayValue="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity', 'UnitCode'], formatter: '.formatProgressDisplay'}"
+                        percentValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatProgress'}"
+                        displayValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity', 'UnitCode'], formatter: '.formatProgressDisplay'}"
                         showValue="true"
-                        state="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatQuantityState'}"
+                        state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}"
                         height="1.5rem"/>
                         
                     <l:Grid defaultSpan="L6 M6 S12" class="sapUiMediumMarginTop">
@@ -94,7 +94,7 @@
                             </VBox>
                             <VBox>
                                 <Label text="Actual (Total Done)" class="sapUiTinyMarginBottom"/>
-                                <ObjectNumber number="{workSummaryModel>/TotalQuantityDone}" unit="{UnitCode}" state="Success" />
+                                <ObjectNumber number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="Success" />
                             </VBox>
                         </l:content>
                     </l:Grid>

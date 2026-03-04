@@ -53,6 +53,12 @@
                     </menu>
                 </MenuButton>
                 <Button
+                    text="Delete Selected"
+                    icon="sap-icon://delete"
+                    type="Reject"
+                    press=".onDeleteMultipleLogs"
+                    visible="{= ${dailyLogModel>/ui/selectedLogsCount} > 0 }"/>
+                <Button
                     text="Add Log"
                     icon="sap-icon://add"
                     type="Emphasized"
