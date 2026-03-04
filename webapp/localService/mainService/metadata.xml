@@ -158,6 +158,25 @@
                 <Property Name="TotalQuantityDone" Type="Edm.Decimal"  Precision="13" Scale="3" sap:label="Total Qty Done" />
                 <Property Name="Status"             Type="Edm.String"   MaxLength="50"  sap:label="Status" />
                 <NavigationProperty Name="ToWbs" Relationship="ZBT_ODATA_SRV.WBS_to_WorkSummary" FromRole="ToWorkSummary" ToRole="FromWBS" />
+                <NavigationProperty Name="ToApprovalLogs" Relationship="ZBT_ODATA_SRV.WorkSummary_to_ApprovalLog" FromRole="FromWorkSummary" ToRole="ToApprovalLog" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ApprovalLog (ZBT_APPROVAL_LOG)                              -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <EntityType Name="ApprovalLog">
+                <Key>
+                    <PropertyRef Name="LogId" />
+                </Key>
+                <Property Name="LogId"           Type="Edm.Guid"     Nullable="false" sap:label="Log UUID" />
+                <Property Name="WorkSummaryId"   Type="Edm.Guid"     sap:label="Work Summary UUID" />
+                <Property Name="SiteId"          Type="Edm.Guid"     sap:label="Site UUID" />
+                <Property Name="ApprovalLevel"   Type="Edm.String"   MaxLength="10"  sap:label="Approval Level" />
+                <Property Name="Action"          Type="Edm.String"   MaxLength="20"  sap:label="Action" />
+                <Property Name="ActionBy"        Type="Edm.String"   MaxLength="12"  sap:label="Action By" />
+                <Property Name="ActionOn"        Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Action On" />
+                <Property Name="ActionAt"        Type="Edm.Time"     Precision="0"   sap:label="Action At" />
+                <Property Name="ApprovalNote"    Type="Edm.String"   MaxLength="500" sap:label="Approval Note" />
             </EntityType>
 
             <Association Name="Proj_to_Site">
@@ -232,6 +251,15 @@
                 </ReferentialConstraint>
             </Association>
 
+            <Association Name="WorkSummary_to_ApprovalLog">
+                <End Role="FromWorkSummary" Type="ZBT_ODATA_SRV.WorkSummary"  Multiplicity="1" />
+                <End Role="ToApprovalLog"   Type="ZBT_ODATA_SRV.ApprovalLog" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromWorkSummary"><PropertyRef Name="WorkSummaryId" /></Principal>
+                    <Dependent  Role="ToApprovalLog"><PropertyRef Name="WorkSummaryId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
             <EntityContainer Name="ZBT_ODATA_SRV_Entities" m:IsDefaultEntityContainer="true">
                 <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
                 <EntitySet Name="SiteSet"              EntityType="ZBT_ODATA_SRV.Site" />
@@ -240,6 +268,7 @@
                 <EntitySet Name="ResourceSet"     EntityType="ZBT_ODATA_SRV.Resource" />
                 <EntitySet Name="ResourceUseSet"  EntityType="ZBT_ODATA_SRV.ResourceUse" />
                 <EntitySet Name="LocationSet"     EntityType="ZBT_ODATA_SRV.Location" />
+                <EntitySet Name="ApprovalLogSet"  EntityType="ZBT_ODATA_SRV.ApprovalLog" />
                 <EntitySet Name="WorkSummarySet"  EntityType="ZBT_ODATA_SRV.WorkSummary" />
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
@@ -269,6 +298,10 @@
                 <AssociationSet Name="WBS_to_WorkSummary_Set" Association="ZBT_ODATA_SRV.WBS_to_WorkSummary">
                     <End Role="FromWBS"        EntitySet="WBSSet" />
                     <End Role="ToWorkSummary"  EntitySet="WorkSummarySet" />
+                </AssociationSet>
+                <AssociationSet Name="WorkSummary_to_ApprovalLog_Set" Association="ZBT_ODATA_SRV.WorkSummary_to_ApprovalLog">
+                    <End Role="FromWorkSummary" EntitySet="WorkSummarySet" />
+                    <End Role="ToApprovalLog"   EntitySet="ApprovalLogSet" />
                 </AssociationSet>
             </EntityContainer>
         </Schema>

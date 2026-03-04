@@ -13,7 +13,7 @@
                     <Toolbar height="3rem">
                         <Title text="Work Summary" level="H4" />
                         <ToolbarSpacer />
-                        <Button text="Submit for Approval" type="Emphasized" icon="sap-icon://paper-plane"/>
+                        <Button text="Submit for Approval" type="Emphasized" icon="sap-icon://paper-plane" press="onSubmitForApproval" />
                     </Toolbar>
                 </headerToolbar>
                 <content>
@@ -26,7 +26,7 @@
                         
                         <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom">
                             <Label text="Project" design="Bold"/>
-                            <Text text="Vinhomes Smart City - Zone S1"/>
+                            <Text text="{siteModel>/Project/ProjectName}"/>
                         </VBox>
 
                         <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom" visible="{= !!${workSummaryModel>/Status}}">

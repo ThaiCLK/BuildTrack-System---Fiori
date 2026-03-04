@@ -13,32 +13,22 @@
                 <ToolbarSpacer />
                 <Button icon="sap-icon://sort" type="Transparent" />
             </Toolbar>
-            <List id="idApprovalLogList" mode="SingleSelectMaster" selectionChange="onLogSelectionChange">
-                <items>
-                    <StandardListItem 
-                        title="Biên bản số 01 (Final)" 
-                        description="10/02/2026 - Trần Văn B" 
-                        info="Approved" 
-                        infoState="Success" 
-                        icon="sap-icon://accept" />
-                    <StandardListItem 
-                        title="Biên bản số 01 (V2)" 
-                        description="09/02/2026 - Trần Văn B" 
-                        info="Rejected" 
-                        infoState="Error" 
-                        icon="sap-icon://decline" />
-                    <StandardListItem 
-                        title="Biên bản số 01 (V1)" 
-                        description="08/02/2026 - Nguyễn Văn A" 
-                        info="Drafted" 
-                        infoState="None" 
-                        icon="sap-icon://edit" />
-                </items>
-            </List>
+            <List id="idApprovalLogList" mode="SingleSelectMaster" selectionChange="onLogSelectionChange" />
+
         </VBox>
 
         <!-- ── DETAIL: A4 Document View ────────────────────────────────── -->
-        <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false" class="approvalLogDetailArea">
+
+        <!-- Empty state when nothing is selected -->
+        <VBox height="100%" width="100%" justifyContent="Center" alignItems="Center"
+              visible="{= !${approvalLogModel>/isSelected}}">
+            <core:Icon src="sap-icon://document" size="4rem" color="#c8c8c8" class="sapUiMediumMarginBottom"/>
+            <Title level="H5" text="Chọn một biên bản để xem chi tiết" />
+        </VBox>
+
+        <!-- Document shown only when a record is selected -->
+        <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false" class="approvalLogDetailArea"
+                         visible="{approvalLogModel>/isSelected}">
             <VBox class="paperA4">
                 
                 <VBox alignItems="Center" class="sapUiMediumMarginTopBottom">
@@ -59,13 +49,13 @@
                         <core:Title text="I. THÔNG TIN CHUNG" />
                         
                         <Label text="Dự án" design="Bold"/>
-                        <Text text="Khu Đô Thị Vinhomes Smart City - Phân khu S1" />
+                        <Text text="{siteModel>/Project/ProjectName}" />
                         
                         <Label text="Hạng mục (WBS)" design="Bold"/>
-                        <Text text="Thi công cọc khoan nhồi D1200 (Mã: WBS-FD-01)" />
+                        <Text text="{WbsName} (Mã: {WbsCode})" />
 
                         <Label text="Địa điểm" design="Bold"/>
-                        <Text text="Lô đất H1, Km 120+500" />
+                        <Text text="{siteModel>/Address}" />
                         
                         <Label text="Nhà thầu" design="Bold"/>
                         <Text text="Công ty Xây dựng Delta" />
@@ -86,29 +76,11 @@
                         <items>
                             <ColumnListItem>
                                 <cells>
-                                    <Text text="Khoan tạo lỗ cọc D1200" />
-                                    <Text text="md" />
-                                    <ObjectNumber number="150" />
-                                    <ObjectNumber number="150" state="Success" />
-                                    <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
-                                </cells>
-                            </ColumnListItem>
-                            <ColumnListItem>
-                                <cells>
-                                    <Text text="Lắp đặt lồng thép" />
-                                    <Text text="kg" />
-                                    <ObjectNumber number="5000" />
-                                    <ObjectNumber number="5000" state="Success" />
-                                    <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
-                                </cells>
-                            </ColumnListItem>
-                             <ColumnListItem>
-                                <cells>
-                                    <Text text="Đổ bê tông thương phẩm M300" />
-                                    <Text text="m3" />
-                                    <ObjectNumber number="120" />
-                                    <ObjectNumber number="118" state="Warning" />
-                                    <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
+                                    <Text text="{WbsName}" />
+                                    <Text text="{UnitCode}" />
+                                    <ObjectNumber number="{Quantity}" />
+                                    <ObjectNumber number="{workSummaryModel>/TotalQtyDone}" state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                                    <ObjectStatus text="{workSummaryModel>/Status}" state="{path: 'workSummaryModel>/Status', formatter: '.formatWorkSummaryStatusState'}" icon="{path: 'workSummaryModel>/Status', formatter: '.formatWorkSummaryStatusIcon'}"/>
                                 </cells>
                             </ColumnListItem>
                         </items>

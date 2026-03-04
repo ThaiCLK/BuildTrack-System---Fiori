@@ -1,0 +1,24 @@
+[
+    {
+        "LogId": "50000000-0000-0000-0000-000000000001",
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000002",
+        "SiteId": "20000000-0000-0000-0000-000000000001",
+        "ApprovalLevel": "1",
+        "Action": "SUBMITTED",
+        "ActionBy": "LEARN-551",
+        "ActionOn": "\/Date(1741046400000)\/",
+        "ActionAt": "PT08H30M00S",
+        "ApprovalNote": "Gửi biên bản nghiệm thu lần 1 cho Kỹ sư phụ trách"
+    },
+    {
+        "LogId": "50000000-0000-0000-0000-000000000002",
+        "WorkSummaryId": "30000000-0000-0000-0000-000000000002",
+        "SiteId": "20000000-0000-0000-0000-000000000001",
+        "ApprovalLevel": "2",
+        "Action": "APPROVED",
+        "ActionBy": "LEARN-552",
+        "ActionOn": "\/Date(1741132800000)\/",
+        "ActionAt": "PT10H15M00S",
+        "ApprovalNote": "Đã kiểm tra và xác nhận khối lượng đúng yêu cầu kỹ thuật"
+    }
+]

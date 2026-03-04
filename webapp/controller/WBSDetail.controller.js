@@ -42,9 +42,17 @@ sap.ui.define([
             var oLocationModel = new JSONModel({});
             this.getView().setModel(oLocationModel, "locationModel");
 
+            // Site model for Site info (e.g. Address)
+            var oSiteModel = new JSONModel({});
+            this.getView().setModel(oSiteModel, "siteModel");
+
             // Work Summary model
             var oWSModel = new JSONModel({});
             this.getView().setModel(oWSModel, "workSummaryModel");
+
+            // Approval Log selection model
+            var oApprovalLogModel = new JSONModel({ isSelected: false });
+            this.getView().setModel(oApprovalLogModel, "approvalLogModel");
 
             // Import Preview model
             var oImportPreviewModel = new JSONModel({
@@ -80,14 +88,25 @@ sap.ui.define([
             // Load location info
             this._loadLocation(sWbsId);
 
-            // Load Work Summary info
+            // Load Work Summary info (will also trigger _bindApprovalLogList when done)
             this._loadWorkSummary(sWbsId);
+
+            // Load Site info
+            if (sSiteId) {
+                this._loadSite(sSiteId);
+            }
 
             // Reset detail panel
             var oUIModel = this.getView().getModel("dailyLogModel");
             oUIModel.setProperty("/ui/isSelected", false);
             oUIModel.setProperty("/ui/editMode", false);
             oUIModel.setProperty("/selectedLog", null);
+
+            // Reset approval log selection
+            var oApprovalLogModel = this.getView().getModel("approvalLogModel");
+            if (oApprovalLogModel) {
+                oApprovalLogModel.setProperty("/isSelected", false);
+            }
         },
 
         /**
@@ -134,6 +153,39 @@ sap.ui.define([
         },
 
         /**
+         * Bind the Approval Log list using /ApprovalLogSet filtered by WorkSummaryId.
+         * Called after WorkSummary is loaded, since we need the WorkSummaryId.
+         */
+        _bindApprovalLogList: function (sWorkSummaryId) {
+            var oList = this.byId("idApprovalLogList");
+            if (!oList || !sWorkSummaryId) { return; }
+
+            var that = this;
+            var oFilter = new Filter("WorkSummaryId", FilterOperator.EQ, sWorkSummaryId);
+            var oSorter = new Sorter("ActionOn", true); // Sort newest first
+
+            oList.bindItems({
+                path: "/ApprovalLogSet",
+                filters: [oFilter],
+                sorter: oSorter,
+                template: new sap.m.StandardListItem({
+                    title: { path: "Action", formatter: that.formatApprovalAction.bind(that) },
+                    description: {
+                        parts: ["ActionBy", "ActionOn"],
+                        formatter: function (sBy, oOn) {
+                            var sDate = oOn ? new sap.ui.model.type.Date({ pattern: "dd/MM/yyyy" }).formatValue(oOn, "string") : "";
+                            return (sBy || "") + (sDate ? " - " + sDate : "");
+                        }
+                    },
+                    info: "{Action}",
+                    infoState: { path: "Action", formatter: that.formatApprovalActionState.bind(that) },
+                    icon: { path: "Action", formatter: that.formatApprovalActionIcon.bind(that) }
+                }),
+                templateShareable: false
+            });
+        },
+
+        /**
          * Load the single location record for a WBS.
          */
         _loadLocation: function (sWbsId) {
@@ -158,6 +210,37 @@ sap.ui.define([
         },
 
         /**
+         * Load the Site record to display Address
+         */
+        _loadSite: function (sSiteId) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oSiteModel = this.getView().getModel("siteModel");
+
+            var sPath = "/SiteSet(guid'" + sSiteId + "')";
+            oModel.read(sPath, {
+                success: function (oData) {
+                    if (oData) {
+                        oSiteModel.setData(oData);
+                        // Fetch Project Info to get Project Name
+                        if (oData.ProjectId) {
+                            var sProjectPath = "/ProjectSet(guid'" + oData.ProjectId + "')";
+                            oModel.read(sProjectPath, {
+                                success: function (oProjData) {
+                                    if (oProjData) {
+                                        oSiteModel.setProperty("/Project", oProjData);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                },
+                error: function () {
+                    console.error("Failed to load Site:", sSiteId);
+                }
+            });
+        },
+
+        /**
          * Load the work summary record for a WBS.
          * TotalQuantityDone is aggregated by the backend — FE just GETs it.
          */
@@ -171,14 +254,12 @@ sap.ui.define([
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                 success: function (oData) {
                     if (oData.results && oData.results.length > 0) {
-                        var fTotalQty = 0;
-                        oData.results.forEach(function (res) {
-                            fTotalQty += parseFloat(res.TotalQtyDone) || 0;
-                        });
-
-                        var oSummaryData = oData.results[0]; // Use first element as a base for other fields like Status
-                        oSummaryData.TotalQtyDone = fTotalQty.toString();
+                        var oSummaryData = oData.results[0]; // Use first element as a base for WorkSummaryId, Status etc.
+                        oSummaryData.TotalQtyDone = oSummaryData.TotalQuantityDone || "0";
                         oWSModel.setData(oSummaryData);
+
+                        // Bind Approval Log list now that we have WorkSummaryId
+                        that._bindApprovalLogList(oSummaryData.WorkSummaryId);
                     } else {
                         oWSModel.setData({ TotalQtyDone: "0", Status: "" }); // Empty status if no logs
                     }
@@ -206,6 +287,57 @@ sap.ui.define([
                 } else {
                     this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
                 }
+            }
+        },
+
+        /* =========================================================== */
+        /* APPROVAL OPERATIONS                                         */
+        /* =========================================================== */
+
+        onSubmitForApproval: function () {
+            var oWSModel = this.getView().getModel("workSummaryModel");
+            var oData = oWSModel.getData();
+            if (!oData || !oData.WorkSummaryId) {
+                sap.m.MessageBox.warning("Không có dữ liệu Work Summary để Submit. Vui lòng ghi Nhật ký thi công trước.");
+                return;
+            }
+
+            var sWsId = oData.WorkSummaryId;
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oModel.callFunction("/StartWSProcess", {
+                method: "POST",
+                urlParameters: {
+                    WS_ID: sWsId
+                },
+                success: function (oResponse) {
+                    sap.ui.core.BusyIndicator.hide();
+                    sap.m.MessageToast.show("Đã gửi yêu cầu nghiệm thu thành công!");
+                    // Refresh WS status
+                    that._loadWorkSummary(that._sWbsId);
+                },
+                error: function (oError) {
+                    sap.ui.core.BusyIndicator.hide();
+                    var sMsg = "Lỗi khi gửi yêu cầu";
+                    try {
+                        var oErr = JSON.parse(oError.responseText);
+                        if (oErr && oErr.error && oErr.error.message) {
+                            sMsg = oErr.error.message.value;
+                        }
+                    } catch (e) { }
+                    sap.m.MessageBox.error(sMsg);
+                }
+            });
+        },
+
+        onLogSelectionChange: function (oEvent) {
+            // Show the document panel when a record is selected
+            var oApprovalLogModel = this.getView().getModel("approvalLogModel");
+            if (oApprovalLogModel) {
+                oApprovalLogModel.setProperty("/isSelected", true);
             }
         },
 
@@ -275,6 +407,37 @@ sap.ui.define([
                 case "APPROVED": return "sap-icon://accept";
                 case "REJECTED": return "sap-icon://decline";
                 default: return "sap-icon://sys-help";
+            }
+        },
+
+        // ── Approval Log Action Formatters ────────────────────────
+        formatApprovalAction: function (sAction) {
+            switch (sAction) {
+                case "SUBMITTED": return "Biên bản nghiệm thu";
+                case "APPROVED": return "Đã duyệt";
+                case "REJECTED": return "Đã từ chối";
+                case "REVIEWED": return "Đang xem xét";
+                default: return sAction || "Biên bản nghiệm thu";
+            }
+        },
+
+        formatApprovalActionState: function (sAction) {
+            switch (sAction) {
+                case "SUBMITTED": return "Information";
+                case "APPROVED": return "Success";
+                case "REJECTED": return "Error";
+                case "REVIEWED": return "Warning";
+                default: return "None";
+            }
+        },
+
+        formatApprovalActionIcon: function (sAction) {
+            switch (sAction) {
+                case "SUBMITTED": return "sap-icon://paper-plane";
+                case "APPROVED": return "sap-icon://accept";
+                case "REJECTED": return "sap-icon://decline";
+                case "REVIEWED": return "sap-icon://inspect";
+                default: return "sap-icon://document";
             }
         },
 
