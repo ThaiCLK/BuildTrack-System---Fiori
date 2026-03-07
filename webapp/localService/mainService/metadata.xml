@@ -63,6 +63,7 @@
                 <Property Name="Quantity"    Type="Edm.Decimal"  Precision="13"   Scale="3" sap:label="Quantity" />
                 <Property Name="UnitCode"    Type="Edm.String"   MaxLength="3"    sap:label="Unit" />
                 <Property Name="Status"      Type="Edm.String"   MaxLength="50"   sap:label="Status" />
+                <Property Name="TotalQuantityDone"   Type="Edm.Decimal"  Precision="13" Scale="3" sap:label="Total Qty Done" />
                 <Property Name="CreatedBy"   Type="Edm.String"   MaxLength="12"   sap:label="Created By" />
                 <Property Name="CreatedOn"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Created On" />
                 <Property Name="CreatedAt"   Type="Edm.Time"     Precision="0"    sap:label="Created At" />
@@ -146,19 +147,6 @@
                 <Property Name="UnitCode"     Type="Edm.String"  MaxLength="10"  sap:label="Unit" />
             </EntityType>
 
-            <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- WorkSummary (ZBT_WORK_SUMMARY)                               -->
-            <!-- ═══════════════════════════════════════════════════════════ -->
-            <EntityType Name="WorkSummary">
-                <Key>
-                    <PropertyRef Name="WorkSummaryId" />
-                </Key>
-                <Property Name="WorkSummaryId"      Type="Edm.Guid"     Nullable="false" sap:label="Work Summary UUID" />
-                <Property Name="WbsId"              Type="Edm.Guid"     sap:label="WBS UUID" />
-                <Property Name="TotalQuantityDone" Type="Edm.Decimal"  Precision="13" Scale="3" sap:label="Total Qty Done" />
-                <Property Name="Status"             Type="Edm.String"   MaxLength="50"  sap:label="Status" />
-                <NavigationProperty Name="ToWbs" Relationship="ZBT_ODATA_SRV.WBS_to_WorkSummary" FromRole="ToWorkSummary" ToRole="FromWBS" />
-            </EntityType>
 
             <Association Name="Proj_to_Site">
                 <End Role="FromProj" Type="ZBT_ODATA_SRV.Project" Multiplicity="1" />
@@ -223,15 +211,6 @@
                 </ReferentialConstraint>
             </Association>
 
-            <Association Name="WBS_to_WorkSummary">
-                <End Role="FromWBS"        Type="ZBT_ODATA_SRV.WBS"         Multiplicity="1" />
-                <End Role="ToWorkSummary"  Type="ZBT_ODATA_SRV.WorkSummary" Multiplicity="*" />
-                <ReferentialConstraint>
-                    <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
-                    <Dependent  Role="ToWorkSummary"><PropertyRef Name="WbsId" /></Dependent>
-                </ReferentialConstraint>
-            </Association>
-
             <EntityContainer Name="ZBT_ODATA_SRV_Entities" m:IsDefaultEntityContainer="true">
                 <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
                 <EntitySet Name="SiteSet"              EntityType="ZBT_ODATA_SRV.Site" />
@@ -240,7 +219,6 @@
                 <EntitySet Name="ResourceSet"     EntityType="ZBT_ODATA_SRV.Resource" />
                 <EntitySet Name="ResourceUseSet"  EntityType="ZBT_ODATA_SRV.ResourceUse" />
                 <EntitySet Name="LocationSet"     EntityType="ZBT_ODATA_SRV.Location" />
-                <EntitySet Name="WorkSummarySet"  EntityType="ZBT_ODATA_SRV.WorkSummary" />
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
                     <End Role="FromProj" EntitySet="ProjectSet" />
@@ -265,10 +243,6 @@
                 <AssociationSet Name="WBS_to_Location_Set" Association="ZBT_ODATA_SRV.WBS_to_Location">
                     <End Role="FromWBS"    EntitySet="WBSSet" />
                     <End Role="ToLocation" EntitySet="LocationSet" />
-                </AssociationSet>
-                <AssociationSet Name="WBS_to_WorkSummary_Set" Association="ZBT_ODATA_SRV.WBS_to_WorkSummary">
-                    <End Role="FromWBS"        EntitySet="WBSSet" />
-                    <End Role="ToWorkSummary"  EntitySet="WorkSummarySet" />
                 </AssociationSet>
             </EntityContainer>
         </Schema>

@@ -165,10 +165,14 @@ sap.ui.define([
             var oSelectStatus = new Select({
                 width: "100%",
                 items: [
-                    new Item({ key: "NEW", text: "Planning" }),
-                    new Item({ key: "INP", text: "In Progress" }),
-                    new Item({ key: "DON", text: "Completed" }),
-                    new Item({ key: "CAN", text: "Canceled" })
+                    new Item({ key: "PLANNING", text: "Planning" }),
+                    new Item({ key: "PENDING_OPEN", text: "Pending Open" }),
+                    new Item({ key: "OPEN_REJECTED", text: "Open Rejected" }),
+                    new Item({ key: "OPENED", text: "Opened" }),
+                    new Item({ key: "IN_PROGRESS", text: "In Progress" }),
+                    new Item({ key: "PENDING_CLOSE", text: "Pending Close" }),
+                    new Item({ key: "CLOSE_REJECTED", text: "Close Rejected" }),
+                    new Item({ key: "CLOSED", text: "Closed" })
                 ],
                 visible: false
             });
@@ -240,11 +244,12 @@ sap.ui.define([
                             EndDate: toUTC(dEnd),
                             Quantity: oInputQty.getValue() || "0",
                             UnitCode: oSelectUnit.getSelectedKey(),
-                            Status: oSelectStatus.getSelectedKey()
+                            Status: "PLANNING"  // Default for new WBS; overridden on Edit
                         };
                         if (bEdit) {
                             // Key = WbsId of the row being edited (read from context, not from a form input)
                             var sEditWbsId = oContext.getProperty("WbsId");
+                            oPayload.Status = oSelectStatus.getSelectedKey() || oContext.getProperty("Status") || "PLANNING";
                             oModel.update("/WBSSet(guid'" + sEditWbsId + "')", oPayload, {
                                 success: function () {
                                     MessageToast.show("WBS updated!");
