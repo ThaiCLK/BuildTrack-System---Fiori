@@ -14,26 +14,6 @@
                 <Button icon="sap-icon://sort" type="Transparent" />
             </Toolbar>
             <List id="idApprovalLogList" mode="SingleSelectMaster" selectionChange="onLogSelectionChange">
-                <items>
-                    <StandardListItem 
-                        title="Biên bản số 01 (Final)" 
-                        description="10/02/2026 - Trần Văn B" 
-                        info="Approved" 
-                        infoState="Success" 
-                        icon="sap-icon://accept" />
-                    <StandardListItem 
-                        title="Biên bản số 01 (V2)" 
-                        description="09/02/2026 - Trần Văn B" 
-                        info="Rejected" 
-                        infoState="Error" 
-                        icon="sap-icon://decline" />
-                    <StandardListItem 
-                        title="Biên bản số 01 (V1)" 
-                        description="08/02/2026 - Nguyễn Văn A" 
-                        info="Drafted" 
-                        infoState="None" 
-                        icon="sap-icon://edit" />
-                </items>
             </List>
         </VBox>
 

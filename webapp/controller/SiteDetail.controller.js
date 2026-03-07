@@ -76,11 +76,16 @@ sap.ui.define([
         // ── WBS: CREATE (root if no row selected, child if row selected) ────────
         onAddWbs: function () {
             var oTable = this.byId("wbsTreeTable");
-            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
-            if (iIndex >= 0) {
+            if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to create a child WBS.");
+                return;
+            }
+
+            if (aIndices.length === 1) {
                 // A row is selected → create as child of that row
-                var oCtx = oTable.getContextByIndex(iIndex);
+                var oCtx = oTable.getContextByIndex(aIndices[0]);
                 var sParentId = oCtx ? oCtx.getProperty("WbsId") : null;
                 var sParentName = oCtx ? oCtx.getProperty("WbsName") : "";
                 this._openWbsDialog(null, sParentId, sParentName);
@@ -93,24 +98,34 @@ sap.ui.define([
         // ── WBS: EDIT ────────────────────────────────────────────────────────
         onEditWbs: function () {
             var oTable = this.byId("wbsTreeTable");
-            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
-            if (iIndex < 0) {
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
                 MessageToast.show("Please select a WBS row to edit.");
                 return;
+            } else if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to edit.");
+                return;
             }
-            var oCtx = oTable.getContextByIndex(iIndex);
+
+            var oCtx = oTable.getContextByIndex(aIndices[0]);
             this._openWbsDialog(oCtx, null, null);
         },
 
         // ── WBS: DELETE ───────────────────────────────────────────────────────
         onDeleteWbs: function () {
             var oTable = this.byId("wbsTreeTable");
-            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
-            if (iIndex < 0) {
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
                 MessageToast.show("Please select a WBS row to delete.");
                 return;
+            } else if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to delete.");
+                return;
             }
-            var oCtx = oTable.getContextByIndex(iIndex);
+
+            var oCtx = oTable.getContextByIndex(aIndices[0]);
             var sName = oCtx.getProperty("WbsName");
             var sWbsId = oCtx.getProperty("WbsId");
             var oModel = this.getOwnerComponent().getModel();
@@ -128,6 +143,77 @@ sap.ui.define([
                             error: function () { MessageBox.error("Unable to delete WBS."); }
                         });
                     }
+                }
+            });
+        },
+
+        // ── WBS: SUBMIT FOR APPROVAL ──────────────────────────────────────────
+        onSubmitWbsApproval: function () {
+            var that = this;
+            var oTable = this.byId("wbsTreeTable");
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
+                MessageToast.show("Please select at least one WBS to submit for approval.");
+                return;
+            }
+
+            MessageBox.confirm("Are you sure you want to submit " + aIndices.length + " selected WBS item(s) for approval?", {
+                title: "Confirm Submit for Approval",
+                onClose: function (sAction) {
+                    if (sAction !== MessageBox.Action.OK) { return; }
+
+                    var oModel = that.getOwnerComponent().getModel();
+                    that.getView().setBusy(true);
+
+                    var iTotal = aIndices.length;
+                    var iDone = 0;
+                    var iSuccessCount = 0;
+
+                    var fnSubmitSeq = function (iCurrentIndex) {
+                        if (iCurrentIndex >= iTotal) {
+                            that.getView().setBusy(false);
+                            oTable.clearSelection();
+                            MessageToast.show("Successfully submitted " + iSuccessCount + " out of " + iTotal + " WBS items.");
+                            // Optional: Refresh WBS data or Approval Logs if necessary.
+                            that._loadWbsData();
+                            return;
+                        }
+
+                        var oCtx = oTable.getContextByIndex(aIndices[iCurrentIndex]);
+                        if (!oCtx) {
+                            iDone++;
+                            fnSubmitSeq(iCurrentIndex + 1);
+                            return;
+                        }
+
+                        var sWbsId = oCtx.getProperty("WbsId");
+
+                        oModel.callFunction("/StartWSProcess", {
+                            method: "POST",
+                            urlParameters: {
+                                WS_ID: sWbsId
+                            },
+                            success: function (oData, response) {
+                                iDone++;
+                                if (oData && oData.SUCCESS === false) {
+                                    // Soft error from backend
+                                    console.warn("Failed to submit WBS " + sWbsId, oData.MESSAGE);
+                                } else {
+                                    iSuccessCount++;
+                                }
+                                fnSubmitSeq(iCurrentIndex + 1);
+                            },
+                            error: function (oError) {
+                                iDone++;
+                                console.error("HTTP Error submitting WBS " + sWbsId, oError);
+                                fnSubmitSeq(iCurrentIndex + 1);
+                            }
+                        });
+                    };
+
+                    // Start sequential API calls
+                    fnSubmitSeq(0);
                 }
             });
         },

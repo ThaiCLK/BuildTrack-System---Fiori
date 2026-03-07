@@ -14,6 +14,11 @@ sap.ui.define([
             oController.formatTotalQty = this.formatTotalQty.bind(oController);
             oController.formatWorkSummaryStatusState = this.formatWorkSummaryStatusState.bind(oController);
             oController.formatWorkSummaryStatusIcon = this.formatWorkSummaryStatusIcon.bind(oController);
+            oController.onSubmitForApproval = this.onSubmitForApproval.bind(oController);
+            oController._bindApprovalLogList = this._bindApprovalLogList.bind(oController);
+            oController.formatApprovalActionText = this.formatApprovalActionText.bind(oController);
+            oController.formatApprovalActionState = this.formatApprovalActionState.bind(oController);
+            oController.formatApprovalActionIcon = this.formatApprovalActionIcon.bind(oController);
         },
 
         /**
@@ -22,6 +27,7 @@ sap.ui.define([
          * Called after saving/deleting a log so the view updates immediately.
          */
         _loadWorkSummary: function (sWbsId) {
+            var that = this;
             var oModel = this.getOwnerComponent().getModel();
             var oWSModel = this.getView().getModel("workSummaryModel");
 
@@ -41,6 +47,10 @@ sap.ui.define([
                         TotalQuantityDone: fTotal.toFixed(3),
                         WbsId: sWbsId
                     }));
+
+                    if (typeof that._bindApprovalLogList === "function") {
+                        that._bindApprovalLogList(sWbsId);
+                    }
                 },
                 error: function () {
                     console.error("Failed to aggregate DailyLogs for WBS:", sWbsId);
@@ -114,6 +124,129 @@ sap.ui.define([
                 case "APPROVED": return "sap-icon://accept";
                 case "REJECTED": return "sap-icon://decline";
                 default: return "sap-icon://sys-help";
+            }
+        },
+
+        /* =========================================================== */
+        /* APPROVAL LOG                                                */
+        /* =========================================================== */
+
+        _bindApprovalLogList: function (sWbsId) {
+            var oList = this.byId("idApprovalLogList");
+            if (!oList) return;
+
+            // Define template inline rather than relying on XML binding if it errors
+            var oTemplate = new sap.m.StandardListItem({
+                title: "{Action} - {ApprovalLevel}",
+                description: "{path: 'ActionOn', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }} - {ActionBy}",
+                info: { path: "Action", formatter: this.formatApprovalActionText.bind(this) },
+                infoState: { path: "Action", formatter: this.formatApprovalActionState.bind(this) },
+                icon: { path: "Action", formatter: this.formatApprovalActionIcon.bind(this) }
+            });
+
+            oList.bindItems({
+                path: "/ApprovalLogSet",
+                filters: [new sap.ui.model.Filter("WbsId", sap.ui.model.FilterOperator.EQ, sWbsId)],
+                sorter: new sap.ui.model.Sorter("ActionOn", true),
+                template: oTemplate,
+                templateShareable: false
+            });
+        },
+
+        formatApprovalActionText: function (sAction) {
+            switch (sAction) {
+                case "SUBMITTED": return "Submitted";
+                case "APPROVED": return "Approved";
+                case "REJECTED": return "Rejected";
+                default: return sAction || "";
+            }
+        },
+
+        formatApprovalActionState: function (sAction) {
+            switch (sAction) {
+                case "SUBMITTED": return "Information";
+                case "APPROVED": return "Success";
+                case "REJECTED": return "Error";
+                default: return "None";
+            }
+        },
+
+        formatApprovalActionIcon: function (sAction) {
+            switch (sAction) {
+                case "SUBMITTED": return "sap-icon://paper-plane";
+                case "APPROVED": return "sap-icon://accept";
+                case "REJECTED": return "sap-icon://decline";
+                default: return "sap-icon://sys-help";
+            }
+        },
+
+        /* =========================================================== */
+        /* ACTIONS                                                     */
+        /* =========================================================== */
+
+        onSubmitForApproval: function () {
+            var oView = this.getView();
+            var oWSModel = oView.getModel("workSummaryModel");
+            var oWbsCtx = oView.getBindingContext();
+
+            if (!oWbsCtx) {
+                return;
+            }
+
+            var fTargetQty = parseFloat(oWbsCtx.getProperty("Quantity")) || 0;
+            var fTotalDone = parseFloat(oWSModel.getProperty("/TotalQtyDone")) || 0;
+            var sWbsId = this._sWbsId;
+
+            var fnCallAction = function () {
+                var oModel = this.getOwnerComponent().getModel();
+                oView.setBusy(true);
+
+                oModel.callFunction("/StartWSProcess", {
+                    method: "POST",
+                    urlParameters: {
+                        WS_ID: sWbsId
+                    },
+                    success: function (oData, response) {
+                        oView.setBusy(false);
+
+                        // The OData action might return 200 OK but with a SUCCESS=false payload
+                        if (oData && oData.SUCCESS === false) {
+                            sap.m.MessageBox.error(oData.MESSAGE || "Failed to submit for approval.");
+                            return;
+                        }
+
+                        sap.m.MessageBox.success(oData.MESSAGE || "Work Summary submitted for approval successfully.");
+                        // Refresh to reflect the new Status
+                        this._loadWorkSummary(sWbsId);
+                        var oBinding = oView.getElementBinding();
+                        if (oBinding) { oBinding.refresh(); }
+                    }.bind(this),
+                    error: function (oError) {
+                        oView.setBusy(false);
+                        var sMsg = "Failed to submit for approval.";
+                        try {
+                            var oErr = JSON.parse(oError.responseText);
+                            sMsg = oErr.error.message.value || sMsg;
+                        } catch (e) { }
+                        sap.m.MessageBox.error(sMsg);
+                    }
+                });
+            }.bind(this);
+
+            if (fTotalDone < fTargetQty) {
+                sap.m.MessageBox.confirm(
+                    "Số liệu công việc thực tế chưa đạt được bằng so với kế hoạch. Bạn có chắc chắn muốn submit không?",
+                    {
+                        title: "Confirm Submission",
+                        onClose: function (sAction) {
+                            if (sAction === sap.m.MessageBox.Action.OK) {
+                                fnCallAction();
+                            }
+                        }
+                    }
+                );
+            } else {
+                fnCallAction();
             }
         }
     };

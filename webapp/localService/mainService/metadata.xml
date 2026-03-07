@@ -73,6 +73,7 @@
                 <NavigationProperty Name="SubWbs" Relationship="ZBT_ODATA_SRV.WBS_to_SubWBS" FromRole="ParentWBS" ToRole="ChildWBS" />
                 <NavigationProperty Name="ToLogs" Relationship="ZBT_ODATA_SRV.WBS_to_DailyLog" FromRole="FromWBS"   ToRole="ToLog" />
                 <NavigationProperty Name="ToLocations" Relationship="ZBT_ODATA_SRV.WBS_to_Location" FromRole="FromWBS" ToRole="ToLocation" />
+                <NavigationProperty Name="ToApprovalLogs" Relationship="ZBT_ODATA_SRV.WBS_to_ApprovalLog" FromRole="FromWBS" ToRole="ToApprovalLog" />
             </EntityType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
@@ -146,7 +147,31 @@
                 <Property Name="PosBot"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Bottom" />
                 <Property Name="UnitCode"     Type="Edm.String"  MaxLength="10"  sap:label="Unit" />
             </EntityType>
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Function Import Result Types                                -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <ComplexType Name="WsProcessResult">
+                <Property Name="SUCCESS" Type="Edm.Boolean" />
+                <Property Name="MESSAGE" Type="Edm.String" MaxLength="255" />
+            </ComplexType>
 
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- ApprovalLog (ZBT_APPROVAL_LOG — approval history)          -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="ApprovalLog">
+                <Key>
+                    <PropertyRef Name="LogId" />
+                </Key>
+                <Property Name="LogId"        Type="Edm.Guid"     Nullable="false" sap:label="Log UUID" />
+                <Property Name="WbsId"        Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="WorkItemId"   Type="Edm.Guid"     sap:label="Work Item UUID" />
+                <Property Name="ApprovalLevel" Type="Edm.String" MaxLength="50"  sap:label="Approval Level" />
+                <Property Name="Action"       Type="Edm.String"   MaxLength="50"  sap:label="Action" />
+                <Property Name="ActionBy"     Type="Edm.String"   MaxLength="50"  sap:label="Action By" />
+                <Property Name="ActionOn"     Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Action On" />
+                <Property Name="ActionAt"     Type="Edm.Time"     Precision="0"   sap:label="Action At" />
+                <Property Name="ApprovalNote" Type="Edm.String"   MaxLength="255" sap:label="Approval Note" />
+            </EntityType>
 
             <Association Name="Proj_to_Site">
                 <End Role="FromProj" Type="ZBT_ODATA_SRV.Project" Multiplicity="1" />
@@ -211,14 +236,24 @@
                 </ReferentialConstraint>
             </Association>
 
+            <Association Name="WBS_to_ApprovalLog">
+                <End Role="FromWBS"        Type="ZBT_ODATA_SRV.WBS"         Multiplicity="1" />
+                <End Role="ToApprovalLog"  Type="ZBT_ODATA_SRV.ApprovalLog" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
+                    <Dependent  Role="ToApprovalLog"><PropertyRef Name="WbsId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
             <EntityContainer Name="ZBT_ODATA_SRV_Entities" m:IsDefaultEntityContainer="true">
                 <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
                 <EntitySet Name="SiteSet"              EntityType="ZBT_ODATA_SRV.Site" />
                 <EntitySet Name="WBSSet"               EntityType="ZBT_ODATA_SRV.WBS" />
-                <EntitySet Name="DailyLogSet"     EntityType="ZBT_ODATA_SRV.DailyLog" />
-                <EntitySet Name="ResourceSet"     EntityType="ZBT_ODATA_SRV.Resource" />
-                <EntitySet Name="ResourceUseSet"  EntityType="ZBT_ODATA_SRV.ResourceUse" />
-                <EntitySet Name="LocationSet"     EntityType="ZBT_ODATA_SRV.Location" />
+                <EntitySet Name="DailyLogSet"          EntityType="ZBT_ODATA_SRV.DailyLog" />
+                <EntitySet Name="ResourceSet"          EntityType="ZBT_ODATA_SRV.Resource" />
+                <EntitySet Name="ResourceUseSet"       EntityType="ZBT_ODATA_SRV.ResourceUse" />
+                <EntitySet Name="LocationSet"          EntityType="ZBT_ODATA_SRV.Location" />
+                <EntitySet Name="ApprovalLogSet"       EntityType="ZBT_ODATA_SRV.ApprovalLog" />
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
                     <End Role="FromProj" EntitySet="ProjectSet" />
@@ -244,6 +279,14 @@
                     <End Role="FromWBS"    EntitySet="WBSSet" />
                     <End Role="ToLocation" EntitySet="LocationSet" />
                 </AssociationSet>
+                <AssociationSet Name="WBS_to_ApprovalLog_Set" Association="ZBT_ODATA_SRV.WBS_to_ApprovalLog">
+                    <End Role="FromWBS"       EntitySet="WBSSet" />
+                    <End Role="ToApprovalLog" EntitySet="ApprovalLogSet" />
+                </AssociationSet>
+
+                <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
+                    <Parameter Name="WS_ID" Type="Edm.Guid" Mode="In" />
+                </FunctionImport>
             </EntityContainer>
         </Schema>
     </edmx:DataServices>

@@ -491,8 +491,8 @@ sap.ui.define([
                     var iDone = 0;
                     var iSuccess = 0;
 
-                    var fnCheckDone = function () {
-                        if (iDone >= iTotal) {
+                    var fnDeleteSeq = function (iIndex) {
+                        if (iIndex >= iTotal) {
                             oUIModel.setProperty("/ui/busy", false);
                             oUIModel.setProperty("/ui/isSelected", false);
                             oUIModel.setProperty("/selectedLog", null);
@@ -503,27 +503,33 @@ sap.ui.define([
                             that._updateWbsActualDates(that._sWbsId);
                             that._loadWorkSummary(that._sWbsId);
                             MessageToast.show("Deleted " + iSuccess + " out of " + iTotal + " logs.");
+                            return;
                         }
-                    };
 
-                    aSelectedItems.forEach(function (oItem) {
+                        var oItem = aSelectedItems[iIndex];
                         var oCtx = oItem.getBindingContext();
                         if (!oCtx) {
-                            iDone++; fnCheckDone(); return;
+                            iDone++;
+                            fnDeleteSeq(iIndex + 1);
+                            return;
                         }
+
                         var sLogId = oCtx.getProperty("LogId");
                         oModel.remove("/DailyLogSet(guid'" + sLogId + "')", {
                             success: function () {
                                 iSuccess++;
                                 iDone++;
-                                fnCheckDone();
+                                fnDeleteSeq(iIndex + 1);
                             },
                             error: function () {
                                 iDone++;
-                                fnCheckDone();
+                                fnDeleteSeq(iIndex + 1);
                             }
                         });
-                    });
+                    };
+
+                    // Start sequential deletion
+                    fnDeleteSeq(0);
                 }
             });
         },

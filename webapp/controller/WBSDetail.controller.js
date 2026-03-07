@@ -228,7 +228,8 @@ sap.ui.define([
         formatProgressDisplay: WorkSummaryDelegate.formatProgressDisplay,
         formatTotalQty: WorkSummaryDelegate.formatTotalQty,
         formatWorkSummaryStatusState: WorkSummaryDelegate.formatWorkSummaryStatusState,
-        formatWorkSummaryStatusIcon: WorkSummaryDelegate.formatWorkSummaryStatusIcon
+        formatWorkSummaryStatusIcon: WorkSummaryDelegate.formatWorkSummaryStatusIcon,
+        onSubmitForApproval: WorkSummaryDelegate.onSubmitForApproval
     });
 
     return WBSDetailController;

@@ -13,7 +13,11 @@
                     <Toolbar height="3rem">
                         <Title text="Work Summary" level="H4" />
                         <ToolbarSpacer />
-                        <Button text="Submit for Approval" type="Emphasized" icon="sap-icon://paper-plane"/>
+                        <Button 
+                            text="Submit for Approval" 
+                            type="Emphasized" 
+                            icon="sap-icon://paper-plane"
+                            press=".onSubmitForApproval" />
                     </Toolbar>
                 </headerToolbar>
                 <content>

@@ -9,10 +9,17 @@
         <Title text="WBS &amp; Gantt Schedule" level="H4"/>
         <ToolbarSpacer/>
         <Button
+            id="btnSubmitApproval"
+            text="Submit for Approval"
+            icon="sap-icon://paper-plane"
+            type="Emphasized"
+            press=".onSubmitWbsApproval"
+            tooltip="Submit selected WBS items for approval"/>
+        <Button
             id="btnAddWbs"
             text="Create WBS"
             icon="sap-icon://add"
-            type="Emphasized"
+            type="Default"
             press=".onAddWbs"
             tooltip="Create root WBS, or child WBS if a row is selected"/>
         <Button
@@ -31,7 +38,7 @@
 
     <t:TreeTable id="wbsTreeTable"
         rows="{path: 'viewData>/WBS', parameters: {arrayNames: ['children'], numberOfExpandedLevels: 2}}"
-        selectionMode="Single"
+        selectionMode="MultiToggle"
         cellClick=".onGanttTaskClick">
 
         <t:rowMode>
