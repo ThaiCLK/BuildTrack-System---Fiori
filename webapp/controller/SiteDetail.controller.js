@@ -135,7 +135,7 @@ sap.ui.define([
                 title: "Confirm Delete WBS",
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
-                        oModel.remove("/WBSSet('" + sWbsId + "')", {
+                        oModel.remove("/WBSSet(guid'" + sWbsId + "')", {
                             success: function () {
                                 MessageToast.show("WBS deleted: " + sName);
                                 that._loadWbsData();
