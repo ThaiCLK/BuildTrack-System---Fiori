@@ -102,33 +102,41 @@
                     </f:content>
                 </f:SimpleForm>
 
-                <l:Grid defaultSpan="L4 M4 S12" class="sapUiLargeMarginTop">
+                <l:Grid defaultSpan="L4 M4 S12" class="sapUiLargeMarginTop sapUiMediumMarginBottom">
                     <l:content>
                         <VBox alignItems="Center">
                             <Label text="KỸ SƯ PHỤ TRÁCH" design="Bold"/>
                             <Label text="(Ký, ghi rõ họ tên)" />
-                            <VBox height="80px" justifyContent="Center">
+                            <VBox height="90px" justifyContent="Center" alignItems="Center">
                                 <Text text="[Đã ký: Nguyễn Văn A]" class="signatureStamp" />
-                            </VBox>
-                            <Label text="Nguyễn Văn A" design="Bold"/>
+                            </VBox>                      
                         </VBox>
 
                         <VBox alignItems="Center">
                             <Label text="TƯ VẤN GIÁM SÁT" design="Bold"/>
                             <Label text="(Ký, ghi rõ họ tên)" />
-                            <VBox height="80px" justifyContent="Center">
+                            <VBox height="90px" justifyContent="Center" alignItems="Center">
                                 <Text text="[Đã ký: Trần Văn B]" class="signatureStamp" />
-                            </VBox>
-                            <Label text="Trần Văn B" design="Bold"/>
+                            </VBox>                      
                         </VBox>
 
+                        <!-- ── INVESTOR REPRESENTATIVE (inline canvas e-sign) ── -->
                         <VBox alignItems="Center">
                             <Label text="ĐẠI DIỆN CHỦ ĐẦU TƯ" design="Bold"/>
                             <Label text="(Ký, ghi rõ họ tên)" />
-                            <VBox height="80px" justifyContent="Center">
-                                <Text text="[Chờ ký]" class="signaturePending" />
-                            </VBox>
-                            <Label text="Lê Văn C" design="Bold"/>
+                            <!-- Canvas: user draws directly here -->
+                            <core:HTML id="investorSignatureCanvas" content="
+                                &lt;div style='display:flex; flex-direction:column; align-items:center; gap:4px;'&gt;
+                                    &lt;canvas id='investorCanvas' width='180' height='80'
+                                        style='border:1.5px dashed #3498db; border-radius:4px; background:#fafdf8;
+                                               cursor:crosshair; touch-action:none; display:block;'&gt;
+                                    &lt;/canvas&gt;
+                                    &lt;div style='display:flex; gap:6px;'&gt;
+                                        &lt;a href='javascript:void(0)' id='clearInvestorCanvas'
+                                           style='font-size:0.7rem; color:#e74c3c; text-decoration:none;'&gt;✖ Xoá&lt;/a&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            " />
                         </VBox>
                     </l:content>
                 </l:Grid>

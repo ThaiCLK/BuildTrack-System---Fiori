@@ -15,10 +15,6 @@ sap.ui.define([
             oController.formatWorkSummaryStatusState = this.formatWorkSummaryStatusState.bind(oController);
             oController.formatWorkSummaryStatusIcon = this.formatWorkSummaryStatusIcon.bind(oController);
             oController.onSubmitForApproval = this.onSubmitForApproval.bind(oController);
-            oController._bindApprovalLogList = this._bindApprovalLogList.bind(oController);
-            oController.formatApprovalActionText = this.formatApprovalActionText.bind(oController);
-            oController.formatApprovalActionState = this.formatApprovalActionState.bind(oController);
-            oController.formatApprovalActionIcon = this.formatApprovalActionIcon.bind(oController);
         },
 
         /**
@@ -127,62 +123,7 @@ sap.ui.define([
             }
         },
 
-        /* =========================================================== */
-        /* APPROVAL LOG                                                */
-        /* =========================================================== */
 
-        _bindApprovalLogList: function (sWbsId) {
-            var oList = this.byId("idApprovalLogList");
-            if (!oList) return;
-
-            // Define template inline rather than relying on XML binding if it errors
-            var oTemplate = new sap.m.StandardListItem({
-                title: "{Action} - {ApprovalLevel}",
-                description: "{path: 'ActionOn', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }} - {ActionBy}",
-                info: { path: "Action", formatter: this.formatApprovalActionText.bind(this) },
-                infoState: { path: "Action", formatter: this.formatApprovalActionState.bind(this) },
-                icon: { path: "Action", formatter: this.formatApprovalActionIcon.bind(this) }
-            });
-
-            oList.bindItems({
-                path: "/ApprovalLogSet",
-                filters: [new sap.ui.model.Filter("WbsId", sap.ui.model.FilterOperator.EQ, sWbsId)],
-                sorter: new sap.ui.model.Sorter("ActionOn", true),
-                template: oTemplate,
-                templateShareable: false
-            });
-        },
-
-        formatApprovalActionText: function (sAction) {
-            switch (sAction) {
-                case "SUBMITTED": return "Submitted";
-                case "APPROVED": return "Approved";
-                case "REJECTED": return "Rejected";
-                default: return sAction || "";
-            }
-        },
-
-        formatApprovalActionState: function (sAction) {
-            switch (sAction) {
-                case "SUBMITTED": return "Information";
-                case "APPROVED": return "Success";
-                case "REJECTED": return "Error";
-                default: return "None";
-            }
-        },
-
-        formatApprovalActionIcon: function (sAction) {
-            switch (sAction) {
-                case "SUBMITTED": return "sap-icon://paper-plane";
-                case "APPROVED": return "sap-icon://accept";
-                case "REJECTED": return "sap-icon://decline";
-                default: return "sap-icon://sys-help";
-            }
-        },
-
-        /* =========================================================== */
-        /* ACTIONS                                                     */
-        /* =========================================================== */
 
         onSubmitForApproval: function () {
             var oView = this.getView();

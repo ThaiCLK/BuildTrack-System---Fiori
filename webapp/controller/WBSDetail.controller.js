@@ -8,8 +8,9 @@ sap.ui.define([
     "sap/ui/model/FilterOperator",
     "sap/ui/model/Sorter",
     "z/bts/buildtrack/controller/delegate/DailyLogDelegate",
-    "z/bts/buildtrack/controller/delegate/WorkSummaryDelegate"
-], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter, DailyLogDelegate, WorkSummaryDelegate) {
+    "z/bts/buildtrack/controller/delegate/WorkSummaryDelegate",
+    "z/bts/buildtrack/controller/delegate/ApprovalLogDelegate"
+], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter, DailyLogDelegate, WorkSummaryDelegate, ApprovalLogDelegate) {
     "use strict";
 
 
@@ -26,6 +27,7 @@ sap.ui.define([
             // Init Delegates
             DailyLogDelegate.init(this);
             WorkSummaryDelegate.init(this);
+            ApprovalLogDelegate.init(this);
 
             // Location model for WBS location info
             var oLocationModel = new JSONModel({});

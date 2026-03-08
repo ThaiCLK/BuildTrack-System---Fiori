@@ -175,7 +175,6 @@ sap.ui.define([
                             that.getView().setBusy(false);
                             oTable.clearSelection();
                             MessageToast.show("Successfully submitted " + iSuccessCount + " out of " + iTotal + " WBS items.");
-                            // Optional: Refresh WBS data or Approval Logs if necessary.
                             that._loadWbsData();
                             return;
                         }
@@ -191,13 +190,10 @@ sap.ui.define([
 
                         oModel.callFunction("/StartWSProcess", {
                             method: "POST",
-                            urlParameters: {
-                                WS_ID: sWbsId
-                            },
-                            success: function (oData, response) {
+                            urlParameters: { WS_ID: sWbsId },
+                            success: function (oData) {
                                 iDone++;
                                 if (oData && oData.SUCCESS === false) {
-                                    // Soft error from backend
                                     console.warn("Failed to submit WBS " + sWbsId, oData.MESSAGE);
                                 } else {
                                     iSuccessCount++;
@@ -212,7 +208,6 @@ sap.ui.define([
                         });
                     };
 
-                    // Start sequential API calls
                     fnSubmitSeq(0);
                 }
             });
