@@ -30,7 +30,11 @@ sap.ui.define([
             oController.onInvestorCanvasRendered = function () { };
 
             // Local model for signature data
-            var oApprovalModel = new JSONModel({ investorSignature: null });
+            var oApprovalModel = new JSONModel({
+                ui: { isSelected: false },
+                selectedLog: null,
+                investorSignature: null
+            });
             oController.getView().setModel(oApprovalModel, "approvalModel");
         },
 
@@ -106,8 +110,27 @@ sap.ui.define([
          * Fires when the user picks a log entry in the master list.
          * Clears the signature canvas so each entry shows a fresh pad.
          */
-        onLogSelectionChange: function () {
+        onLogSelectionChange: function (oEvent) {
             var that = this;
+            var oModel = this.getView().getModel("approvalModel");
+
+            // Save selected log data to approvalModel
+            var oItem = oEvent.getParameter("listItem");
+            if (oItem) {
+                var oContext = oItem.getBindingContext();
+                if (oContext) {
+                    var oData = oContext.getObject();
+                    oModel.setProperty("/selectedLog", oData);
+                    oModel.setProperty("/ui/isSelected", true);
+                } else {
+                    oModel.setProperty("/selectedLog", {});
+                    oModel.setProperty("/ui/isSelected", false);
+                }
+            } else {
+                oModel.setProperty("/selectedLog", {});
+                oModel.setProperty("/ui/isSelected", false);
+            }
+
             var oCanvas = document.getElementById("investorCanvas");
             if (oCanvas) {
                 oCanvas.getContext("2d").clearRect(0, 0, oCanvas.width, oCanvas.height);

@@ -22,7 +22,19 @@
 
         <!-- ── DETAIL: A4 Document View ────────────────────────────────── -->
         <VBox height="100%" fitContainer="true" backgroundDesign="Translucent">
-            <ScrollContainer height="calc(100vh - 215px)" width="100%" vertical="true" horizontal="false" class="approvalLogDetailArea">
+            
+            <!-- Placeholder when no log is selected -->
+            <VBox
+                visible="{= !${approvalModel>/ui/isSelected} }"
+                justifyContent="Center"
+                alignItems="Center"
+                height="100%">
+                <core:Icon src="sap-icon://document" size="3rem" color="#bbb"/>
+                <Text text="Select a log entry to view details" class="sapUiSmallMarginTop"/>
+            </VBox>
+
+            <!-- Actual Document Container -->
+            <ScrollContainer height="calc(100vh - 215px)" width="100%" vertical="true" horizontal="false" class="approvalLogDetailArea" visible="{approvalModel>/ui/isSelected}">
                 <VBox class="paperA4">
                     
                     <VBox alignItems="Center" class="sapUiMediumMarginTopBottom">
@@ -32,8 +44,8 @@
                         <html:hr style="width: 150px; border-top: 1px solid black; margin-bottom: 20px;"/>
                         
                         <Title text="BIÊN BẢN NGHIỆM THU KHỐI LƯỢNG" titleStyle="H2" class="sapUiMediumMarginTop"/>
-                        <Text text="Số: 01/BB-NT / 2026" />
-                        <Text text="(Giai đoạn: 01/02/2026 - 10/02/2026)" class="sapUiTinyMarginBottom"/>
+                        <Text text="Số: NT-{WbsCode}" />
+                        <Text text="(Giai đoạn: {path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}} - {path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}})" class="sapUiTinyMarginBottom"/>
                     </VBox>
 
                     <f:SimpleForm editable="false" layout="ResponsiveGridLayout"
@@ -42,17 +54,20 @@
                         <f:content>
                             <core:Title text="I. THÔNG TIN CHUNG" />
                             
-                            <Label text="Dự án" design="Bold"/>
-                            <Text text="Khu Đô Thị Vinhomes Smart City - Phân khu S1" />
+                            <Label text="Dự án / Gói thầu" design="Bold"/>
+                            <Text text="{projectModel>/ProjectName}" />
                             
                             <Label text="Hạng mục (WBS)" design="Bold"/>
-                            <Text text="Thi công cọc khoan nhồi D1200 (Mã: WBS-FD-01)" />
+                            <Text text="{WbsName} (Mã: {WbsCode})" />
 
-                            <Label text="Địa điểm" design="Bold"/>
-                            <Text text="Lô đất H1, Km 120+500" />
+                            <Label text="Phân khu" design="Bold"/>
+                            <Text text="{projectModel>/SiteName}" />
+
+                            <Label text="Vị trí" design="Bold"/>
+                            <Text text="{locationModel>/LocationName}" />
                             
                             <Label text="Nhà thầu" design="Bold"/>
-                            <Text text="Công ty Xây dựng Delta" />
+                            <Text text="Công ty Thầu Xây dựng (Mặc định)" />
                         </f:content>
                     </f:SimpleForm>
 
@@ -70,29 +85,11 @@
                             <items>
                                 <ColumnListItem>
                                     <cells>
-                                        <Text text="Khoan tạo lỗ cọc D1200" />
-                                        <Text text="md" />
-                                        <ObjectNumber number="150" />
-                                        <ObjectNumber number="150" state="Success" />
-                                        <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
-                                    </cells>
-                                </ColumnListItem>
-                                <ColumnListItem>
-                                    <cells>
-                                        <Text text="Lắp đặt lồng thép" />
-                                        <Text text="kg" />
-                                        <ObjectNumber number="5000" />
-                                        <ObjectNumber number="5000" state="Success" />
-                                        <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
-                                    </cells>
-                                </ColumnListItem>
-                                <ColumnListItem>
-                                    <cells>
-                                        <Text text="Đổ bê tông thương phẩm M300" />
-                                        <Text text="m3" />
-                                        <ObjectNumber number="120" />
-                                        <ObjectNumber number="118" state="Warning" />
-                                        <ObjectStatus text="Đạt" state="Success" icon="sap-icon://accept"/>
+                                        <Text text="{WbsName}" />
+                                        <Text text="{UnitCode}" />
+                                        <ObjectNumber number="{Quantity}" />
+                                        <ObjectNumber number="{TotalQuantityDone}" state="{= ${TotalQuantityDone} >= ${Quantity} ? 'Success' : 'Warning'}" />
+                                        <ObjectStatus text="{approvalModel>/selectedLog/Action}" state="{path: 'approvalModel>/selectedLog/Action', formatter: '.formatApprovalActionState'}" icon="{path: 'approvalModel>/selectedLog/Action', formatter: '.formatApprovalActionIcon'}"/>
                                     </cells>
                                 </ColumnListItem>
                             </items>
@@ -102,7 +99,7 @@
                     <f:SimpleForm editable="false" layout="ResponsiveGridLayout">
                         <f:content>
                             <core:Title text="III. KẾT LUẬN" />
-                            <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên. Đạt yêu cầu kỹ thuật để triển khai công việc tiếp theo." />
+                            <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên theo ghi nhận lúc {path: 'approvalModel>/selectedLog/ActionOn', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}." />
                         </f:content>
                     </f:SimpleForm>
 
@@ -112,7 +109,7 @@
                                 <Label text="KỸ SƯ PHỤ TRÁCH" design="Bold"/>
                                 <Label text="(Ký, ghi rõ họ tên)" />
                                 <VBox height="90px" justifyContent="Center" alignItems="Center">
-                                    <Text text="[Đã ký: Nguyễn Văn A]" class="signatureStamp" />
+                                    <Text text="[Đã ký: {approvalModel>/selectedLog/ActionBy}]" class="signatureStamp" visible="{= ${approvalModel>/selectedLog/Action} === 'SUBMITTED' || ${approvalModel>/selectedLog/Action} === 'APPROVED' }" />
                                 </VBox>                      
                             </VBox>
 
@@ -120,7 +117,7 @@
                                 <Label text="TƯ VẤN GIÁM SÁT" design="Bold"/>
                                 <Label text="(Ký, ghi rõ họ tên)" />
                                 <VBox height="90px" justifyContent="Center" alignItems="Center">
-                                    <Text text="[Đã ký: Trần Văn B]" class="signatureStamp" />
+                                    <Text text="[Đã ký: Người Duyệt TVGS]" class="signatureStamp" visible="{= ${approvalModel>/selectedLog/Action} === 'APPROVED' }" />
                                 </VBox>                      
                             </VBox>
 

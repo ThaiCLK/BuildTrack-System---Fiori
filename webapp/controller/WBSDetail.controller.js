@@ -36,6 +36,10 @@ sap.ui.define([
             // Work Summary model
             var oWSModel = new JSONModel({});
             this.getView().setModel(oWSModel, "workSummaryModel");
+
+            // Project model for parent project info
+            var oProjectModel = new JSONModel({});
+            this.getView().setModel(oProjectModel, "projectModel");
         },
 
         /* =========================================================== */
@@ -62,17 +66,30 @@ sap.ui.define([
             // Bind daily log list
             this._bindDailyLogList(sWbsId);
 
+            // Bind approval log list
+            this._bindApprovalLogList(sWbsId);
+
             // Load location info
             this._loadLocation(sWbsId);
+
+            // Load project info
+            this._loadProjectInfo(sSiteId);
 
             // Load Work Summary info
             this._loadWorkSummary(sWbsId);
 
-            // Reset detail panel
+            // Reset daily log detail panel
             var oUIModel = this.getView().getModel("dailyLogModel");
             oUIModel.setProperty("/ui/isSelected", false);
             oUIModel.setProperty("/ui/editMode", false);
             oUIModel.setProperty("/selectedLog", null);
+
+            // Reset approval log detail panel
+            var oApprovalModel = this.getView().getModel("approvalModel");
+            if (oApprovalModel) {
+                oApprovalModel.setProperty("/selectedLog", {});
+                oApprovalModel.setProperty("/ui/isSelected", false);
+            }
         },
 
         /* =========================================================== */
@@ -99,6 +116,38 @@ sap.ui.define([
                 },
                 error: function () {
                     // No location data — form stays hidden
+                }
+            });
+        },
+
+        /**
+         * Load project info from the configured SiteId
+         */
+        _loadProjectInfo: function (sSiteId) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oProjectModel = this.getView().getModel("projectModel");
+
+            // Reset
+            oProjectModel.setData({});
+
+            if (!sSiteId) {
+                return;
+            }
+
+            // Read Site to get ProjectId and SiteName, then read Project to get ProjectName
+            oModel.read("/SiteSet(guid'" + sSiteId + "')", {
+                success: function (oSiteData) {
+                    if (oSiteData && oSiteData.ProjectId) {
+                        oModel.read("/ProjectSet(guid'" + oSiteData.ProjectId + "')", {
+                            success: function (oProjectData) {
+                                // Combine SiteName and ProjectName into the same model
+                                oProjectData.SiteName = oSiteData.SiteName;
+                                oProjectModel.setData(oProjectData);
+                            }
+                        });
+                    } else if (oSiteData) {
+                        oProjectModel.setData({ SiteName: oSiteData.SiteName });
+                    }
                 }
             });
         },
@@ -232,6 +281,17 @@ sap.ui.define([
         formatWorkSummaryStatusState: WorkSummaryDelegate.formatWorkSummaryStatusState,
         formatWorkSummaryStatusIcon: WorkSummaryDelegate.formatWorkSummaryStatusIcon,
         onSubmitForApproval: WorkSummaryDelegate.onSubmitForApproval
+    });
+
+    // Mix in ApprovalLogDelegate functions to the controller prototype
+    Object.assign(WBSDetailController.prototype, {
+        onLogSelectionChange: ApprovalLogDelegate.onLogSelectionChange,
+        formatApprovalActionText: ApprovalLogDelegate.formatApprovalActionText,
+        formatApprovalActionState: ApprovalLogDelegate.formatApprovalActionState,
+        formatApprovalActionIcon: ApprovalLogDelegate.formatApprovalActionIcon,
+        onCloseApprovalDocument: ApprovalLogDelegate.onCloseApprovalDocument,
+        _bindApprovalLogList: ApprovalLogDelegate._bindApprovalLogList,
+        _initInvestorCanvas: ApprovalLogDelegate._initInvestorCanvas
     });
 
     return WBSDetailController;
