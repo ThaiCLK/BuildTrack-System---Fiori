@@ -223,7 +223,6 @@
                         </f:SimpleForm>
                     </Panel>
 
-<<<<<<< HEAD
                     <!-- ┌────────────────────────────────────────────────┐ -->
                     <!-- │  BLOCK 3: RESOURCE USAGE (Vật tư / Thiết bị)  │ -->
                     <!-- └────────────────────────────────────────────────┘ -->
@@ -235,18 +234,6 @@
                                 text="Add Resource"
                                 icon="sap-icon://add"
                                 type="Ghost"
-=======
-                        <core:Title text="Tài nguyên sử dụng" />
-                        
-                        <VBox width="100%">
-                        <layoutData>
-                                <l:GridData span="XL12 L12 M12 S12"/>
-                            </layoutData>
-                            <Button 
-                                text="Thêm tài nguyên" 
-                                icon="sap-icon://add" 
-                                type="Transparent"
->>>>>>> 6aaffacac893a844e0765a765775f89e6b939cfe
                                 visible="{dailyLogModel>/ui/editMode}"
                                 press=".onAddResourceUse"/>
                         </OverflowToolbar>
