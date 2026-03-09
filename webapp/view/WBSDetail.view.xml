@@ -29,9 +29,6 @@
                                 <Label text="WBS Code" />
                                 <Text text="{WbsCode}" />
 
-                                <Label text="WBS ID" />
-                                <Text text="{WbsId}" />
-
                                 <core:Title text="Schedule (Planned vs Actual)" />
 
                                 <Label text="Planned Start" />
@@ -64,9 +61,9 @@
 
                                 <Label text="Status" />
                                 <ObjectStatus 
-                                    text="{Status}" 
-                                    state="{= ${Status} === 'COMPLETED' ? 'Success' : 'Warning' }" 
-                                    icon="{= ${Status} === 'COMPLETED' ? 'sap-icon://accept' : 'sap-icon://pending' }" />
+                                    text="{path: 'Status', formatter: '.formatWbsStatusText'}"
+                                    state="{path: 'Status', formatter: '.formatWbsStatusState'}"
+                                    icon="{path: 'Status', formatter: '.formatWbsStatusIcon'}" />
 
                             </form:content>
                         </form:SimpleForm>

@@ -76,11 +76,16 @@ sap.ui.define([
         // ── WBS: CREATE (root if no row selected, child if row selected) ────────
         onAddWbs: function () {
             var oTable = this.byId("wbsTreeTable");
-            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
-            if (iIndex >= 0) {
+            if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to create a child WBS.");
+                return;
+            }
+
+            if (aIndices.length === 1) {
                 // A row is selected → create as child of that row
-                var oCtx = oTable.getContextByIndex(iIndex);
+                var oCtx = oTable.getContextByIndex(aIndices[0]);
                 var sParentId = oCtx ? oCtx.getProperty("WbsId") : null;
                 var sParentName = oCtx ? oCtx.getProperty("WbsName") : "";
                 this._openWbsDialog(null, sParentId, sParentName);
@@ -93,24 +98,34 @@ sap.ui.define([
         // ── WBS: EDIT ────────────────────────────────────────────────────────
         onEditWbs: function () {
             var oTable = this.byId("wbsTreeTable");
-            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
-            if (iIndex < 0) {
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
                 MessageToast.show("Please select a WBS row to edit.");
                 return;
+            } else if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to edit.");
+                return;
             }
-            var oCtx = oTable.getContextByIndex(iIndex);
+
+            var oCtx = oTable.getContextByIndex(aIndices[0]);
             this._openWbsDialog(oCtx, null, null);
         },
 
         // ── WBS: DELETE ───────────────────────────────────────────────────────
         onDeleteWbs: function () {
             var oTable = this.byId("wbsTreeTable");
-            var iIndex = oTable ? oTable.getSelectedIndex() : -1;
-            if (iIndex < 0) {
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
                 MessageToast.show("Please select a WBS row to delete.");
                 return;
+            } else if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to delete.");
+                return;
             }
-            var oCtx = oTable.getContextByIndex(iIndex);
+
+            var oCtx = oTable.getContextByIndex(aIndices[0]);
             var sName = oCtx.getProperty("WbsName");
             var sWbsId = oCtx.getProperty("WbsId");
             var oModel = this.getOwnerComponent().getModel();
@@ -120,7 +135,7 @@ sap.ui.define([
                 title: "Confirm Delete WBS",
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
-                        oModel.remove("/WBSSet('" + sWbsId + "')", {
+                        oModel.remove("/WBSSet(guid'" + sWbsId + "')", {
                             success: function () {
                                 MessageToast.show("WBS deleted: " + sName);
                                 that._loadWbsData();
@@ -128,6 +143,72 @@ sap.ui.define([
                             error: function () { MessageBox.error("Unable to delete WBS."); }
                         });
                     }
+                }
+            });
+        },
+
+        // ── WBS: SUBMIT FOR APPROVAL ──────────────────────────────────────────
+        onSubmitWbsApproval: function () {
+            var that = this;
+            var oTable = this.byId("wbsTreeTable");
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
+                MessageToast.show("Please select at least one WBS to submit for approval.");
+                return;
+            }
+
+            MessageBox.confirm("Are you sure you want to submit " + aIndices.length + " selected WBS item(s) for approval?", {
+                title: "Confirm Submit for Approval",
+                onClose: function (sAction) {
+                    if (sAction !== MessageBox.Action.OK) { return; }
+
+                    var oModel = that.getOwnerComponent().getModel();
+                    that.getView().setBusy(true);
+
+                    var iTotal = aIndices.length;
+                    var iDone = 0;
+                    var iSuccessCount = 0;
+
+                    var fnSubmitSeq = function (iCurrentIndex) {
+                        if (iCurrentIndex >= iTotal) {
+                            that.getView().setBusy(false);
+                            oTable.clearSelection();
+                            MessageToast.show("Successfully submitted " + iSuccessCount + " out of " + iTotal + " WBS items.");
+                            that._loadWbsData();
+                            return;
+                        }
+
+                        var oCtx = oTable.getContextByIndex(aIndices[iCurrentIndex]);
+                        if (!oCtx) {
+                            iDone++;
+                            fnSubmitSeq(iCurrentIndex + 1);
+                            return;
+                        }
+
+                        var sWbsId = oCtx.getProperty("WbsId");
+
+                        oModel.callFunction("/StartWSProcess", {
+                            method: "POST",
+                            urlParameters: { WS_ID: sWbsId },
+                            success: function (oData) {
+                                iDone++;
+                                if (oData && oData.SUCCESS === false) {
+                                    console.warn("Failed to submit WBS " + sWbsId, oData.MESSAGE);
+                                } else {
+                                    iSuccessCount++;
+                                }
+                                fnSubmitSeq(iCurrentIndex + 1);
+                            },
+                            error: function (oError) {
+                                iDone++;
+                                console.error("HTTP Error submitting WBS " + sWbsId, oError);
+                                fnSubmitSeq(iCurrentIndex + 1);
+                            }
+                        });
+                    };
+
+                    fnSubmitSeq(0);
                 }
             });
         },
@@ -165,10 +246,14 @@ sap.ui.define([
             var oSelectStatus = new Select({
                 width: "100%",
                 items: [
-                    new Item({ key: "NEW", text: "Planning" }),
-                    new Item({ key: "INP", text: "In Progress" }),
-                    new Item({ key: "DON", text: "Completed" }),
-                    new Item({ key: "CAN", text: "Canceled" })
+                    new Item({ key: "PLANNING", text: "Planning" }),
+                    new Item({ key: "PENDING_OPEN", text: "Pending Open" }),
+                    new Item({ key: "OPEN_REJECTED", text: "Open Rejected" }),
+                    new Item({ key: "OPENED", text: "Opened" }),
+                    new Item({ key: "IN_PROGRESS", text: "In Progress" }),
+                    new Item({ key: "PENDING_CLOSE", text: "Pending Close" }),
+                    new Item({ key: "CLOSE_REJECTED", text: "Close Rejected" }),
+                    new Item({ key: "CLOSED", text: "Closed" })
                 ],
                 visible: false
             });
@@ -240,11 +325,12 @@ sap.ui.define([
                             EndDate: toUTC(dEnd),
                             Quantity: oInputQty.getValue() || "0",
                             UnitCode: oSelectUnit.getSelectedKey(),
-                            Status: oSelectStatus.getSelectedKey()
+                            Status: "PLANNING"  // Default for new WBS; overridden on Edit
                         };
                         if (bEdit) {
                             // Key = WbsId of the row being edited (read from context, not from a form input)
                             var sEditWbsId = oContext.getProperty("WbsId");
+                            oPayload.Status = oSelectStatus.getSelectedKey() || oContext.getProperty("Status") || "PLANNING";
                             oModel.update("/WBSSet(guid'" + sEditWbsId + "')", oPayload, {
                                 success: function () {
                                     MessageToast.show("WBS updated!");

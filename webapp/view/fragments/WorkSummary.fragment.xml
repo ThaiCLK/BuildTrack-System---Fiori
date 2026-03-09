@@ -13,7 +13,15 @@
                     <Toolbar height="3rem">
                         <Title text="Work Summary" level="H4" />
                         <ToolbarSpacer />
+<<<<<<< HEAD
                         <Button text="Submit for Approval" type="Emphasized" icon="sap-icon://paper-plane" press="onSubmitForApproval" />
+=======
+                        <Button 
+                            text="Submit for Approval" 
+                            type="Emphasized" 
+                            icon="sap-icon://paper-plane"
+                            press=".onSubmitForApproval" />
+>>>>>>> thaiclk2
                     </Toolbar>
                 </headerToolbar>
                 <content>
@@ -53,10 +61,10 @@
                         <ObjectNumber number="{Quantity}" unit="{UnitCode}" />
 
                         <Label text="Completed (Cumulative)" design="Bold"/>
-                        <ObjectNumber 
-                            number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" 
-                            unit="{UnitCode}" 
-                            state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                                <ObjectNumber 
+                                    number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" 
+                                    unit="{UnitCode}" 
+                                    state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
 
                         <!-- <Label text="Completion Rate" />
                         <ProgressIndicator
@@ -72,19 +80,19 @@
             <!-- ── Section II: Progress Evaluation ──────────────────────────────── -->
             <Panel headerText="II. Progress Evaluation (Target vs Actual)" class="sapUiSmallMarginBottom">
                 <VBox width="100%">
-                    <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
-                        <Label text="Completion Rate (Target: {Quantity} {UnitCode})" design="Bold"/>
-                        <ObjectStatus 
-                            text="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}" 
-                            state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
-                    </HBox>
-                    
-                    <ProgressIndicator
-                        percentValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatProgress'}"
-                        displayValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity', 'UnitCode'], formatter: '.formatProgressDisplay'}"
-                        showValue="true"
-                        state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}"
-                        height="1.5rem"/>
+                        <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
+                            <Label text="Completion Rate (Target: {Quantity} {UnitCode})" design="Bold"/>
+                            <ObjectStatus 
+                                text="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}" 
+                                state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                        </HBox>
+                        
+                        <ProgressIndicator
+                            percentValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatProgress'}"
+                            displayValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity', 'UnitCode'], formatter: '.formatProgressDisplay'}"
+                            showValue="true"
+                            state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}"
+                            height="1.5rem"/>
                         
                     <l:Grid defaultSpan="L6 M6 S12" class="sapUiMediumMarginTop">
                         <l:content>
@@ -95,7 +103,7 @@
                             <VBox>
                                 <Label text="Actual (Total Done)" class="sapUiTinyMarginBottom"/>
                                 <ObjectNumber number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="Success" />
-                            </VBox>
+                    </VBox>
                         </l:content>
                     </l:Grid>
                 </VBox>

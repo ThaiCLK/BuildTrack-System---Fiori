@@ -377,6 +377,8 @@
     border: 1px solid #ddd;
     color: #000;
     font-family: "Times New Roman", serif;
+    zoom: 0.8;
+    /* Shrinks the element and its layout footprint, preventing excess scroll space */
 }
 
 .signatureStamp {
@@ -409,5 +411,23 @@
 
 .approvalLogDetailArea {
     background: #f4f7f9;
-    padding: 1rem;
+}
+
+/* ── ELECTRONIC SIGNATURE ── */
+.investorSignatureBox {
+    border: 2px dashed #bdc3c7;
+    border-radius: 6px;
+    background: #fafafa;
+    transition: border-color 0.2s;
+}
+
+.investorSignatureBox:hover {
+    border-color: #3498db;
+    background: #f0f7ff;
+}
+
+.signPendingLink {
+    font-size: 1rem !important;
+    color: #3498db !important;
+    font-style: italic;
 }

@@ -63,6 +63,7 @@
                 <Property Name="Quantity"    Type="Edm.Decimal"  Precision="13"   Scale="3" sap:label="Quantity" />
                 <Property Name="UnitCode"    Type="Edm.String"   MaxLength="3"    sap:label="Unit" />
                 <Property Name="Status"      Type="Edm.String"   MaxLength="50"   sap:label="Status" />
+                <Property Name="TotalQuantityDone"   Type="Edm.Decimal"  Precision="13" Scale="3" sap:label="Total Qty Done" />
                 <Property Name="CreatedBy"   Type="Edm.String"   MaxLength="12"   sap:label="Created By" />
                 <Property Name="CreatedOn"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Created On" />
                 <Property Name="CreatedAt"   Type="Edm.Time"     Precision="0"    sap:label="Created At" />
@@ -72,6 +73,7 @@
                 <NavigationProperty Name="SubWbs" Relationship="ZBT_ODATA_SRV.WBS_to_SubWBS" FromRole="ParentWBS" ToRole="ChildWBS" />
                 <NavigationProperty Name="ToLogs" Relationship="ZBT_ODATA_SRV.WBS_to_DailyLog" FromRole="FromWBS"   ToRole="ToLog" />
                 <NavigationProperty Name="ToLocations" Relationship="ZBT_ODATA_SRV.WBS_to_Location" FromRole="FromWBS" ToRole="ToLocation" />
+                <NavigationProperty Name="ToApprovalLogs" Relationship="ZBT_ODATA_SRV.WBS_to_ApprovalLog" FromRole="FromWBS" ToRole="ToApprovalLog" />
             </EntityType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
@@ -145,14 +147,22 @@
                 <Property Name="PosBot"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Bottom" />
                 <Property Name="UnitCode"     Type="Edm.String"  MaxLength="10"  sap:label="Unit" />
             </EntityType>
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Function Import Result Types                                -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <ComplexType Name="WsProcessResult">
+                <Property Name="SUCCESS" Type="Edm.Boolean" />
+                <Property Name="MESSAGE" Type="Edm.String" MaxLength="255" />
+            </ComplexType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- WorkSummary (ZBT_WORK_SUMMARY)                               -->
+            <!-- ApprovalLog (ZBT_APPROVAL_LOG — approval history)          -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <EntityType Name="WorkSummary">
+            <EntityType Name="ApprovalLog">
                 <Key>
-                    <PropertyRef Name="WorkSummaryId" />
+                    <PropertyRef Name="LogId" />
                 </Key>
+<<<<<<< HEAD
                 <Property Name="WorkSummaryId"      Type="Edm.Guid"     Nullable="false" sap:label="Work Summary UUID" />
                 <Property Name="WbsId"              Type="Edm.Guid"     sap:label="WBS UUID" />
                 <Property Name="TotalQuantityDone" Type="Edm.Decimal"  Precision="13" Scale="3" sap:label="Total Qty Done" />
@@ -177,6 +187,17 @@
                 <Property Name="ActionOn"        Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Action On" />
                 <Property Name="ActionAt"        Type="Edm.Time"     Precision="0"   sap:label="Action At" />
                 <Property Name="ApprovalNote"    Type="Edm.String"   MaxLength="500" sap:label="Approval Note" />
+=======
+                <Property Name="LogId"        Type="Edm.Guid"     Nullable="false" sap:label="Log UUID" />
+                <Property Name="WbsId"        Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="WorkItemId"   Type="Edm.Guid"     sap:label="Work Item UUID" />
+                <Property Name="ApprovalLevel" Type="Edm.String" MaxLength="50"  sap:label="Approval Level" />
+                <Property Name="Action"       Type="Edm.String"   MaxLength="50"  sap:label="Action" />
+                <Property Name="ActionBy"     Type="Edm.String"   MaxLength="50"  sap:label="Action By" />
+                <Property Name="ActionOn"     Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Action On" />
+                <Property Name="ActionAt"     Type="Edm.Time"     Precision="0"   sap:label="Action At" />
+                <Property Name="ApprovalNote" Type="Edm.String"   MaxLength="255" sap:label="Approval Note" />
+>>>>>>> thaiclk2
             </EntityType>
 
             <Association Name="Proj_to_Site">
@@ -242,12 +263,12 @@
                 </ReferentialConstraint>
             </Association>
 
-            <Association Name="WBS_to_WorkSummary">
+            <Association Name="WBS_to_ApprovalLog">
                 <End Role="FromWBS"        Type="ZBT_ODATA_SRV.WBS"         Multiplicity="1" />
-                <End Role="ToWorkSummary"  Type="ZBT_ODATA_SRV.WorkSummary" Multiplicity="*" />
+                <End Role="ToApprovalLog"  Type="ZBT_ODATA_SRV.ApprovalLog" Multiplicity="*" />
                 <ReferentialConstraint>
                     <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
-                    <Dependent  Role="ToWorkSummary"><PropertyRef Name="WbsId" /></Dependent>
+                    <Dependent  Role="ToApprovalLog"><PropertyRef Name="WbsId" /></Dependent>
                 </ReferentialConstraint>
             </Association>
 
@@ -264,12 +285,20 @@
                 <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
                 <EntitySet Name="SiteSet"              EntityType="ZBT_ODATA_SRV.Site" />
                 <EntitySet Name="WBSSet"               EntityType="ZBT_ODATA_SRV.WBS" />
+<<<<<<< HEAD
                 <EntitySet Name="DailyLogSet"     EntityType="ZBT_ODATA_SRV.DailyLog" />
                 <EntitySet Name="ResourceSet"     EntityType="ZBT_ODATA_SRV.Resource" />
                 <EntitySet Name="ResourceUseSet"  EntityType="ZBT_ODATA_SRV.ResourceUse" />
                 <EntitySet Name="LocationSet"     EntityType="ZBT_ODATA_SRV.Location" />
                 <EntitySet Name="ApprovalLogSet"  EntityType="ZBT_ODATA_SRV.ApprovalLog" />
                 <EntitySet Name="WorkSummarySet"  EntityType="ZBT_ODATA_SRV.WorkSummary" />
+=======
+                <EntitySet Name="DailyLogSet"          EntityType="ZBT_ODATA_SRV.DailyLog" />
+                <EntitySet Name="ResourceSet"          EntityType="ZBT_ODATA_SRV.Resource" />
+                <EntitySet Name="ResourceUseSet"       EntityType="ZBT_ODATA_SRV.ResourceUse" />
+                <EntitySet Name="LocationSet"          EntityType="ZBT_ODATA_SRV.Location" />
+                <EntitySet Name="ApprovalLogSet"       EntityType="ZBT_ODATA_SRV.ApprovalLog" />
+>>>>>>> thaiclk2
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
                     <End Role="FromProj" EntitySet="ProjectSet" />
@@ -295,14 +324,21 @@
                     <End Role="FromWBS"    EntitySet="WBSSet" />
                     <End Role="ToLocation" EntitySet="LocationSet" />
                 </AssociationSet>
-                <AssociationSet Name="WBS_to_WorkSummary_Set" Association="ZBT_ODATA_SRV.WBS_to_WorkSummary">
-                    <End Role="FromWBS"        EntitySet="WBSSet" />
-                    <End Role="ToWorkSummary"  EntitySet="WorkSummarySet" />
+                <AssociationSet Name="WBS_to_ApprovalLog_Set" Association="ZBT_ODATA_SRV.WBS_to_ApprovalLog">
+                    <End Role="FromWBS"       EntitySet="WBSSet" />
+                    <End Role="ToApprovalLog" EntitySet="ApprovalLogSet" />
                 </AssociationSet>
+<<<<<<< HEAD
                 <AssociationSet Name="WorkSummary_to_ApprovalLog_Set" Association="ZBT_ODATA_SRV.WorkSummary_to_ApprovalLog">
                     <End Role="FromWorkSummary" EntitySet="WorkSummarySet" />
                     <End Role="ToApprovalLog"   EntitySet="ApprovalLogSet" />
                 </AssociationSet>
+=======
+
+                <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
+                    <Parameter Name="WS_ID" Type="Edm.Guid" Mode="In" />
+                </FunctionImport>
+>>>>>>> thaiclk2
             </EntityContainer>
         </Schema>
     </edmx:DataServices>
