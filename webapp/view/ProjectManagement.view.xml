@@ -101,7 +101,7 @@
 
                             <!-- Status badge with semantic colours -->
                             <ObjectStatus id="objStatus"
-                                text="{Status}"
+                                text="{path: 'Status', formatter: '.formatStatusText'}"
                                 icon="{= ${Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
                                        ${Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
                                        ${Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :

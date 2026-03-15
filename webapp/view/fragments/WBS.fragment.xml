@@ -14,7 +14,15 @@
             icon="sap-icon://paper-plane"
             type="Emphasized"
             press=".onSubmitWbsApproval"
+            visible="{= ${userModel>/userId} === 'LEARN-549' }"
             tooltip="Submit selected WBS items for approval"/>
+        <Button
+            id="btnRunWbs"
+            text="Run WBS"
+            icon="sap-icon://play"
+            type="Emphasized"
+            press=".onRunWbs"
+            tooltip="Set selected WBS to In Progress"/>
         <Button
             id="btnAddWbs"
             text="Create WBS"
@@ -46,7 +54,7 @@
         </t:rowMode>
 
         <t:columns>
-            <t:Column width="19rem">
+            <t:Column width="15rem">
                 <t:label><Label text="Work progress" design="Bold"/></t:label>
                 <t:template>
                     <HBox alignItems="Center">
@@ -55,6 +63,15 @@
                                    color="{= ${viewData>Type} === 'WBS' ? '#346187' : '#e67e22'}"/>
                         <Text text="{viewData>WbsName}" wrapping="false" tooltip="{viewData>WbsName}"/>
                     </HBox>
+                </t:template>
+            </t:Column>
+
+            <t:Column width="8rem" hAlign="Center">
+                <t:label><Label text="Status"/></t:label>
+                <t:template>
+                    <ObjectStatus
+                        text="{path: 'viewData>Status', formatter: '.formatWbsStatusText'}"
+                        state="{path: 'viewData>Status', formatter: '.formatWbsStatusState'}"/>
                 </t:template>
             </t:Column>
 

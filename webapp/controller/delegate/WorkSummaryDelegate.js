@@ -4,7 +4,7 @@ sap.ui.define([
 ], function (Filter, FilterOperator) {
     "use strict";
 
-    return {
+    var WorkSummaryDelegate = {
         init: function (oController) {
             oController._loadWorkSummary = this._loadWorkSummary.bind(oController);
             oController.formatPercentage = this.formatPercentage.bind(oController);
@@ -18,16 +18,109 @@ sap.ui.define([
         },
 
         /**
-         * Aggregate total QuantityDone from all DailyLogs for this WBS (FE-side sum).
-         * Also reads WBS Status for Work Summary status display.
-         * Called after saving/deleting a log so the view updates immediately.
+         * Aggregate total QuantityDone from all DailyLogs for this WBS.
+         * Robust handling: Fetches the WBS record first to determine if it's a parent/child,
+         * avoiding race conditions with view binding context during navigation.
          */
         _loadWorkSummary: function (sWbsId) {
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
             var oWSModel = this.getView().getModel("workSummaryModel");
 
-            // Read all DailyLogs for this WBS and sum QuantityDone
+            // 1. Reset model immediately to clear stale data from previous navigation
+            oWSModel.setData({
+                TotalQtyDone: "0",
+                Children: [],
+                WbsId: sWbsId
+            });
+
+            // 2. Fetch the WBS record to get the ABSOLUTE LATEST ParentId for this ID
+            oModel.read("/WBSSet(guid'" + sWbsId + "')", {
+                success: function (oWbs) {
+                    var bIsParent = false;
+                    var vParentId = oWbs.ParentId;
+                    
+                    if (!vParentId) {
+                        bIsParent = true;
+                    } else {
+                        var sClean = vParentId.toString().replace(/-/g, "");
+                        if (/^0+$/.test(sClean)) bIsParent = true;
+                    }
+
+                    if (bIsParent) {
+                        // 3. Parent Branch: Calculate aggregate from children
+                        WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oModel);
+                    } else {
+                        // 4. Leaf Node Branch: Aggregate logs for THIS WBS
+                        WorkSummaryDelegate._loadLeafNodeAggregation.call(that, sWbsId, oWSModel, oModel);
+                    }
+                },
+                error: function () {
+                    console.error("Failed to load WBS metadata for Work Summary:", sWbsId);
+                }
+            });
+        },
+
+        _loadParentAggregation: function(sWbsId, oWSModel, oModel) {
+            oModel.read("/WBSSet", {
+                filters: [new Filter("ParentId", FilterOperator.EQ, sWbsId)],
+                urlParameters: {
+                    "$expand": "ToApprovalLog"
+                },
+                success: function (oData) {
+                    var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
+                    var aChildren = (oData.results || []).filter(function(w) {
+                        if (!w.ParentId) return false;
+                        return w.ParentId.toLowerCase().replace(/-/g, "") === sNormParentId;
+                    });
+                    
+                    if (aChildren.length === 0) {
+                        oWSModel.setProperty("/Children", []);
+                        return;
+                    }
+
+                    var iProcessed = 0;
+                    aChildren.forEach(function (oChild) {
+                        oModel.read("/DailyLogSet", {
+                            filters: [new Filter("WbsId", FilterOperator.EQ, oChild.WbsId)],
+                            success: function (oLogData) {
+                                var fSum = 0;
+                                (oLogData.results || []).forEach(function (l) {
+                                    fSum += parseFloat(l.QuantityDone) || 0;
+                                });
+                                oChild.TotalQtyDone = fSum.toFixed(3);
+                                
+                                iProcessed++;
+                                if (iProcessed === aChildren.length) {
+                                    var fParentAggregate = 0;
+                                    aChildren.forEach(function(c) {
+                                        fParentAggregate += parseFloat(c.TotalQtyDone) || 0;
+                                    });
+                                    
+                                    oWSModel.setData({
+                                        Children: aChildren,
+                                        TotalQtyDone: fParentAggregate.toFixed(3),
+                                        WbsId: sWbsId
+                                    });
+                                }
+                            },
+                            error: function () {
+                                iProcessed++;
+                                if (iProcessed === aChildren.length) {
+                                    oWSModel.setProperty("/Children", aChildren);
+                                }
+                            }
+                        });
+                    });
+                },
+                error: function () {
+                    oWSModel.setProperty("/Children", []);
+                }
+            });
+        },
+
+        _loadLeafNodeAggregation: function(sWbsId, oWSModel, oModel) {
+            var that = this;
             oModel.read("/DailyLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                 success: function (oData) {
@@ -36,20 +129,18 @@ sap.ui.define([
                         fTotal += parseFloat(oLog.QuantityDone) || 0;
                     });
 
-                    // Merge into workSummaryModel, keeping existing WBS fields (Status etc.)
-                    var oExisting = oWSModel.getData() || {};
-                    oWSModel.setData(Object.assign({}, oExisting, {
+                    oWSModel.setData({
                         TotalQtyDone: fTotal.toFixed(3),
-                        TotalQuantityDone: fTotal.toFixed(3),
-                        WbsId: sWbsId
-                    }));
+                        WbsId: sWbsId,
+                        Children: []
+                    });
 
                     if (typeof that._bindApprovalLogList === "function") {
                         that._bindApprovalLogList(sWbsId);
                     }
                 },
                 error: function () {
-                    console.error("Failed to aggregate DailyLogs for WBS:", sWbsId);
+                    console.error("Failed to aggregate logs for leaf WBS:", sWbsId);
                 }
             });
         },
@@ -62,9 +153,9 @@ sap.ui.define([
             var fActual = parseFloat(sActual);
             var fTarget = parseFloat(sTarget);
             if (isNaN(fActual) || isNaN(fTarget) || fTarget === 0) {
-                return "0.0%";
+                return "0%";
             }
-            return ((fActual / fTarget) * 100).toFixed(1) + "%";
+            return ((fActual / fTarget) * 100).toFixed(0) + "%";
         },
 
         formatProgress: function (sActual, sTarget) {
@@ -73,7 +164,8 @@ sap.ui.define([
             if (isNaN(fActual) || isNaN(fTarget) || fTarget === 0) {
                 return 0;
             }
-            return (fActual / fTarget) * 100;
+            var fPercent = (fActual / fTarget) * 100;
+            return Math.min(fPercent, 100);
         },
 
         formatQuantityState: function (sActual, sTarget) {
@@ -98,7 +190,7 @@ sap.ui.define([
             }
             var fActual = parseFloat(sActual);
             if (isNaN(fActual)) return "0";
-            return sActual.toString(); // Keep original string with decimals if provided
+            return sActual.toString(); 
         },
 
         formatWorkSummaryStatusState: function (sStatus) {
@@ -122,8 +214,6 @@ sap.ui.define([
                 default: return "sap-icon://sys-help";
             }
         },
-
-
 
         onSubmitForApproval: function () {
             var oView = this.getView();
@@ -149,15 +239,12 @@ sap.ui.define([
                     },
                     success: function (oData, response) {
                         oView.setBusy(false);
-
-                        // The OData action might return 200 OK but with a SUCCESS=false payload
                         if (oData && oData.SUCCESS === false) {
                             sap.m.MessageBox.error(oData.MESSAGE || "Failed to submit for approval.");
                             return;
                         }
 
                         sap.m.MessageBox.success(oData.MESSAGE || "Work Summary submitted for approval successfully.");
-                        // Refresh to reflect the new Status
                         this._loadWorkSummary(sWbsId);
                         var oBinding = oView.getElementBinding();
                         if (oBinding) { oBinding.refresh(); }
@@ -191,4 +278,6 @@ sap.ui.define([
             }
         }
     };
+
+    return WorkSummaryDelegate;
 });

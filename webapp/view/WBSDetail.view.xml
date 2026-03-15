@@ -5,10 +5,13 @@
     xmlns:core="sap.ui.core"
     xmlns:form="sap.ui.layout.form">
     <Page title="WBS Detail: {WbsName}" showNavButton="true" navButtonPress="onNavBack">
+        <headerContent>
+            <Button icon="sap-icon://dimension" text="Dashboard" type="Emphasized" press="onNavToDashboard" />
+        </headerContent>
         <content>
             <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding">
                 <items>
-                    <IconTabFilter icon="sap-icon://hint" text="Information">
+                    <IconTabFilter icon="sap-icon://hint" text="Thông tin" key="infoTab">
                         
                         <form:SimpleForm 
                             editable="false"
@@ -106,14 +109,14 @@
 
                     </IconTabFilter>
                     
-                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Daily Log">
+                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Nhật ký" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                         <!-- Fragment được include trực tiếp — không cần lazy load -->
                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.DailyLog" type="XML"/>
                     </IconTabFilter>
-                    <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="Work Summary" key="workSummaryTab">
+                    <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="Tổng hợp" key="workSummaryTab">
                          <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WorkSummary" type="XML" />
                     </IconTabFilter>
-                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Approval Log" key="approvalLogTab">
+                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Lịch sử duyệt" key="approvalLogTab">
                          <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.ApprovalLog" type="XML" />
                     </IconTabFilter>
                 </items>

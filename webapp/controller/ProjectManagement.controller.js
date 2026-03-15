@@ -44,6 +44,15 @@ sap.ui.define([
             return mStates[(sType || "").toUpperCase()] || "None";
         },
 
+        formatStatusText: function (sStatus) {
+            var mLabels = {
+                "PLANNING": "Planning",
+                "IN_PROGRESS": "In Progress",
+                "CLOSED": "Closed"
+            };
+            return mLabels[(sStatus || "").toUpperCase()] || sStatus;
+        },
+
         // ── NAVIGATE BACK TO DASHBOARD ────────────────────────────────────────
         onNavBack: function () {
             this.getOwnerComponent().getRouter().navTo("Dashboard", {}, true);

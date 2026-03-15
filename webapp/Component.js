@@ -1,8 +1,9 @@
 sap.ui.define([
     "sap/ui/core/UIComponent",
     "z/bts/buildtrack/model/models",
-    "z/bts/buildtrack/controller/ErrorHandler"
-], (UIComponent, models, ErrorHandler) => {
+    "z/bts/buildtrack/controller/ErrorHandler",
+    "z/bts/buildtrack/controller/delegate/SecurityDelegate"
+], (UIComponent, models, ErrorHandler, SecurityDelegate) => {
     "use strict";
 
     return UIComponent.extend("z.bts.buildtrack.Component", {
@@ -25,6 +26,10 @@ sap.ui.define([
 
             // initialize the error handler with the component
             this._oErrorHandler = new ErrorHandler(this);
+
+            // Initialize global security and user profile
+            this._oSecurity = new SecurityDelegate();
+            this._oSecurity.initialize(this);
         },
 
         /**

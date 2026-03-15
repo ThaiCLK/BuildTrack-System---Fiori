@@ -431,3 +431,29 @@
     color: #3498db !important;
     font-style: italic;
 }
+
+/* ── ICON TAB BAR LABELS (Force full visibility) ── */
+/* Target the text container */
+.sapMITBText, 
+.sapMITBFilter .sapMITBText,
+.sapMITBVertical .sapMITBText {
+    white-space: normal !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    max-width: none !important;
+    width: auto !important;
+    display: block !important;
+    text-align: center !important;
+}
+
+/* Target the filter item container */
+.sapMITBFilter {
+    width: auto !important;
+    overflow: visible !important;
+}
+
+/* Force the header container to not clip its children */
+.sapMITBHeader, 
+.sapMITBScrollContainer {
+    overflow: visible !important;
+}

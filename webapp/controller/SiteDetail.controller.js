@@ -1,6 +1,5 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/ui/core/routing/History",
     "z/bts/buildtrack/controller/delegate/WBSDelegate",
     "sap/ui/model/json/JSONModel",
     "sap/ui/core/format/DateFormat",
@@ -13,13 +12,13 @@ sap.ui.define([
     "sap/m/Select",
     "sap/ui/core/Item",
     "sap/m/DatePicker",
-    "sap/m/VBox",
+    "sap/m/TextArea",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/ui/layout/form/SimpleForm"
-], function (Controller, History, WBSDelegate, JSONModel, DateFormat,
+], function (Controller, WBSDelegate, JSONModel, DateFormat,
     MessageToast, MessageBox, Dialog, Button, Label, Input,
-    Select, Item, DatePicker, VBox, Filter, FilterOperator, SimpleForm) {
+    Select, Item, DatePicker, TextArea, Filter, FilterOperator, SimpleForm) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.SiteDetail", {
@@ -28,8 +27,67 @@ sap.ui.define([
             this._oWBSDelegate = new WBSDelegate(this);
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("SiteDetail").attachPatternMatched(this._onObjectMatched, this);
-            this.getView().setModel(new JSONModel(), "viewData");
+            this.getView().setModel(new JSONModel({
+                WBS: [],
+                pendingWBS: []
+            }), "viewData");
             this.getView().setModel(new JSONModel(), "viewConfig");
+
+            // --- AUTO REFRESH LOGIC ---
+            this._fnFocusHandler = function () {
+                if (this._sCurrentSiteId) {
+                    this._loadWbsData();
+                }
+            }.bind(this);
+            window.addEventListener("focus", this._fnFocusHandler);
+        },
+
+        onExit: function () {
+            if (this._fnFocusHandler) {
+                window.removeEventListener("focus", this._fnFocusHandler);
+            }
+            this._stopPolling();
+        },
+
+        onTabSelect: function (oEvent) {
+            var sKey = oEvent.getParameter("key");
+            if (sKey === "approvalTab") {
+                this._startPolling();
+            } else {
+                this._stopPolling();
+            }
+        },
+
+        _startPolling: function () {
+            this._stopPolling(); // clear existing if any
+            this._iPollingInterval = setInterval(function () {
+                if (this._sCurrentSiteId) {
+                    this._loadWbsData();
+                }
+            }.bind(this), 10000); // Poll every 10 seconds
+        },
+
+        _stopPolling: function () {
+            if (this._iPollingInterval) {
+                clearInterval(this._iPollingInterval);
+                this._iPollingInterval = null;
+            }
+        },
+
+        onNavToDashboard: function () {
+            this.getOwnerComponent().getRouter().navTo("Dashboard");
+        },
+
+        onNavBack: function () {
+            // Check if there is a previous history entry
+            var oHistory = sap.ui.core.routing.History.getInstance();
+            var sPreviousHash = oHistory.getPreviousHash();
+
+            if (sPreviousHash !== undefined) {
+                window.history.go(-1);
+            } else {
+                this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
+            }
         },
 
         _onObjectMatched: function (oEvent) {
@@ -53,11 +111,107 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             oModel.read("/WBSSet", {
                 filters: [new Filter("SiteId", FilterOperator.EQ, this._sCurrentSiteId)],
+                urlParameters: {
+                    "$expand": "ToSubWbs,ToSubWbs/ToApprovalLog,ToApprovalLog",
+                    "$orderby": "WbsCode"
+                },
                 success: function (oData) {
-                    var aTreeData = that._transformToTree(oData.results);
+                    var aResults = oData.results || [];
+                    var aTreeData = that._transformToTree(aResults);
                     var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
                     that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
                     that.getView().getModel("viewConfig").setData(oGanttConfig);
+
+                    console.log("Total WBS items loaded:", aResults.length);
+
+                    // 1. Filter items that are globally in a PENDING status
+                    var aGlobalPending = aResults.filter(function (item) {
+                        return item.Status === "PENDING_OPEN" || item.Status === "PENDING_CLOSE";
+                    });
+
+                    console.log("Found globally pending items:", aGlobalPending.length);
+
+                    if (aGlobalPending.length === 0) {
+                        that.getView().getModel("viewData").setProperty("/pendingWBS", []);
+                        return;
+                    }
+
+                    // 2. Perform user-specific check for each pending item
+                    var aUserActionableItems = [];
+                    var iProcessed = 0;
+
+                    aGlobalPending.forEach(function (oItem) {
+                        var sType = "OPEN";
+                        var aLogs = (oItem.ToApprovalLog && oItem.ToApprovalLog.results) ? oItem.ToApprovalLog.results : [];
+
+                        if (aLogs.length > 0) {
+                            // Sort by CreatedTimestamp (String comparison works if format is YYYYMMDD...)
+                            aLogs.sort(function (a, b) {
+                                if (a.CreatedTimestamp < b.CreatedTimestamp) return 1;
+                                if (a.CreatedTimestamp > b.CreatedTimestamp) return -1;
+                                return 0;
+                            });
+                            sType = aLogs[0].ApprovalType || "OPEN";
+                        } else if (oItem.Status && oItem.Status.indexOf("CLOSE") !== -1) {
+                            sType = "CLOSE";
+                        }
+
+                        console.log("Calling CheckDecision for WBS:", oItem.WbsId, "Type:", sType);
+
+                        oModel.callFunction("/CheckDecision", {
+                            method: "POST",
+                            urlParameters: {
+                                WBS_IDS: oItem.WbsId,
+                                ApprovalType: sType
+                            },
+                            changeSetId: oItem.WbsId, // Ensure separate changeset per item
+                            success: function (oResponse) {
+                                console.log("CheckDecision Result for " + oItem.WbsCode + ":", oResponse);
+
+                                // Robust check: CheckDecision returns an object with WORKITEM_ID
+                                var oResult = oResponse.CheckDecision;
+                                if (oResult === undefined && oResponse.results) {
+                                    oResult = oResponse.results.CheckDecision;
+                                }
+
+                                var bActionable = false;
+                                if (oResult && oResult.WORKITEM_ID && oResult.WORKITEM_ID !== "" && oResult.WORKITEM_ID !== "000000000000") {
+                                    bActionable = true;
+
+                                    // Extract Approval Level for Title display
+                                    var aLogs = (oItem.ToApprovalLog && oItem.ToApprovalLog.results) ? oItem.ToApprovalLog.results : [];
+                                    var oTargetLog = aLogs.find(function (log) {
+                                        return log.WorkItemId === oResult.WORKITEM_ID;
+                                    });
+                                    if (oTargetLog && oTargetLog.ApprovalLevel) {
+                                        that.getView().getModel("viewData").setProperty("/userLevel", oTargetLog.ApprovalLevel);
+                                    }
+                                } else if (oResult == 1 || oResult == "1") {
+                                    bActionable = true;
+                                }
+
+                                if (bActionable) {
+                                    console.log("WBS " + oItem.WbsCode + " is ACTIONABLE for current user. WI_ID: " + (oResult.WORKITEM_ID || "N/A"));
+                                    aUserActionableItems.push(oItem);
+                                } else {
+                                    console.log("WBS " + oItem.WbsCode + " is NOT actionable. Result:", oResult);
+                                }
+
+                                iProcessed++;
+                                if (iProcessed === aGlobalPending.length) {
+                                    that.getView().getModel("viewData").setProperty("/pendingWBS", aUserActionableItems);
+                                    console.log("Update Pending List with " + aUserActionableItems.length + " items.");
+                                }
+                            },
+                            error: function (oError) {
+                                console.error("CheckDecision Failed for " + oItem.WbsCode + ":", oError);
+                                iProcessed++;
+                                if (iProcessed === aGlobalPending.length) {
+                                    that.getView().getModel("viewData").setProperty("/pendingWBS", aUserActionableItems);
+                                }
+                            }
+                        });
+                    });
                 },
                 error: function (oError) { console.error("Error reading WBSSet:", oError); }
             });
@@ -147,70 +301,290 @@ sap.ui.define([
             });
         },
 
-        // ── WBS: SUBMIT FOR APPROVAL ──────────────────────────────────────────
+        // ── WBS: APPROVAL FLOW ──────────────────────────────────────────────
         onSubmitWbsApproval: function () {
             var that = this;
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
             if (aIndices.length === 0) {
-                MessageToast.show("Please select at least one WBS to submit for approval.");
+                MessageToast.show("Please select WBS items to submit for approval.");
                 return;
             }
 
-            MessageBox.confirm("Are you sure you want to submit " + aIndices.length + " selected WBS item(s) for approval?", {
-                title: "Confirm Submit for Approval",
-                onClose: function (sAction) {
-                    if (sAction !== MessageBox.Action.OK) { return; }
-
-                    var oModel = that.getOwnerComponent().getModel();
-                    that.getView().setBusy(true);
-
-                    var iTotal = aIndices.length;
-                    var iDone = 0;
-                    var iSuccessCount = 0;
-
-                    var fnSubmitSeq = function (iCurrentIndex) {
-                        if (iCurrentIndex >= iTotal) {
-                            that.getView().setBusy(false);
-                            oTable.clearSelection();
-                            MessageToast.show("Successfully submitted " + iSuccessCount + " out of " + iTotal + " WBS items.");
-                            that._loadWbsData();
-                            return;
-                        }
-
-                        var oCtx = oTable.getContextByIndex(aIndices[iCurrentIndex]);
-                        if (!oCtx) {
-                            iDone++;
-                            fnSubmitSeq(iCurrentIndex + 1);
-                            return;
-                        }
-
-                        var sWbsId = oCtx.getProperty("WbsId");
-
-                        oModel.callFunction("/StartWSProcess", {
-                            method: "POST",
-                            urlParameters: { WS_ID: sWbsId },
-                            success: function (oData) {
-                                iDone++;
-                                if (oData && oData.SUCCESS === false) {
-                                    console.warn("Failed to submit WBS " + sWbsId, oData.MESSAGE);
-                                } else {
-                                    iSuccessCount++;
-                                }
-                                fnSubmitSeq(iCurrentIndex + 1);
-                            },
-                            error: function (oError) {
-                                iDone++;
-                                console.error("HTTP Error submitting WBS " + sWbsId, oError);
-                                fnSubmitSeq(iCurrentIndex + 1);
-                            }
-                        });
-                    };
-
-                    fnSubmitSeq(0);
+            // Check if all selected items are in PLANNING status
+            var aInvalidItems = [];
+            aIndices.forEach(function (iIdx) {
+                var oCtx = oTable.getContextByIndex(iIdx);
+                var oData = oCtx.getObject();
+                if (oData.Status !== "PLANNING" && oData.Status !== "OPEN_REJECTED") {
+                    aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
                 }
             });
+
+            if (aInvalidItems.length > 0) {
+                var sAllowed = "'Planning' or 'Open Rejected'";
+                MessageBox.error("Only WBS items in " + sAllowed + " status can be submitted. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                return;
+            }
+
+            MessageBox.confirm("Submit " + aIndices.length + " items for approval?", {
+                onClose: function (sAction) {
+                    if (sAction === MessageBox.Action.OK) {
+                        that._submitMultipleWbs(aIndices);
+                    }
+                }
+            });
+        },
+
+        _submitMultipleWbs: function (aIndices) {
+            var that = this;
+            var oTable = this.byId("wbsTreeTable");
+            var oModel = this.getOwnerComponent().getModel();
+            var iDone = 0;
+            var iError = 0;
+
+            this.getView().setBusy(true);
+
+            var fnNext = function () {
+                if (iDone + iError === aIndices.length) {
+                    that.getView().setBusy(false);
+                    if (iError === 0) {
+                        MessageToast.show("Submitted " + iDone + " items successfully.");
+                    } else {
+                        MessageBox.warning("Completed with " + iError + " errors.");
+                    }
+                    that._loadWbsData();
+                    return;
+                }
+
+                var iIdx = aIndices[iDone + iError];
+                var oCtx = oTable.getContextByIndex(iIdx);
+                var oData = oCtx.getObject();
+
+                oModel.callFunction("/StartWSProcess", {
+                    method: "POST",
+                    urlParameters: {
+                        WS_ID: oData.WbsId
+                    },
+                    changeSetId: oData.WbsId, // Ensure separate changeset per item
+                    success: function () {
+                        iDone++;
+                        fnNext();
+                    },
+                    error: function (oError) {
+                        console.error("Submission failed for " + oData.WbsName, oError);
+                        iError++;
+                        fnNext();
+                    }
+                });
+            };
+
+            fnNext();
+        },
+
+        // ── WBS: RUN (Switch from OPENED to IN_PROGRESS) ─────────────────────
+        onRunWbs: function () {
+            var oTable = this.byId("wbsTreeTable");
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
+                MessageToast.show("Please select a WBS row to run.");
+                return;
+            } else if (aIndices.length > 1) {
+                MessageToast.show("Please select only ONE row to run.");
+                return;
+            }
+
+            var oCtx = oTable.getContextByIndex(aIndices[0]);
+            var oData = oCtx.getObject();
+            var sStatus = oData.Status;
+            var dStartDate = oData.StartDate;
+            var dToday = new Date();
+            dToday.setHours(0, 0, 0, 0);
+
+            // 1. Check Status
+            if (sStatus !== "OPENED") {
+                MessageBox.warning("Only WBS with status 'OPENED' can be started. Current status: " + sStatus);
+                return;
+            }
+
+            // 2. Check Start Date
+            if (dStartDate && new Date(dStartDate) > dToday) {
+                var sFormattedDate = this.formatDate(dStartDate);
+                MessageBox.error("Cannot run WBS before its Start Date (" + sFormattedDate + ").");
+                return;
+            }
+
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+
+            MessageBox.confirm("Do you want to start WBS '" + oData.WbsName + "'? Status will change to IN_PROGRESS.", {
+                title: "Confirm Start WBS",
+                onClose: function (sAction) {
+                    if (sAction === MessageBox.Action.OK) {
+                        that.getView().setBusy(true);
+                        oModel.update("/WBSSet(guid'" + oData.WbsId + "')", { Status: "IN_PROGRESS" }, {
+                            success: function () {
+                                that.getView().setBusy(false);
+                                MessageToast.show("WBS is now IN_PROGRESS.");
+                                that._loadWbsData();
+                                oModel.refresh(true);
+                            },
+                            error: function (oError) {
+                                that.getView().setBusy(false);
+                                console.error("Error starting WBS:", oError);
+                                MessageBox.error("Failed to start WBS.");
+                            }
+                        });
+                    }
+                }
+            });
+        },
+
+        // ── WBS: PENDING APPROVAL LOGIC ───────────────────────────────────────
+        onApproveWbs: function () {
+            this._processPendingWbs("0001"); // 0001 = Approve
+        },
+
+        onRejectWbs: function () {
+            this._processPendingWbs("0002"); // 0002 = Reject
+        },
+
+        _processPendingWbs: function (sDecisionCode) {
+            var that = this;
+            var oTable = this.byId("pendingWbsTable");
+            var aSelectedItems = oTable.getSelectedItems();
+
+            if (aSelectedItems.length === 0) {
+                MessageToast.show("Please select at least one pending WBS item.");
+                return;
+            }
+
+            var aItemsToProcess = [];
+            var bError = false;
+
+            aSelectedItems.forEach(function (oItem) {
+                var oCtx = oItem.getBindingContext("viewData");
+                var oWbs = oCtx.getObject();
+
+                // Extract the LATEST WorkItemId from the logs
+                var sWorkItemId = "";
+                var aLogs = (oWbs.ToApprovalLog && oWbs.ToApprovalLog.results) ? oWbs.ToApprovalLog.results : [];
+
+                if (aLogs.length > 0) {
+                    aLogs.sort(function (a, b) {
+                        return new Date(b.CreatedTimestamp) - new Date(a.CreatedTimestamp);
+                    });
+                    sWorkItemId = aLogs[0].WorkItemId;
+                }
+
+                if (!sWorkItemId) {
+                    sWorkItemId = oWbs.WorkItemId || "";
+                }
+
+                if (!sWorkItemId) {
+                    bError = true;
+                } else {
+                    aItemsToProcess.push({
+                        WorkItemId: sWorkItemId,
+                        WbsName: oWbs.WbsName
+                    });
+                }
+            });
+
+            if (bError && aItemsToProcess.length === 0) {
+                MessageBox.error("Cannot find Work Item ID for selected items. Please refresh and try again.");
+                return;
+            }
+
+            if (!this._oApproveDialog) {
+                this._oApproveDialog = new Dialog({
+                    title: "Decision Note",
+                    type: "Message",
+                    content: [
+                        new Label({ text: "Add a comment for this decision:", labelFor: "approveNote" }),
+                        new TextArea("approveNote", {
+                            width: "100%",
+                            placeholder: "Enter reason or note here...",
+                            rows: 4
+                        })
+                    ],
+                    beginButton: new Button({
+                        text: "Submit",
+                        type: "Emphasized",
+                        press: function () {
+                            var sUserNote = sap.ui.getCore().byId("approveNote").getValue();
+                            this._oApproveDialog.close();
+                            this._submitDecisionBatch(this._aPendingItems, this._sPendingDecision, sUserNote);
+                        }.bind(this)
+                    }),
+                    endButton: new Button({
+                        text: "Cancel",
+                        press: function () {
+                            this._oApproveDialog.close();
+                        }.bind(this)
+                    })
+                });
+                this.getView().addDependent(this._oApproveDialog);
+            }
+
+            this._sPendingDecision = sDecisionCode; // "0001" or "0002"
+            this._aPendingItems = aItemsToProcess;
+            sap.ui.getCore().byId("approveNote").setValue("");
+            this._oApproveDialog.open();
+        },
+
+        _submitDecisionBatch: function (aItems, sDecision, sUserNote) {
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            var iDone = 0;
+            var iError = 0;
+
+            this.getView().setBusy(true);
+
+            var fnNext = function () {
+                if (iDone + iError === aItems.length) {
+                    that.getView().setBusy(false);
+                    if (iError === 0) {
+                        MessageToast.show("Processed " + iDone + " items successfully.");
+                    } else {
+                        MessageBox.warning("Completed with " + iError + " errors.");
+                    }
+                    that._loadWbsData();
+                    oModel.refresh(true);
+                    return;
+                }
+
+                var oItem = aItems[iDone + iError];
+
+                oModel.callFunction("/PostDecision", {
+                    method: "POST",
+                    urlParameters: {
+                        WI_ID: oItem.WorkItemId,
+                        Decision: sDecision,
+                        Note: sUserNote
+                    },
+                    changeSetId: oItem.WorkItemId,
+                    success: function (oData) {
+                        var oResult = oData.PostDecision || oData;
+                        if (oResult && oResult.SUCCESS === false) {
+                            console.error("PostDecision Logic Error for " + oItem.WbsName + ":", oResult.MESSAGE);
+                            iError++;
+                        } else {
+                            iDone++;
+                        }
+                        fnNext();
+                    },
+                    error: function (oError) {
+                        console.error("PostDecision Request Error for " + oItem.WbsName + ":", oError);
+                        iError++;
+                        fnNext();
+                    }
+                });
+            };
+
+            fnNext();
         },
 
         // ── PRIVATE: Create/Edit WBS Dialog ───────────────────────────────────
@@ -398,9 +772,64 @@ sap.ui.define([
             return sFormattedQty + sUnit;
         },
 
+        formatWbsStatusText: function (sStatus) {
+            switch (sStatus) {
+                case "PLANNING": return "Planning";
+                case "PENDING_OPEN": return "Pending Open";
+                case "OPEN_REJECTED": return "Open Rejected";
+                case "OPENED": return "Opened";
+                case "IN_PROGRESS": return "In Progress";
+                case "PENDING_CLOSE": return "Pending Close";
+                case "CLOSE_REJECTED": return "Close Rejected";
+                case "CLOSED": return "Closed";
+                default: return sStatus || "";
+            }
+        },
+
+        formatStatusText: function (sStatus) {
+            var mLabels = {
+                "PLANNING": "Planning",
+                "SUBMITTED": "Submitted",
+                "REJECTED": "Rejected",
+                "READY": "Ready",
+                "IN_PROGRESS": "In Progress",
+                "COMPLETED": "Completed"
+            };
+            return mLabels[(sStatus || "").toUpperCase()] || sStatus;
+        },
+
+        formatWbsStatusState: function (sStatus) {
+            switch (sStatus) {
+                case "PLANNING": return "None";
+                case "PENDING_OPEN": return "Information";
+                case "OPEN_REJECTED": return "Error";
+                case "OPENED": return "Success";
+                case "IN_PROGRESS": return "Warning";
+                case "PENDING_CLOSE": return "Information";
+                case "CLOSE_REJECTED": return "Error";
+                case "CLOSED": return "None";
+                default: return "None";
+            }
+        },
+
+        formatWbsStatusIcon: function (sStatus) {
+            switch (sStatus) {
+                case "PLANNING": return "sap-icon://status-in-process";
+                case "PENDING_OPEN": return "sap-icon://paper-plane";
+                case "OPEN_REJECTED": return "sap-icon://decline";
+                case "OPENED": return "sap-icon://accept";
+                case "IN_PROGRESS": return "sap-icon://machine";
+                case "PENDING_CLOSE": return "sap-icon://paper-plane";
+                case "CLOSE_REJECTED": return "sap-icon://decline";
+                case "CLOSED": return "sap-icon://locked";
+                default: return "sap-icon://status-in-process";
+            }
+        },
+
         onGanttTaskClick: function (oEvent) {
             var oContext = oEvent.getParameter("rowBindingContext");
             if (!oContext) return;
+
             this.getOwnerComponent().getRouter().navTo("WBSDetail", {
                 site_id: oContext.getProperty("SiteId"),
                 wbsId: oContext.getProperty("WbsId")

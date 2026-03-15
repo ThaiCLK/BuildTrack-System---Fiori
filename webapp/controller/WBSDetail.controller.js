@@ -53,13 +53,35 @@ sap.ui.define([
             this._sWbsId = sWbsId;
             this._sSiteId = sSiteId;   // remember for onNavBack
 
+            // Reset models immediately to avoid stale data during navigation
+            var oWSModel = this.getView().getModel("workSummaryModel");
+            if (oWSModel) {
+                oWSModel.setData({
+                    TotalQtyDone: "0",
+                    Children: [],
+                    WbsId: sWbsId
+                });
+            }
+
+            // Reset Tab Selection to Info tab
+            var oIconTabBar = this.byId("idIconTabBarWBS");
+            if (oIconTabBar) {
+                oIconTabBar.setSelectedKey("infoTab");
+            }
+
+            // Trigger Work Summary load immediately. 
+            // The delegate now handles its own OData metadata fetch to avoid context race conditions.
+            this._loadWorkSummary(sWbsId);
+
             // Bind the WBS detail form — WbsId is Edm.Guid so use guid'' syntax
             var sObjectPath = "/WBSSet(guid'" + sWbsId + "')";
             this.getView().bindElement({
                 path: sObjectPath,
                 events: {
                     dataRequested: function () { this.getView().setBusy(true); }.bind(this),
-                    dataReceived: function () { this.getView().setBusy(false); }.bind(this)
+                    dataReceived: function () { 
+                        this.getView().setBusy(false); 
+                    }.bind(this)
                 }
             });
 
@@ -75,8 +97,8 @@ sap.ui.define([
             // Load project info
             this._loadProjectInfo(sSiteId);
 
-            // Load Work Summary info
-            this._loadWorkSummary(sWbsId);
+            // Load project info
+            this._loadProjectInfo(sSiteId);
 
             // Reset daily log detail panel
             var oUIModel = this.getView().getModel("dailyLogModel");
@@ -156,6 +178,10 @@ sap.ui.define([
         /* WORK SUMMARY LOGIC — delegated to WorkSummaryDelegate        */
         /* =========================================================== */
 
+        onNavToDashboard: function () {
+            this.getOwnerComponent().getRouter().navTo("Dashboard");
+        },
+
         onNavBack: function () {
             // Always navigate explicitly back to SiteDetail using the known site_id.
             // Using window.history.go(-1) is unreliable because OData operations
@@ -190,11 +216,6 @@ sap.ui.define([
                 case "PENDING_CLOSE": return "Pending Close";
                 case "CLOSE_REJECTED": return "Close Rejected";
                 case "CLOSED": return "Closed";
-                // // Legacy
-                // case "NEW": return "Planning";
-                // case "INP": return "In Progress";
-                // case "DON": return "Closed";
-                // case "CAN": return "Closed";
                 default: return sStatus || "";
             }
         },
@@ -234,6 +255,18 @@ sap.ui.define([
             }
         },
 
+        isChildNode: function (vParentId) {
+            if (!vParentId) return false;
+            var sClean = vParentId.replace(/-/g, "");
+            return !/^0+$/.test(sClean);
+        },
+
+        isParentNode: function (vParentId) {
+            if (!vParentId) return true;
+            var sClean = vParentId.replace(/-/g, "");
+            return /^0+$/.test(sClean);
+        },
+
 
 
 
@@ -267,7 +300,8 @@ sap.ui.define([
         onSaveLog: DailyLogDelegate.onSaveLog,
         _persistLog: DailyLogDelegate._persistLog,
         _saveResourceUse: DailyLogDelegate._saveResourceUse,
-        _updateWbsActualDates: DailyLogDelegate._updateWbsActualDates
+        _updateWbsActualDates: DailyLogDelegate._updateWbsActualDates,
+        _verifyStatusForDailyLog: DailyLogDelegate._verifyStatusForDailyLog
     });
 
     // Mix in WorkSummaryDelegate functions to the controller prototype so XML views can resolve them during parsing

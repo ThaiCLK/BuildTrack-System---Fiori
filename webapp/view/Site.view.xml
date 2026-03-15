@@ -45,7 +45,7 @@
                             <Text text="{SiteName}" />
                             <Text text="{Address}" />
                             <ObjectStatus
-                                text="{Status}"
+                                text="{path: 'Status', formatter: '.formatStatusText'}"
                                 icon="{ path: 'Status', formatter: '.formatStatusIcon' }"
                                 state="{ path: 'Status', formatter: '.formatStatusState' }"
                                 inverted="true"/>

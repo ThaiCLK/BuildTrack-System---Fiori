@@ -50,6 +50,18 @@ sap.ui.define([
             return m[(sStatus || "").toUpperCase()] || "None";
         },
 
+        formatStatusText: function (sStatus) {
+            var mLabels = {
+                "PLANNING": "Planning",
+                "SUBMITTED": "Submitted",
+                "REJECTED": "Rejected",
+                "READY": "Ready",
+                "IN_PROGRESS": "In Progress",
+                "COMPLETED": "Completed"
+            };
+            return mLabels[(sStatus || "").toUpperCase()] || sStatus;
+        },
+
         _onObjectMatched: function (oEvent) {
             var sProjectId = oEvent.getParameter("arguments").project_id;
             this._sCurrentProjectId = sProjectId;

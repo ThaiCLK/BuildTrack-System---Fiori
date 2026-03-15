@@ -165,7 +165,28 @@ sap.ui.define([
             });
         },
 
+        _verifyStatusForDailyLog: function () {
+            var oCtx = this.getView().getBindingContext();
+            if (!oCtx) return false;
+
+            var sStatus = oCtx.getProperty("Status");
+            var aAllowed = ["IN_PROGRESS", "CLOSE_REJECTED"];
+
+            if (aAllowed.indexOf(sStatus) === -1) {
+                var sStatusText = this.formatWbsStatusText(sStatus);
+                MessageBox.warning(
+                    "Không thể ghi nhật ký cho WBS " + sStatusText + ".\n\n" +
+                    "Chỉ cho phép ghi ở trạng thái 'In Progress' hoặc 'Close Rejected'."
+                );
+                return false;
+            }
+            return true;
+        },
+
         onAddLog: function () {
+            if (!this._verifyStatusForDailyLog()) {
+                return;
+            }
             var oUIModel = this.getView().getModel("dailyLogModel");
             var oTable = this.byId("idDailyLogList");
             if (oTable) {
@@ -280,6 +301,9 @@ sap.ui.define([
         },
 
         onImportExcel: function () {
+            if (!this._verifyStatusForDailyLog()) {
+                return;
+            }
             var that = this;
             var oFileInput = document.createElement("input");
             oFileInput.type = "file";
@@ -342,6 +366,9 @@ sap.ui.define([
         },
 
         onConfirmImport: function () {
+            if (!this._verifyStatusForDailyLog()) {
+                return;
+            }
             var oTable = this.byId("importPreviewTable");
             var aSelectedItems = oTable ? oTable.getSelectedItems() : [];
 
@@ -436,6 +463,9 @@ sap.ui.define([
         },
 
         onDeleteLog: function () {
+            if (!this._verifyStatusForDailyLog()) {
+                return;
+            }
             var that = this;
             var oUIModel = this.getView().getModel("dailyLogModel");
             var sLogId = oUIModel.getProperty("/selectedLog/LogId");
@@ -469,6 +499,9 @@ sap.ui.define([
         },
 
         onDeleteMultipleLogs: function () {
+            if (!this._verifyStatusForDailyLog()) {
+                return;
+            }
             var that = this;
             var oTable = this.byId("idDailyLogList");
             var aSelectedItems = oTable.getSelectedItems();
@@ -535,6 +568,9 @@ sap.ui.define([
         },
 
         onToggleEditMode: function () {
+            if (!this._verifyStatusForDailyLog()) {
+                return;
+            }
             this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", true);
         },
 

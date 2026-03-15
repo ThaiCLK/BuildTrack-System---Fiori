@@ -15,7 +15,17 @@
                 <Button icon="sap-icon://sort" type="Transparent" />
             </Toolbar>
             <ScrollContainer height="calc(100vh - 250px)" vertical="true" horizontal="false">
-                <List id="idApprovalLogList" mode="SingleSelectMaster" selectionChange="onLogSelectionChange">
+                <List id="idApprovalLogList" 
+                    mode="SingleSelectMaster" 
+                    selectionChange="onLogSelectionChange"
+                    items="{logListModel>/}"
+                    noDataText="No logs found for your account">
+                    <StandardListItem
+                        title="{logListModel>Action} - Cấp {logListModel>ApprovalLevel}"
+                        description="{logListModel>ActionBy}"
+                        info="{logListModel>WorkItemId}"
+                        infoState="{path: 'logListModel>Action', formatter: '.formatApprovalActionState'}"
+                        icon="{path: 'logListModel>Action', formatter: '.formatApprovalActionIcon'}" />
                 </List>
             </ScrollContainer>
         </VBox>
@@ -99,7 +109,7 @@
                     <f:SimpleForm editable="false" layout="ResponsiveGridLayout">
                         <f:content>
                             <core:Title text="III. KẾT LUẬN" />
-                            <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên theo ghi nhận lúc {path: 'approvalModel>/selectedLog/ActionOn', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}." />
+                            <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên theo ghi nhận lúc {path: 'approvalModel>/selectedLog/CreatedTimestamp', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}." />
                         </f:content>
                     </f:SimpleForm>
 

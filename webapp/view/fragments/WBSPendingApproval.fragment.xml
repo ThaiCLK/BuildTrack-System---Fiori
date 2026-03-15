@@ -1,0 +1,60 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    <Table
+        id="pendingWbsTable"
+        items="{viewData>/pendingWBS}"
+        noDataText="No WBS items pending approval."
+        mode="MultiSelect"
+        sticky="HeaderToolbar,ColumnHeaders">
+        <headerToolbar>
+            <OverflowToolbar>
+                <Title text="Danh sách hạng mục chờ duyệt (Cấp {viewData>/userLevel})" level="H3"/>
+                <ToolbarSpacer/>
+                <Button
+                    text="Approve"
+                    type="Accept"
+                    icon="sap-icon://accept"
+                    press=".onApproveWbs" />
+                <Button
+                    text="Reject"
+                    type="Reject"
+                    icon="sap-icon://decline"
+                    press=".onRejectWbs" />
+            </OverflowToolbar>
+        </headerToolbar>
+        <columns>
+            <Column width="8rem">
+                <Text text="Mã WBS" />
+            </Column>
+            <Column>
+                <Text text="Tên hạng mục" />
+            </Column>
+            <Column width="10rem" hAlign="Center">
+                <Text text="Trạng thái" />
+            </Column>
+            <Column width="9rem" hAlign="End">
+                <Text text="Khối lượng" />
+            </Column>
+        </columns>
+        <items>
+            <ColumnListItem vAlign="Middle">
+                <cells>
+                    <Text text="{viewData>WbsCode}" />
+                    <Text text="{viewData>WbsName}" />
+                    
+                    <ObjectStatus
+                        text="{path: 'viewData>Status', formatter: '.formatWbsStatusText'}"
+                        state="{path: 'viewData>Status', formatter: '.formatWbsStatusState'}"
+                        icon="{path: 'viewData>Status', formatter: '.formatWbsStatusIcon'}"
+                        inverted="true" />
+                        
+                    <ObjectNumber
+                        number="{viewData>Quantity}"
+                        unit="{viewData>UnitCode}"
+                        state="None" />
+                </cells>
+            </ColumnListItem>
+        </items>
+    </Table>
+</core:FragmentDefinition>

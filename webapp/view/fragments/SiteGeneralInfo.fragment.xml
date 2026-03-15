@@ -12,7 +12,7 @@
             iconActive="false">
             <statuses>
                 <ObjectStatus
-                    text="{Status}"
+                    text="{path: 'Status', formatter: '.formatStatusText'}"
                     state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }"/>
             </statuses>
             <attributes>
@@ -40,7 +40,7 @@
                 <Label text="Status" />
                 <ObjectStatus 
                     class="sapUiNoMargin"
-                    text="{Status}" 
+                    text="{path: 'Status', formatter: '.formatStatusText'}" 
                     state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }" />
             </f:content>
         </f:SimpleForm>

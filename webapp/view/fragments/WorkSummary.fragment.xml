@@ -2,81 +2,41 @@
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
     xmlns:l="sap.ui.layout"
-    xmlns:f="sap.ui.layout.form">
-
-    <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false">
+    xmlns:f="sap.ui.layout.form"
+>
+    <ScrollContainer
+        height="100%"
+        width="100%"
+        vertical="true"
+        horizontal="true"
+    >
         <VBox class="sapUiSmallMargin">
-            
-            <!-- ── Report Header ────────────────────────────────────────────── -->
-            <Panel class="sapUiSmallMarginBottom customReportHeader">
-                <headerToolbar>
-                    <Toolbar height="3rem">
-                        <Title text="Work Summary" level="H4" />
-                        <ToolbarSpacer />
-                        <Button 
-                            text="Submit for Approval" 
-                            type="Emphasized" 
-                            icon="sap-icon://paper-plane"
-                            press=".onSubmitForApproval" />
-                    </Toolbar>
-                </headerToolbar>
-                <content>
-                    <HBox wrap="Wrap" alignItems="Center">
-                        <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom">
-                            <Label text="Work Item Title" design="Bold"/>
-                            <Title text="{WbsName}" level="H5" />
-                            <Text text="Code: {WbsCode}" class="sapUiTinyMarginTop"/>
+            <!-- ── Section I: Executive Summary (Header) ────────────────────────────────────────── -->
+            <Panel headerText="Work Summary" class="sapUiSmallMarginBottom">
+                <f:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
+                    <f:content>
+                        <Label text="Work Item Title" design="Bold"/>
+                        <VBox>
+                            <Text text="{WbsName}" design="Bold" style="font-size: 1.1rem;"/>
+                            <Text text="Code: {WbsCode}" size="Tiny" color="Neutral" />
                         </VBox>
                         
-                        <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom">
-                            <Label text="Project" design="Bold"/>
-                            <Text text="Vinhomes Smart City - Zone S1"/>
-                        </VBox>
-
-                        <VBox class="sapUiLargeMarginEnd sapUiSmallMarginBottom" visible="{= !!${workSummaryModel>/Status}}">
-                            <Label text="Status" design="Bold"/>
-                            <ObjectStatus 
-                                text="{workSummaryModel>/Status}" 
-                                state="{path: 'workSummaryModel>/Status', formatter: '.formatWorkSummaryStatusState'}" 
-                                inverted="true" 
-                                icon="{path: 'workSummaryModel>/Status', formatter: '.formatWorkSummaryStatusIcon'}" />
-                        </VBox>
-                    </HBox>
-                </content>
-            </Panel>
-
-            <!-- ── Section I: Executed Volume ─────────────────────────── -->
-            <Panel headerText="I. Executed Volume" class="sapUiSmallMarginBottom">
-                <f:SimpleForm editable="true" layout="ResponsiveGridLayout" 
-                    labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12" 
-                    columnsXL="2" columnsL="2" columnsM="1">
-                    <f:content>
-                        <core:Title text="Summary Data" />
-
-                        <Label text="Design Target Volume" />
-                        <ObjectNumber number="{Quantity}" unit="{UnitCode}" />
+                        <Label text="Project" design="Bold"/>
+                        <Text text="{ProjectName}" />
 
                         <Label text="Completed (Cumulative)" design="Bold"/>
                                 <ObjectNumber 
                                     number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" 
                                     unit="{UnitCode}" 
                                     state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
-
-                        <!-- <Label text="Completion Rate" />
-                        <ProgressIndicator
-                            percentValue="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity'], formatter: '.formatProgress'}"
-                            displayValue="{parts: ['workSummaryModel>/TotalQuantityDone', 'Quantity', 'UnitCode'], formatter: '.formatProgressDisplay'}"
-                            showValue="true"
-                            state="Success"
-                            height="1.5rem"/> -->
                     </f:content>
                 </f:SimpleForm>
             </Panel>
 
-            <!-- ── Section II: Progress Evaluation ──────────────────────────────── -->
-            <Panel headerText="II. Progress Evaluation (Target vs Actual)" class="sapUiSmallMarginBottom">
+            <!-- ── Section II: Progress Evaluation (Leaf Nodes Only) ──────────────────────────────── -->
+            <Panel headerText="II. Progress Evaluation (Target vs Actual)" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                 <VBox width="100%">
-                        <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
+                        <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom" width="100%">
                             <Label text="Completion Rate (Target: {Quantity} {UnitCode})" design="Bold"/>
                             <ObjectStatus 
                                 text="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}" 
@@ -85,10 +45,11 @@
                         
                         <ProgressIndicator
                             percentValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatProgress'}"
-                            displayValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity', 'UnitCode'], formatter: '.formatProgressDisplay'}"
+                            displayValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}"
                             showValue="true"
                             state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}"
-                            height="1.5rem"/>
+                            height="1.2rem"
+                            width="100%"/>
                         
                     <l:Grid defaultSpan="L6 M6 S12" class="sapUiMediumMarginTop">
                         <l:content>
@@ -99,10 +60,69 @@
                             <VBox>
                                 <Label text="Actual (Total Done)" class="sapUiTinyMarginBottom"/>
                                 <ObjectNumber number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="Success" />
-                    </VBox>
+                            </VBox>
                         </l:content>
                     </l:Grid>
                 </VBox>
+            </Panel>
+
+            <!-- ── Section III: Children Summary Table (Parent Nodes Only) ────────────────────────── -->
+            <Panel headerText="Detailed Progress Table (Sub-WBS)" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
+                <Table items="{workSummaryModel>/Children}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
+                    <columns>
+                        <Column width="4.5rem">
+                            <Text text="WBS Code" />
+                        </Column>
+                        <Column minWidth="12rem">
+                            <Text text="Work Item Name" />
+                        </Column>
+                        <Column hAlign="End" width="6.5rem">
+                            <Text text="Planned" />
+                        </Column>
+                        <Column hAlign="End" width="6.5rem">
+                            <Text text="Actual" />
+                        </Column>
+                        <Column width="8rem">
+                            <Text text="Status" />
+                        </Column>
+                        <Column hAlign="Begin" width="18rem">
+                            <Text text="Progress" />
+                        </Column>
+                    </columns>
+                    <items>
+                        <ColumnListItem>
+                            <cells>
+                                <Text text="{workSummaryModel>WbsCode}" />
+                                <Text text="{workSummaryModel>WbsName}" design="Bold" wrapping="true" />
+                                <ObjectNumber number="{workSummaryModel>Quantity}" unit="{workSummaryModel>UnitCode}" />
+                                <ObjectNumber 
+                                    number="{workSummaryModel>TotalQtyDone}" 
+                                    unit="{workSummaryModel>UnitCode}" 
+                                    state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" />
+                                
+                                <ObjectStatus 
+                                    text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" 
+                                    state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}"
+                                    icon="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusIcon'}" />
+
+                                <HBox alignItems="Center" width="100%">
+                                    <Text text="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatPercentage'}" 
+                                          width="3.5rem" textAlign="End" class="sapUiTinyMarginEnd" />
+                                    <ProgressIndicator
+                                        percentValue="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatProgress'}"
+                                        showValue="false"
+                                        state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}"
+                                        height="0.8rem"
+                                        width="100%">
+                                        <layoutData>
+                                            <FlexItemData growFactor="1" />
+                                        </layoutData>
+                                    </ProgressIndicator>
+                                </HBox>
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
             </Panel>
         </VBox>
     </ScrollContainer>

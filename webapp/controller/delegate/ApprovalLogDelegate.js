@@ -17,17 +17,22 @@ sap.ui.define([
          */
         init: function (oController) {
             oController._bindApprovalLogList = this._bindApprovalLogList.bind(oController);
+            oController._doLoadAndFilter = this._doLoadAndFilter.bind(oController);
             oController.formatApprovalActionText = this.formatApprovalActionText.bind(oController);
             oController.formatApprovalActionState = this.formatApprovalActionState.bind(oController);
             oController.formatApprovalActionIcon = this.formatApprovalActionIcon.bind(oController);
             oController.onLogSelectionChange = this.onLogSelectionChange.bind(oController);
             oController._initInvestorCanvas = this._initInvestorCanvas.bind(oController);
-            // stubs for any old XML references
+            
+            // Stubs for old references
             oController.onSignInvestorPress = function () { };
             oController.onClearSignature = function () { };
             oController.onCancelSignature = function () { };
             oController.onConfirmSignature = function () { };
-            oController.onInvestorCanvasRendered = function () { };
+
+            // Local model for logs
+            var oLogListModel = new JSONModel([]);
+            oController.getView().setModel(oLogListModel, "logListModel");
 
             // Local model for signature data
             var oApprovalModel = new JSONModel({
@@ -36,6 +41,18 @@ sap.ui.define([
                 investorSignature: null
             });
             oController.getView().setModel(oApprovalModel, "approvalModel");
+
+            // ── REACTIVITY: Watch for User ID changes and re-filter ──
+            var oComponent = oController.getOwnerComponent();
+            var oUserModel = oComponent ? oComponent.getModel("userModel") : null;
+            if (oUserModel) {
+                oUserModel.attachPropertyChange(function (oEvent) {
+                    if (oEvent.getParameter("path") === "/userId" && oController._sCurrentWbsId) {
+                        console.log("ApprovalLogDelegate: Identity changed, re-syncing logs...");
+                        oController._bindApprovalLogList(oController._sCurrentWbsId);
+                    }
+                });
+            }
         },
 
         /* =========================================================== */
@@ -43,32 +60,70 @@ sap.ui.define([
         /* =========================================================== */
 
         /**
-         * Binds /ApprovalLogSet filtered by WbsId to the master list,
-         * then schedules canvas init so the signature pad is ready.
+         * Binds the approval log list for a given WBS ID.
+         * Waits for the SecurityDelegate promise to ensure we have a valid user ID.
          */
         _bindApprovalLogList: function (sWbsId) {
             var that = this;
-            var oList = this.byId("idApprovalLogList");
-            if (!oList) { return; }
+            var oView = this.getView();
+            var oComponent = this.getOwnerComponent();
+            var oModel = oView.getModel();
+            var oLogListModel = oView.getModel("logListModel");
+            var oUserModel = oComponent.getModel("userModel");
 
-            var oTemplate = new sap.m.StandardListItem({
-                title: "{Action} - {ApprovalLevel}",
-                description: "{ActionBy}",
-                info: { path: "Action", formatter: this.formatApprovalActionText.bind(this) },
-                infoState: { path: "Action", formatter: this.formatApprovalActionState.bind(this) },
-                icon: { path: "Action", formatter: this.formatApprovalActionIcon.bind(this) }
-            });
+            this._sCurrentWbsId = sWbsId;
 
-            oList.bindItems({
-                path: "/ApprovalLogSet",
+            // Clear old logs while identifying
+            if (oLogListModel) oLogListModel.setData([]);
+
+            // ── SYNC: Wait for identity resolution before fetching/filtering ──
+            if (oComponent.SecurityDelegate && oComponent.SecurityDelegate.whenUserIdentified) {
+                oComponent.SecurityDelegate.whenUserIdentified().then(function(sUserId) {
+                    console.log("ApprovalLog: Session confirmed for " + sUserId + ", binding logs...");
+                    this._doLoadAndFilter(sWbsId);
+                }.bind(this));
+            } else {
+                this._doLoadAndFilter(sWbsId);
+            }
+        },
+
+        /**
+         * Internal: Fetches logs and filters for the current local user ID.
+         */
+        _doLoadAndFilter: function(sWbsId) {
+            var oView = this.getView();
+            var oModel = oView.getModel();
+            var oLogListModel = oView.getModel("logListModel");
+            var oUserModel = this.getOwnerComponent().getModel("userModel");
+
+            oView.setBusy(true);
+
+            oModel.read("/ApprovalLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                sorter: new sap.ui.model.Sorter("ActionOn", true),
-                template: oTemplate,
-                templateShareable: false
-            });
+                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", true)],
+                success: function (oData) {
+                    oView.setBusy(false);
+                    var aLogs = oData.results || [];
+                    var sCurrentId = (oUserModel.getProperty("/userId") || "").toUpperCase().trim();
+                    
+                    var aFiltered = aLogs.filter(function (log) {
+                        var sAction = (log.Action || "").toUpperCase();
+                        var bIsTargetAction = sAction.indexOf("CHẤP THUẬN") !== -1 || sAction.indexOf("TỪ CHỐI") !== -1;
+                        var bUserMatch = (log.ActionBy || "").toUpperCase().trim() === sCurrentId;
+                        return bUserMatch && bIsTargetAction;
+                    });
 
-            // Give the DOM time to render the inline canvas before wiring events
-            setTimeout(function () { that._initInvestorCanvas(); }, 200);
+                    console.log("ApprovalLog: Fetched " + aLogs.length + " total. Sync'd to " + aFiltered.length + " for " + sCurrentId);
+                    if (oLogListModel) oLogListModel.setData(aFiltered);
+                    
+                    // Re-init canvas after load
+                    setTimeout(function() { this._initInvestorCanvas(); }.bind(this), 200);
+                }.bind(this),
+                error: function () {
+                    oView.setBusy(false);
+                    if (oLogListModel) oLogListModel.setData([]);
+                }
+            });
         },
 
         /* =========================================================== */
@@ -106,18 +161,13 @@ sap.ui.define([
         /* LIST SELECTION                                               */
         /* =========================================================== */
 
-        /**
-         * Fires when the user picks a log entry in the master list.
-         * Clears the signature canvas so each entry shows a fresh pad.
-         */
         onLogSelectionChange: function (oEvent) {
             var that = this;
             var oModel = this.getView().getModel("approvalModel");
 
-            // Save selected log data to approvalModel
             var oItem = oEvent.getParameter("listItem");
             if (oItem) {
-                var oContext = oItem.getBindingContext();
+                var oContext = oItem.getBindingContext("logListModel");
                 if (oContext) {
                     var oData = oContext.getObject();
                     oModel.setProperty("/selectedLog", oData);
@@ -134,7 +184,6 @@ sap.ui.define([
             var oCanvas = document.getElementById("investorCanvas");
             if (oCanvas) {
                 oCanvas.getContext("2d").clearRect(0, 0, oCanvas.width, oCanvas.height);
-                // Always re-init so the cloned element keeps its events
                 this._initInvestorCanvas();
             } else {
                 setTimeout(function () { that._initInvestorCanvas(); }, 100);
@@ -145,23 +194,16 @@ sap.ui.define([
         /* INLINE CANVAS SIGNATURE                                     */
         /* =========================================================== */
 
-        /**
-         * Attaches freehand-drawing events to the inline investor canvas.
-         * Uses a clone-and-replace pattern to cleanly remove stale listeners.
-         */
         _initInvestorCanvas: function () {
             var that = this;
             var oCanvas = document.getElementById("investorCanvas");
 
             if (!oCanvas) {
-                // Not in DOM yet – retry on next animation frame
                 requestAnimationFrame(function () { that._initInvestorCanvas(); });
                 return;
             }
 
             var isDrawing = false;
-
-            // Clone removes any previously attached listeners
             var oNew = oCanvas.cloneNode(true);
             oCanvas.parentNode.replaceChild(oNew, oCanvas);
 
@@ -204,7 +246,6 @@ sap.ui.define([
             }, { passive: false });
             oNew.addEventListener("touchend", function () { isDrawing = false; });
 
-            // Re-wire the Clear button (also needs clone after canvas was replaced)
             var oClearBtn = document.getElementById("clearInvestorCanvas");
             if (oClearBtn) {
                 var oNewBtn = oClearBtn.cloneNode(true);

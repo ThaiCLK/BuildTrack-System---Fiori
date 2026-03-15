@@ -70,10 +70,10 @@
                 <Property Name="UpdatedBy"   Type="Edm.String"   MaxLength="12"   sap:label="Updated By" />
                 <Property Name="UpdatedOn"   Type="Edm.DateTime" Precision="0"    DisplayFormat="Date" sap:label="Updated On" />
                 <Property Name="UpdatedAt"   Type="Edm.Time"     Precision="0"    sap:label="Updated At" />
-                <NavigationProperty Name="SubWbs" Relationship="ZBT_ODATA_SRV.WBS_to_SubWBS" FromRole="ParentWBS" ToRole="ChildWBS" />
+                <NavigationProperty Name="ToSubWbs" Relationship="ZBT_ODATA_SRV.WBS_to_SubWBS" FromRole="ParentWBS" ToRole="ChildWBS" />
                 <NavigationProperty Name="ToLogs" Relationship="ZBT_ODATA_SRV.WBS_to_DailyLog" FromRole="FromWBS"   ToRole="ToLog" />
                 <NavigationProperty Name="ToLocations" Relationship="ZBT_ODATA_SRV.WBS_to_Location" FromRole="FromWBS" ToRole="ToLocation" />
-                <NavigationProperty Name="ToApprovalLogs" Relationship="ZBT_ODATA_SRV.WBS_to_ApprovalLog" FromRole="FromWBS" ToRole="ToApprovalLog" />
+                <NavigationProperty Name="ToApprovalLog" Relationship="ZBT_ODATA_SRV.WBS_to_ApprovalLog" FromRole="FromWBS" ToRole="ToApprovalLog" />
             </EntityType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
@@ -156,21 +156,45 @@
             </ComplexType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- UserRole (ZBT_USER_ROLE — user profiles)                    -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="UserRole">
+                <Key>
+                    <PropertyRef Name="UserId" />
+                </Key>
+                <Property Name="Client"    Type="Edm.String" MaxLength="3"   sap:label="Client" />
+                <Property Name="UserId"    Type="Edm.String" MaxLength="12"  Nullable="false" sap:label="User ID" />
+                <Property Name="Email"     Type="Edm.String" MaxLength="255" sap:label="Email" />
+                <Property Name="AvatarUrl" Type="Edm.String" MaxLength="255" sap:label="Avatar URL" />
+                <Property Name="UserName"  Type="Edm.String" MaxLength="100" sap:label="User Name" />
+                <Property Name="Role"      Type="Edm.String" MaxLength="50"  sap:label="Role" />
+                <Property Name="AuthLevel" Type="Edm.Int32"                  sap:label="Auth Level" />
+                <Property Name="Status"    Type="Edm.String" MaxLength="10"  sap:label="Status" />
+                <Property Name="CreatedBy" Type="Edm.String" MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt" Type="Edm.Time"     Precision="0" sap:label="Created At" />
+                <Property Name="UpdatedBy" Type="Edm.String"   MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt" Type="Edm.Time"     Precision="0" sap:label="Updated At" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- ApprovalLog (ZBT_APPROVAL_LOG — approval history)          -->
             <!-- ═══════════════════════════════════════════════════════════ -->
             <EntityType Name="ApprovalLog">
                 <Key>
-                    <PropertyRef Name="LogId" />
+                    <PropertyRef Name="ApprovalLogId" />
                 </Key>
-                <Property Name="LogId"        Type="Edm.Guid"     Nullable="false" sap:label="Log UUID" />
-                <Property Name="WbsId"        Type="Edm.Guid"     sap:label="WBS UUID" />
-                <Property Name="WorkItemId"   Type="Edm.Guid"     sap:label="Work Item UUID" />
-                <Property Name="ApprovalLevel" Type="Edm.String" MaxLength="50"  sap:label="Approval Level" />
-                <Property Name="Action"       Type="Edm.String"   MaxLength="50"  sap:label="Action" />
-                <Property Name="ActionBy"     Type="Edm.String"   MaxLength="50"  sap:label="Action By" />
-                <Property Name="ActionOn"     Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Action On" />
-                <Property Name="ActionAt"     Type="Edm.Time"     Precision="0"   sap:label="Action At" />
-                <Property Name="ApprovalNote" Type="Edm.String"   MaxLength="255" sap:label="Approval Note" />
+                <Property Name="Client"           Type="Edm.String"   MaxLength="3"   sap:label="Client" />
+                <Property Name="ApprovalLogId"    Type="Edm.Guid"     Nullable="false" sap:label="Log UUID" />
+                <Property Name="WbsId"            Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="WorkItemId"       Type="Edm.String"   MaxLength="20"  sap:label="Work Item ID" />
+                <Property Name="ApprovalType"     Type="Edm.String"   MaxLength="15"  sap:label="Approval Type" />
+                <Property Name="ApprovalLevel"    Type="Edm.Int32"                    sap:label="Approval Level" />
+                <Property Name="Action"           Type="Edm.String"   MaxLength="100" sap:label="Action" />
+                <Property Name="ActionBy"         Type="Edm.String"   MaxLength="50"  sap:label="Action By" />
+                <Property Name="CreatedTimestamp" Type="Edm.DateTimeOffset" Precision="7" sap:label="Timestamp" />
+                <Property Name="ApprovalNote"     Type="Edm.String"   MaxLength="255" sap:label="Approval Note" />
             </EntityType>
 
             <Association Name="Proj_to_Site">
@@ -254,6 +278,7 @@
                 <EntitySet Name="ResourceUseSet"       EntityType="ZBT_ODATA_SRV.ResourceUse" />
                 <EntitySet Name="LocationSet"          EntityType="ZBT_ODATA_SRV.Location" />
                 <EntitySet Name="ApprovalLogSet"       EntityType="ZBT_ODATA_SRV.ApprovalLog" />
+                <EntitySet Name="UserRoleSet"          EntityType="ZBT_ODATA_SRV.UserRole" />
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
                     <End Role="FromProj" EntitySet="ProjectSet" />
@@ -286,6 +311,17 @@
 
                 <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
                     <Parameter Name="WS_ID" Type="Edm.Guid" Mode="In" />
+                </FunctionImport>
+
+                <FunctionImport Name="CheckDecision" ReturnType="Edm.Int32" m:HttpMethod="POST">
+                    <Parameter Name="WBS_IDS"     Type="Edm.Guid"   Mode="In" />
+                    <Parameter Name="ApprovalType" Type="Edm.String" Mode="In" />
+                </FunctionImport>
+
+                <FunctionImport Name="PostDecision" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
+                    <Parameter Name="WI_ID"    Type="Edm.String" Mode="In" />
+                    <Parameter Name="Decision" Type="Edm.String" Mode="In" />
+                    <Parameter Name="Note"     Type="Edm.String" Mode="In" />
                 </FunctionImport>
             </EntityContainer>
         </Schema>
