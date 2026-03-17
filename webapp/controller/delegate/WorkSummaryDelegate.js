@@ -15,6 +15,13 @@ sap.ui.define([
             oController.formatWorkSummaryStatusState = this.formatWorkSummaryStatusState.bind(oController);
             oController.formatWorkSummaryStatusIcon = this.formatWorkSummaryStatusIcon.bind(oController);
             oController.onSubmitForApproval = this.onSubmitForApproval.bind(oController);
+            
+            // Stepper Formatters
+            oController.formatStepClass = this.formatStepClass.bind(oController);
+            oController.formatStepLabelClass = this.formatStepLabelClass.bind(oController);
+            oController.formatStepLineClass = this.formatStepLineClass.bind(oController);
+            oController.formatStepIcon = this.formatStepIcon.bind(oController);
+            oController.formatStepLabel = this.formatStepLabel.bind(oController);
         },
 
         /**
@@ -213,6 +220,71 @@ sap.ui.define([
                 case "REJECTED": return "sap-icon://decline";
                 default: return "sap-icon://sys-help";
             }
+        },
+
+        /* =========================================================== */
+        /* WBS STEPPER FORMATTERS                                       */
+        /* =========================================================== */
+
+        /**
+         * Returns CSS class for stepper circles.
+         * iStep: 1 (Planning), 2 (Pending Open), 3 (Opened), 4 (In Progress), 5 (Pending Close), 6 (Closed)
+         */
+        formatStepNumber: function (sStatus) {
+            var m = {
+                "PLANNING": 1,
+                "PENDING_OPEN": 2,
+                "OPENED": 3,
+                "OPEN_REJECTED": 3,
+                "IN_PROGRESS": 4,
+                "PENDING_CLOSE": 5,
+                "CLOSED": 6,
+                "CLOSE_REJECTED": 6
+            };
+            return m[sStatus] || 0;
+        },
+
+        formatStepClass: function (sStatus, iStep) {
+            var iCurrent = this.formatStepNumber(sStatus);
+            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "stepRejected";
+            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "stepRejected";
+            if (iCurrent > iStep) return "stepCompleted";
+            if (iCurrent === iStep) return "stepActive";
+            return "stepPending";
+        },
+
+        formatStepLabelClass: function (sStatus, iStep) {
+            var iCurrent = this.formatStepNumber(sStatus);
+            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "labelRejected";
+            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "labelRejected";
+            if (iCurrent === iStep) return "labelActive";
+            return "";
+        },
+
+        formatStepLineClass: function (sStatus, iStep) {
+            var iCurrent = this.formatStepNumber(sStatus);
+            if (iCurrent > iStep) return "lineCompleted";
+            return "";
+        },
+
+        formatStepIcon: function (sStatus, iStep) {
+            var iCurrent = this.formatStepNumber(sStatus);
+            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "sap-icon://decline";
+            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "sap-icon://decline";
+            if (iCurrent > iStep) return "sap-icon://accept";
+            return null; 
+        },
+
+        formatStepLabel: function (iStep, sStatus) {
+            // UI5 parts might pass objects or strings, ensure iStep is numeric
+            var iStepNum = parseInt(iStep);
+            var aLabels = ["Planning", "Pending Open", "Opened", "In Progress", "Pending Close", "Closed"];
+            var sLabel = aLabels[iStepNum - 1];
+
+            if (iStepNum === 3 && sStatus === "OPEN_REJECTED") return "Open Rejected";
+            if (iStepNum === 6 && sStatus === "CLOSE_REJECTED") return "Close Rejected";
+            
+            return sLabel;
         },
 
         onSubmitForApproval: function () {

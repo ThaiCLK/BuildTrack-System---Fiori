@@ -165,18 +165,28 @@ sap.ui.define([
             });
         },
 
-        _verifyStatusForDailyLog: function () {
+        _verifyStatusForDailyLog: function (bIsDelete) {
             var oCtx = this.getView().getBindingContext();
             if (!oCtx) return false;
 
             var sStatus = oCtx.getProperty("Status");
             var aAllowed = ["IN_PROGRESS", "CLOSE_REJECTED"];
+            
+            // Allow deletion in PENDING_OPEN for cleanup
+            if (bIsDelete) {
+                aAllowed.push("PENDING_OPEN");
+                aAllowed.push("PLANNING");
+                aAllowed.push("OPEN_REJECTED");
+            }
 
             if (aAllowed.indexOf(sStatus) === -1) {
                 var sStatusText = this.formatWbsStatusText(sStatus);
+                var sActionText = bIsDelete ? "xóa" : "ghi";
+                var sAllowedText = bIsDelete ? "'In Progress', 'Pending Open', 'Planning' hoặc 'Rejected'" : "'In Progress' hoặc 'Close Rejected'";
+
                 MessageBox.warning(
-                    "Không thể ghi nhật ký cho WBS " + sStatusText + ".\n\n" +
-                    "Chỉ cho phép ghi ở trạng thái 'In Progress' hoặc 'Close Rejected'."
+                    "Không thể " + sActionText + " nhật ký cho WBS " + sStatusText + ".\n\n" +
+                    "Chỉ cho phép " + sActionText + " ở trạng thái " + sAllowedText + "."
                 );
                 return false;
             }
@@ -463,7 +473,7 @@ sap.ui.define([
         },
 
         onDeleteLog: function () {
-            if (!this._verifyStatusForDailyLog()) {
+            if (!this._verifyStatusForDailyLog(true)) {
                 return;
             }
             var that = this;
@@ -499,7 +509,7 @@ sap.ui.define([
         },
 
         onDeleteMultipleLogs: function () {
-            if (!this._verifyStatusForDailyLog()) {
+            if (!this._verifyStatusForDailyLog(true)) {
                 return;
             }
             var that = this;

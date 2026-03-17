@@ -314,7 +314,14 @@ sap.ui.define([
         formatTotalQty: WorkSummaryDelegate.formatTotalQty,
         formatWorkSummaryStatusState: WorkSummaryDelegate.formatWorkSummaryStatusState,
         formatWorkSummaryStatusIcon: WorkSummaryDelegate.formatWorkSummaryStatusIcon,
-        onSubmitForApproval: WorkSummaryDelegate.onSubmitForApproval
+        onSubmitForApproval: WorkSummaryDelegate.onSubmitForApproval,
+        formatStepClass: WorkSummaryDelegate.formatStepClass,
+        formatStepLabelClass: WorkSummaryDelegate.formatStepLabelClass,
+        formatStepLineClass: WorkSummaryDelegate.formatStepLineClass,
+        formatStepIcon: WorkSummaryDelegate.formatStepIcon,
+        formatStepLabel: WorkSummaryDelegate.formatStepLabel,
+        formatStepNumber: WorkSummaryDelegate.formatStepNumber,
+        formatStepNumberVisible: WorkSummaryDelegate.formatStepNumberVisible
     });
 
     // Mix in ApprovalLogDelegate functions to the controller prototype

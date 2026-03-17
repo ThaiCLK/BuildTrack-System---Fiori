@@ -370,67 +370,130 @@
 /* ── PAPER A4 STYLE (Acceptance Minutes) ── */
 .paperA4 {
     background: #fff !important;
-    max-width: 800px;
+    max-width: 850px;
     margin: 20px auto !important;
-    padding: 40px 60px !important;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-    border: 1px solid #ddd;
+    padding: 50px 70px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid #d9d9d9;
     color: #000;
-    font-family: "Times New Roman", serif;
-    zoom: 0.8;
-    /* Shrinks the element and its layout footprint, preventing excess scroll space */
+    font-family: "Times New Roman", Times, serif !important;
+}
+
+.acceptanceTitle {
+    font-weight: bold !important;
+    font-size: 22px !important;
+    color: #000 !important;
+    text-align: center;
+}
+
+.acceptanceHeader {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.acceptanceHeaderLine {
+    width: 150px;
+    border-top: 1.5px solid black;
+    margin: 10px auto;
+}
+
+/* Custom Table-like Info Section (Section I) */
+.infoTableRow {
+    padding: 4px 0;
+}
+
+.infoTableLabel {
+    font-weight: bold !important;
+    font-size: 15px !important;
+    color: #000 !important;
+    width: 250px;
+}
+
+.infoTableValue {
+    font-size: 15px !important;
+    color: #000 !important;
+}
+
+/* Section II Table Styling */
+.acceptanceTable {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.acceptanceTable th {
+    background-color: #f0f0f0 !important;
+    border: 1px solid #000 !important;
+    padding: 10px !important;
+    font-weight: bold !important;
+    text-align: center !important;
+}
+
+.acceptanceTable td {
+    border: 1px solid #000 !important;
+    padding: 10px !important;
+    text-align: center !important;
+}
+
+.acceptanceTable .textLeft {
+    text-align: left !important;
+}
+
+.acceptanceTable .evalPass {
+    color: #28a745 !important;
+    font-weight: bold !important;
+}
+
+/* Signature & Conclusion */
+.acceptanceConclusion {
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    color: #000 !important;
+}
+
+.signatureLabel {
+    font-weight: bold !important;
+    font-size: 15px !important;
+    color: #000 !important;
+}
+
+.signatureSubLabel {
+    font-style: italic !important;
+    font-size: 13px !important;
+    color: #666 !important;
 }
 
 .signatureStamp {
-    color: #d32f2f;
+    color: #e74c3c;
     font-weight: bold;
     font-style: italic;
-    border: 2px solid #d32f2f;
-    padding: 5px 10px;
+    border: 2px solid #e74c3c;
+    padding: 8px 15px;
     transform: rotate(-5deg);
     display: inline-block;
     border-radius: 4px;
+    margin-top: 15px;
 }
 
-.signaturePending {
-    color: #9e9e9e;
-    font-size: 0.9rem;
-    font-style: italic;
+.btnAcceptanceSign {
+    background-color: #0056b3 !important;
+    color: #ffffff !important;
+    border-radius: 4px !important;
+    font-weight: bold !important;
+    padding: 0 15px !important;
+}
+
+.btnAcceptanceSign .sapMBtnInner {
+    background: #0056b3 !important;
+    border: none !important;
+    color: #fff !important;
+}
+
+.btnAcceptanceSign:hover .sapMBtnInner {
+    background: #004494 !important;
 }
 
 /* ── MASTER-DETAIL SPLITTER ── */
-.approvalLogSplitter {
-    background: #f4f7f9;
-}
-
-.approvalLogMasterPanel {
-    background: #fff !important;
-    border-right: 1px solid #ddd;
-    height: 100%;
-}
-
-.approvalLogDetailArea {
-    background: #f4f7f9;
-}
-
-/* ── ELECTRONIC SIGNATURE ── */
-.investorSignatureBox {
-    border: 2px dashed #bdc3c7;
-    border-radius: 6px;
-    background: #fafafa;
-    transition: border-color 0.2s;
-}
-
-.investorSignatureBox:hover {
-    border-color: #3498db;
-    background: #f0f7ff;
-}
-
-.signPendingLink {
-    font-size: 1rem !important;
-    color: #3498db !important;
-    font-style: italic;
-}
 
 /* ── ICON TAB BAR LABELS (Force full visibility) ── */
 /* Target the text container */
@@ -456,4 +519,103 @@
 .sapMITBHeader, 
 .sapMITBScrollContainer {
     overflow: visible !important;
+}
+
+/* ═══════════════════════════════════════════
+   WBS STATUS PROGRESS STEPPER (Connected design)
+   ═══════════════════════════════════════════ */
+
+.wbsStatusStepper {
+    padding: 3.5rem 0;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    background: #f3f9ff;
+    overflow: visible !important;
+}
+
+.wbsStepperContainer {
+    width: 90%;
+    max-width: 1000px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    overflow: visible !important;
+}
+
+.wbsStep {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    position: relative;
+    flex: 0 0 60px !important; /* Fixed width to allow lines to stretch consistently */
+    z-index: 5;
+    overflow: visible !important;
+}
+
+/* Avatar / Circle Styling */
+.wbsStepCircle {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Connecting lines */
+.wbsStepLine {
+    height: 3px !important;
+    background: #bdc3c7 !important; /* Visible gray for pending lines */
+    flex-grow: 1 !important;
+    margin-top: 21px !important; /* Center with 44px circle */
+    margin-left: -15px !important; /* Move line further left to connect properly */
+    margin-right: -15px !important; /* Move line further right */
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+/* Labels below circles */
+.wbsStepLabelText {
+    margin-top: 1rem !important;
+    font-weight: 500 !important;
+    font-size: 0.8rem !important;
+    color: #7f8c8d;
+    text-align: center;
+    width: 140px;
+    white-space: normal;
+}
+
+/* --- State: COMPLETED (Checkmark) --- */
+.stepCompleted {
+    background-color: #00a2ff !important;
+}
+.stepCompleted .sapMAvatarIcon { color: #ffffff !important; }
+
+/* --- State: ACTIVE (Outer Ring indicator) --- */
+.stepActive {
+    background-color: #00a2ff !important;
+    /* Large outer blue ring */
+    box-shadow: 0 0 0 6px #f3f9ff, 0 0 0 9px #00a2ff !important;
+    z-index: 10 !important;
+}
+.stepActive .sapMAvatarInitials { color: #ffffff !important; font-weight: 700 !important; }
+
+/* Completed lines (connect completed/active steps) */
+.lineCompleted, .lineActive {
+    background-color: #00a2ff !important;
+}
+
+/* --- State: PENDING (Open border with number) --- */
+.stepPending {
+    background-color: #ffffff !important;
+    border: 3px solid #00a2ff !important;
+}
+.stepPending .sapMAvatarInitials { color: #00a2ff !important; }
+
+/* Label Highlight for Active Step */
+.labelActive {
+    color: #00a2ff !important;
+    font-weight: 700 !important;
 }
