@@ -1,0 +1,41 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form">
+    <Dialog title="Thông tin gửi duyệt (MỞ)" contentWidth="600px">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Panel headerText="Thông tin hạng mục" class="sapUiSmallMarginBottom">
+                    <f:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" columnsL="1" columnsM="1">
+                        <f:content>
+                            <Label text="Tên hạng mục" design="Bold"/>
+                            <Text text="{WbsName}" />
+                            
+                            <Label text="Mã hạng mục" design="Bold"/>
+                            <Text text="{WbsCode}" />
+
+                            <Label text="Ngày bắt đầu (Kế hoạch)" design="Bold"/>
+                            <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+
+                            <Label text="Ngày kết thúc (Kế hoạch)" design="Bold"/>
+                            <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                        </f:content>
+                    </f:SimpleForm>
+                </Panel>
+                
+                <MessageStrip
+                    text="Trạng thái 'MỞ' cho phép tiếp tục cập nhật khối lượng sau khi được phê duyệt."
+                    type="Information"
+                    showIcon="true"
+                    class="sapUiTinyMarginTop" />
+            </VBox>
+        </content>
+        <beginButton>
+            <Button text="Gửi phê duyệt" type="Emphasized" press=".onDirectSubmitWS" />
+        </beginButton>
+        <endButton>
+            <Button text="Hủy/Đóng" press=".onCloseWbsInfoDialog" />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

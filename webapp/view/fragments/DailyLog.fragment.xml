@@ -87,7 +87,7 @@
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
                             }"/>
                             <ObjectNumber
-                                number="{QuantityDone}"
+                                number="{path: 'QuantityDone', formatter: '.formatTotalQty'}"
                                 unit="{UnitCode}"
                                 state="None"/>
                         </cells>

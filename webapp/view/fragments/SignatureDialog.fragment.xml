@@ -3,7 +3,7 @@
     xmlns:core="sap.ui.core">
 
     <Dialog id="signatureDialog"
-        title="Chữ ký - Đại diện chủ đầu tư"
+        title="Chữ ký xác nhận"
         contentWidth="520px"
         contentHeight="320px"
         resizable="false"
@@ -23,11 +23,11 @@
         </content>
 
         <beginButton>
-            <Button text="Xoá" icon="sap-icon://clear-all" type="Transparent" press="onClearSignature" />
+            <Button text="Xoá" icon="sap-icon://clear-all" type="Transparent" press=".onClearSignature" />
         </beginButton>
 
         <endButton>
-            <Button text="Hủy" icon="sap-icon://cancel" type="Default" press="onCancelSignature" />
+            <Button text="Hủy" icon="sap-icon://cancel" type="Default" press=".onCancelSignature" />
         </endButton>
 
         <customData>
@@ -35,7 +35,7 @@
         </customData>
 
         <buttons>
-            <Button text="Ký nhận" icon="sap-icon://create" type="Emphasized" press="onConfirmSignature" />
+            <Button text="Ký nhận" icon="sap-icon://create" type="Emphasized" press=".onConfirmSignature" />
         </buttons>
     </Dialog>
 </core:FragmentDefinition>

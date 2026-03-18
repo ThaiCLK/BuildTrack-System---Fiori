@@ -40,6 +40,22 @@ sap.ui.define([
             // Project model for parent project info
             var oProjectModel = new JSONModel({});
             this.getView().setModel(oProjectModel, "projectModel");
+
+            // View model for UI state
+            var oViewData = new JSONModel({
+                isApprovalMode: false,
+                userLevel: 0,
+                canApproveLevel1: false,
+                canApproveLevel2: false,
+                canApproveLevel3: false,
+                canRejectFromReport: false,
+                signStatus: {
+                    level1: { text: "[Chờ duyệt]", signed: false },
+                    level2: { text: "[Chờ duyệt]", signed: false },
+                    level3: { text: "[Chờ duyệt]", signed: false }
+                }
+            });
+            this.getView().setModel(oViewData, "viewData");
         },
 
         /* =========================================================== */
@@ -77,10 +93,13 @@ sap.ui.define([
             var sObjectPath = "/WBSSet(guid'" + sWbsId + "')";
             this.getView().bindElement({
                 path: sObjectPath,
+                parameters: {
+                    expand: "ToApprovalLog"
+                },
                 events: {
                     dataRequested: function () { this.getView().setBusy(true); }.bind(this),
-                    dataReceived: function () { 
-                        this.getView().setBusy(false); 
+                    dataReceived: function () {
+                        this.getView().setBusy(false);
                     }.bind(this)
                 }
             });
@@ -93,9 +112,6 @@ sap.ui.define([
 
             // Load location info
             this._loadLocation(sWbsId);
-
-            // Load project info
-            this._loadProjectInfo(sSiteId);
 
             // Load project info
             this._loadProjectInfo(sSiteId);
@@ -321,7 +337,8 @@ sap.ui.define([
         formatStepIcon: WorkSummaryDelegate.formatStepIcon,
         formatStepLabel: WorkSummaryDelegate.formatStepLabel,
         formatStepNumber: WorkSummaryDelegate.formatStepNumber,
-        formatStepNumberVisible: WorkSummaryDelegate.formatStepNumberVisible
+        formatStepNumberVisible: WorkSummaryDelegate.formatStepNumberVisible,
+        formatCompletionRateTitle: WorkSummaryDelegate.formatCompletionRateTitle
     });
 
     // Mix in ApprovalLogDelegate functions to the controller prototype
@@ -332,7 +349,380 @@ sap.ui.define([
         formatApprovalActionIcon: ApprovalLogDelegate.formatApprovalActionIcon,
         onCloseApprovalDocument: ApprovalLogDelegate.onCloseApprovalDocument,
         _bindApprovalLogList: ApprovalLogDelegate._bindApprovalLogList,
-        _initInvestorCanvas: ApprovalLogDelegate._initInvestorCanvas
+        _initInvestorCanvas: ApprovalLogDelegate._initInvestorCanvas,
+
+        /* =========================================================== */
+        /* ACCEPTANCE DIALOG LOGIC                                     */
+        /* =========================================================== */
+
+        onSubmitApprovalPress: function () {
+            var oView = this.getView();
+            var oContext = oView.getBindingContext();
+            if (!oContext) return;
+
+            if (!this._pSubmitTypeDialog) {
+                this._pSubmitTypeDialog = sap.ui.core.Fragment.load({
+                    id: oView.getId(),
+                    name: "z.bts.buildtrack.view.fragments.SubmitTypeSelection",
+                    controller: this
+                }).then(function (oDialog) {
+                    oView.addDependent(oDialog);
+                    return oDialog;
+                });
+            }
+
+            this._pSubmitTypeDialog.then(function (oDialog) {
+                oDialog.open();
+            });
+        },
+
+        onCloseSubmitTypeDialog: function () {
+            if (this._pSubmitTypeDialog) {
+                this._pSubmitTypeDialog.then(function (oDialog) {
+                    oDialog.close();
+                });
+            }
+        },
+
+        onSelectOpenSubmission: function () {
+            this.onCloseSubmitTypeDialog();
+            var oView = this.getView();
+
+            if (!this._pWbsInfoDialog) {
+                this._pWbsInfoDialog = sap.ui.core.Fragment.load({
+                    id: oView.getId(),
+                    name: "z.bts.buildtrack.view.fragments.WbsInfoDialog",
+                    controller: this
+                }).then(function (oDialog) {
+                    oView.addDependent(oDialog);
+                    return oDialog;
+                });
+            }
+
+            this._pWbsInfoDialog.then(function (oDialog) {
+                oDialog.open();
+            });
+        },
+
+        onSelectCloseSubmission: function () {
+            this.onCloseSubmitTypeDialog();
+            this._openAcceptanceReport();
+        },
+
+        _openAcceptanceReport: function () {
+            var oView = this.getView();
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            var oViewData = oView.getModel("viewData");
+            var sWbsId = this._sWbsId;
+            var sSiteId = this._sSiteId;
+            var oContext = oView.getBindingContext();
+            var oWbs = oContext ? oContext.getObject() : {};
+
+            oView.setBusy(true);
+
+            // 1b. Check if user can approve this item (for buttons in Acceptance Report)
+            oModel.callFunction("/CheckDecision", {
+                method: "POST",
+                urlParameters: {
+                    WBS_IDS: sWbsId,
+                    ApprovalType: "CLOSE"
+                },
+                success: function (oResponse) {
+                    var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision);
+                    var bActionable = false;
+                    var iUserLevel = 0;
+
+                    if (oResult && oResult.WORKITEM_ID && oResult.WORKITEM_ID !== "" && oResult.WORKITEM_ID !== "000000000000") {
+                        bActionable = true;
+                        
+                        // Extract UserLevel from logs if possible based on this WorkItemId
+                        oViewData.setProperty("/activeWbs", Object.assign({}, oWbs, { WorkItemId: oResult.WORKITEM_ID }));
+                    }
+
+                    // 2. FETCH LATEST LOGS DIRECTLY (FILTER BY CLOSE TYPE)
+                    oModel.read("/ApprovalLogSet", {
+                        filters: [
+                            new Filter("WbsId", FilterOperator.EQ, sWbsId),
+                            new Filter("ApprovalType", FilterOperator.EQ, "CLOSE")
+                        ],
+                        sorters: [new Sorter("CreatedTimestamp", false)],
+                        success: function (oLogData) {
+                            oView.setBusy(false);
+                            var aLogs = oLogData.results || [];
+                            
+                            var oSignStatus = {
+                                level1: { text: "[Chờ duyệt]", signed: false },
+                                level2: { text: "[Chờ duyệt]", signed: false },
+                                level3: { text: "[Chờ duyệt]", signed: false }
+                            };
+
+                            var bCycleEnded = false;
+
+                            aLogs.slice().reverse().forEach(function (log) {
+                                if (bCycleEnded) return;
+
+                                var sAction = (log.Action || "").toUpperCase().trim();
+                                var iLevel = parseInt(log.ApprovalLevel);
+                                
+                                var bApproved = false;
+                                if (sAction === "0001" || sAction === "APPROVED" || sAction === "SUCCESS" || sAction === "ĐÃ PHÊ DUYỆT" || sAction === "KÝ DUYÊT") {
+                                    bApproved = true;
+                                } else if (sAction.indexOf("CHẤP THUẬN YÊU CẦU ĐÓNG WBS") === 0) {
+                                    // Only match exactly "CHẤP THUẬN YÊU CẦU ĐÓNG WBS" (possibly followed by "(Cấp X)")
+                                    bApproved = true;
+                                }
+
+                                if (bApproved && !isNaN(iLevel)) {
+                                    var sSigner = log.ActionBy || log.CreatedBy || "Đã ký";
+                                    var sPath = "/UserRoleSet('" + sSigner + "')";
+                                    var sUserName = oView.getModel().getProperty(sPath + "/UserName");
+                                    if (sUserName) {
+                                        sSigner = sUserName;
+                                    } else {
+                                        // Fetch async if not cached
+                                        (function(userId, levelToUpdate) {
+                                            oView.getModel().read("/UserRoleSet('" + userId + "')", {
+                                                success: function(oUserData) {
+                                                    var currentStatus = oViewData.getProperty("/signStatus");
+                                                    if (levelToUpdate === 1) currentStatus.level1.text = oUserData.UserName;
+                                                    if (levelToUpdate === 2) currentStatus.level2.text = oUserData.UserName;
+                                                    if (levelToUpdate === 3) currentStatus.level3.text = oUserData.UserName;
+                                                    oViewData.setProperty("/signStatus", currentStatus);
+                                                }
+                                            });
+                                        })(sSigner, iLevel);
+                                    }
+
+                                    if (iLevel === 1 && !oSignStatus.level1.signed) oSignStatus.level1 = { text: sSigner, signed: true };
+                                    if (iLevel === 2 && !oSignStatus.level2.signed) oSignStatus.level2 = { text: sSigner, signed: true };
+                                    if (iLevel === 3 && !oSignStatus.level3.signed) oSignStatus.level3 = { text: sSigner, signed: true };
+                                }
+                                // Capture the level for current user if log matches current WorkItemId
+                                if (bActionable && log.WorkItemId === oResult.WORKITEM_ID) {
+                                    iUserLevel = log.ApprovalLevel;
+                                }
+                                // IF THIS LOG IS THE START OF A CYCLE, STOP LOOKING AT OLDER LOGS
+                                if (sAction === "GỬI YÊU CẦU PHÊ DUYỆT ĐÓNG WBS" || sAction === "GỬI YÊU CẦU PHÊ DUYỆT MỞ WBS" || sAction === "0000" || sAction === "SUBMITTED") {
+                                    bCycleEnded = true;
+                                }
+                            });
+
+                            // Ensure defaults
+                            if (!oSignStatus.level1.signed) {
+                                oSignStatus.level1 = { text: "[Chờ duyệt]", signed: false };
+                            }
+                            if (!oSignStatus.level2.signed) {
+                                oSignStatus.level2 = { text: "[Chờ duyệt]", signed: false };
+                            }
+                            if (!oSignStatus.level3.signed) {
+                                oSignStatus.level3 = { text: "[Chờ duyệt]", signed: false };
+                            }
+
+                            oViewData.setProperty("/signStatus", oSignStatus);
+                            oViewData.setProperty("/userLevel", iUserLevel);
+                            
+                            // 3. Action Visibility
+                            var oUserModel = that.getOwnerComponent().getModel("userModel");
+                            iUserLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : 0;
+                            var bCanSign = (iUserLevel > 0);
+                            
+                            console.log("Approval Debug: UserLevel =", iUserLevel, "bCanSign =", bCanSign);
+                            console.log("Sign Statuses:", oSignStatus);
+                            
+                            oViewData.setProperty("/canApproveLevel1", bCanSign && iUserLevel === 1 && !oSignStatus.level1.signed);
+                            oViewData.setProperty("/canApproveLevel2", bCanSign && iUserLevel === 2 && !oSignStatus.level2.signed);
+                            oViewData.setProperty("/canApproveLevel3", bCanSign && iUserLevel === 3 && !oSignStatus.level3.signed);
+                            oViewData.setProperty("/canRejectFromReport", bCanSign);
+                            oViewData.setProperty("/isApprovalMode", bCanSign);
+
+                            // 4. Load other details
+                            that._loadWorkSummary(sWbsId);
+                            that._loadLocation(sWbsId);
+                            that._loadProjectInfo(sSiteId);
+
+                            // 5. Open Dialog
+                            if (!that._pAcceptanceDialog) {
+                                that._pAcceptanceDialog = sap.ui.core.Fragment.load({
+                                    id: oView.getId(),
+                                    name: "z.bts.buildtrack.view.fragments.AcceptanceReport",
+                                    controller: that
+                                }).then(function (oDialog) {
+                                    oView.addDependent(oDialog);
+                                    return oDialog;
+                                });
+                            }
+
+                            that._pAcceptanceDialog.then(function (oDialog) {
+                                oDialog.setBindingContext(oModel.createBindingContext("/WBSSet(guid'" + sWbsId + "')"));
+                                oDialog.open();
+                            });
+                        },
+                        error: function (oError) {
+                            oView.setBusy(false);
+                            console.error("Failed to fetch logs in WBS Detail:", oError);
+                            MessageBox.error("Không thể tải lịch sử phê duyệt.");
+                        }
+                    });
+                },
+                error: function (oErr) {
+                    oView.setBusy(false);
+                    console.warn("CheckDecision failed in WBS Detail", oErr);
+                }
+            });
+        },
+
+        onCloseWbsInfoDialog: function () {
+            if (this._pWbsInfoDialog) {
+                this._pWbsInfoDialog.then(function (oDialog) {
+                    oDialog.close();
+                });
+            }
+        },
+
+        onCloseAcceptanceDialog: function () {
+            if (this._pAcceptanceDialog) {
+                this._pAcceptanceDialog.then(function (oDialog) {
+                    oDialog.close();
+                });
+            }
+        },
+
+        onApproveFromReport: function () {
+            this._submitDecisionFromReport("0001", "Ký duyệt (Approve)");
+        },
+
+        onRejectFromReport: function () {
+            this._submitDecisionFromReport("0002", "Từ chối (Reject)");
+        },
+
+        _submitDecisionFromReport: function (sDecisionCode, sTitle) {
+            var that = this;
+            var oView = this.getView();
+            var oModel = this.getOwnerComponent().getModel();
+            var oViewData = oView.getModel("viewData");
+            var oActiveWbs = oViewData.getProperty("/activeWbs");
+
+            if (!oActiveWbs || !oActiveWbs.WorkItemId) {
+                MessageBox.error("Không tìm thấy mã công việc (WorkItemId) để xử lý.");
+                return;
+            }
+
+            MessageBox.confirm("Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
+                onClose: function (sAction) {
+                    if (sAction === MessageBox.Action.OK) {
+                        oView.setBusy(true);
+                        oModel.callFunction("/PostDecision", {
+                            method: "POST",
+                            urlParameters: {
+                                WORKITEM_ID: oActiveWbs.WorkItemId,
+                                DECISION: sDecisionCode,
+                                NOTE: "Processed from Acceptance Report"
+                            },
+                            success: function (oData) {
+                                oView.setBusy(false);
+                                MessageBox.success("Đã xử lý quyết định thành công.");
+                                that._bindApprovalLogList(oActiveWbs.WbsId);
+                                
+                                // Refresh WBS Detail
+                                var oBinding = oView.getElementBinding();
+                                if (oBinding) { oBinding.refresh(); }
+                            },
+                            error: function (oError) {
+                                oView.setBusy(false);
+                                var sMsg = "Lỗi khi xử lý quyết định.";
+                                try {
+                                    var oErr = JSON.parse(oError.responseText);
+                                    sMsg = oErr.error.message.value || sMsg;
+                                } catch (e) { }
+                                MessageBox.error(sMsg);
+                            }
+                        });
+                    }
+                }
+            });
+        },
+
+        onSubmitForApproval: function () {
+            // This is for "CLOSE" type - includes validation logic
+            var oView = this.getView();
+            var oContext = oView.getBindingContext();
+            var sStatus = oContext ? oContext.getProperty("Status") : "";
+
+            if (sStatus === "PENDING_CLOSE") {
+                sap.m.MessageBox.error("Hạng mục này đã được gửi phê duyệt đóng và đang chờ xử lý.");
+                return;
+            }
+
+            if (sStatus === "CLOSED") {
+                sap.m.MessageBox.information("Hạng mục này đã hoàn thành và được đóng.");
+                return;
+            }
+
+            if (sStatus !== "IN_PROGRESS") {
+                sap.m.MessageBox.warning("Hạng mục phải ở trạng thái 'In Progress' (Đang thi công) mới có thể gửi phê duyệt đóng.");
+                return;
+            }
+
+            this.onCloseAcceptanceDialog();
+            WorkSummaryDelegate.onSubmitForApproval.call(this);
+        },
+
+        onDirectSubmitWS: function () {
+            // This is for "OPEN" type - calls API directly without confirmation
+            var oView = this.getView();
+            var oContext = oView.getBindingContext();
+            var sStatus = oContext ? oContext.getProperty("Status") : "";
+
+            if (sStatus === "PENDING_OPEN") {
+                sap.m.MessageBox.error("Hạng mục này đã được gửi phê duyệt mở và đang chờ xử lý.");
+                return;
+            }
+
+            if (sStatus === "CLOSED") {
+                sap.m.MessageBox.information("Hạng mục này đã hoàn thành và được đóng.");
+                return;
+            }
+
+            if (sStatus !== "PLANNING" && sStatus !== "OPEN_REJECTED") {
+                sap.m.MessageBox.warning("Chỉ những hạng mục ở trạng thái 'Planning' hoặc bị từ chối mở mới có thể gửi phê duyệt mở.");
+                return;
+            }
+
+            var sWbsId = this._sWbsId;
+            var oModel = this.getOwnerComponent().getModel();
+
+            this.onCloseWbsInfoDialog();
+            oView.setBusy(true);
+
+            oModel.callFunction("/StartWSProcess", {
+                method: "POST",
+                urlParameters: {
+                    WS_ID: sWbsId
+                },
+                success: function (oData) {
+                    oView.setBusy(false);
+                    if (oData && oData.SUCCESS === false) {
+                        sap.m.MessageBox.error(oData.MESSAGE || "Failed to submit for approval.");
+                        return;
+                    }
+
+                    sap.m.MessageBox.success(oData.MESSAGE || "Work Summary submitted for approval successfully.");
+                    this._loadWorkSummary(sWbsId);
+                    var oBinding = oView.getElementBinding();
+                    if (oBinding) { oBinding.refresh(); }
+                }.bind(this),
+                error: function (oError) {
+                    oView.setBusy(false);
+                    var sMsg = "Failed to submit for approval.";
+                    try {
+                        var oErr = JSON.parse(oError.responseText);
+                        sMsg = oErr.error.message.value || sMsg;
+                    } catch (e) { }
+                    sap.m.MessageBox.error(sMsg);
+                }
+            });
+        }
     });
 
     return WBSDetailController;

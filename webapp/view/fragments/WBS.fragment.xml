@@ -9,14 +9,6 @@
         <Title text="WBS &amp; Gantt Schedule" level="H4"/>
         <ToolbarSpacer/>
         <Button
-            id="btnSubmitApproval"
-            text="Submit for Approval"
-            icon="sap-icon://paper-plane"
-            type="Emphasized"
-            press=".onSubmitWbsApproval"
-            visible="{= ${userModel>/userId} === 'LEARN-549' }"
-            tooltip="Submit selected WBS items for approval"/>
-        <Button
             id="btnRunWbs"
             text="Run WBS"
             icon="sap-icon://play"

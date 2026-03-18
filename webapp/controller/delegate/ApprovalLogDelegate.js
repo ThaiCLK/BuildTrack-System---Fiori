@@ -23,12 +23,85 @@ sap.ui.define([
             oController.formatApprovalActionIcon = this.formatApprovalActionIcon.bind(oController);
             oController.onLogSelectionChange = this.onLogSelectionChange.bind(oController);
             oController._initInvestorCanvas = this._initInvestorCanvas.bind(oController);
-            
+
             // Stubs for old references
-            oController.onSignInvestorPress = function () { };
-            oController.onClearSignature = function () { };
-            oController.onCancelSignature = function () { };
-            oController.onConfirmSignature = function () { };
+            oController.onSignInvestorPress = function (oEvent) {
+                console.log("onSignInvestorPress was called, attempting to open dialog...");
+                // Open the signature dialog and set current approval level based on which button is visible
+                var oView = oController.getView();
+                var oViewData = oView.getModel("viewData");
+                var iLevel = 0;
+                if (oViewData.getProperty("/canApproveLevel1")) iLevel = 1;
+                else if (oViewData.getProperty("/canApproveLevel2")) iLevel = 2;
+                else if (oViewData.getProperty("/canApproveLevel3")) iLevel = 3;
+                oViewData.setProperty("/currentApprovalLevel", iLevel);
+                if (!oController._pSignatureDialog) {
+                    oController._pSignatureDialog = sap.ui.core.Fragment.load({
+                        id: oView.getId(),
+                        name: "z.bts.buildtrack.view.fragments.SignatureDialog",
+                        controller: oController
+                    }).then(function (oDialog) {
+                        oView.addDependent(oDialog);
+                        return oDialog;
+                    });
+                }
+                oController._pSignatureDialog.then(function (oDialog) {
+                    oDialog.open();
+                });
+            };
+            oController.onClearSignature = function () {
+                var oCanvas = document.getElementById("signatureCanvas");
+                if (oCanvas) {
+                    var ctx = oCanvas.getContext("2d");
+                    ctx.clearRect(0, 0, oCanvas.width, oCanvas.height);
+                }
+            };
+            oController.onCancelSignature = function () {
+                if (oController._pSignatureDialog) {
+                    oController._pSignatureDialog.then(function (oDialog) { oDialog.close(); });
+                }
+            };
+            oController.onConfirmSignature = function () {
+                var oView = oController.getView();
+                var oViewData = oView.getModel("viewData");
+                var iLevel = oViewData.getProperty("/currentApprovalLevel");
+                var oCanvas = document.getElementById("signatureCanvas");
+                var dataUrl = oCanvas ? oCanvas.toDataURL() : null;
+                // Store signature data in approval model
+                var oApprovalModel = oView.getModel("approvalModel");
+                if (oApprovalModel && dataUrl) {
+                    oApprovalModel.setProperty("/investorSignature", dataUrl);
+                }
+                // Update sign status
+                var oSignStatus = oViewData.getProperty("/signStatus");
+                var signerName = "[Ký]"; // fallback
+                
+                var oComponent = oController.getOwnerComponent();
+                if (oComponent) {
+                    var oUserModel = oComponent.getModel("userModel");
+                    if (oUserModel) {
+                        signerName = oUserModel.getProperty("/userName") || oUserModel.getProperty("/userId") || "[Ký]";
+                    }
+                }
+
+                if (iLevel === 1) {
+                    oSignStatus.level1 = { text: signerName, signed: true };
+                    oViewData.setProperty("/canApproveLevel1", false);
+                } else if (iLevel === 2) {
+                    oSignStatus.level2 = { text: signerName, signed: true };
+                    oViewData.setProperty("/canApproveLevel2", false);
+                } else if (iLevel === 3) {
+                    oSignStatus.level3 = { text: signerName, signed: true };
+                    oViewData.setProperty("/canApproveLevel3", false);
+                }
+                oViewData.setProperty("/signStatus", oSignStatus);
+                // Close dialog
+                if (oController._pSignatureDialog) {
+                    oController._pSignatureDialog.then(function (oDialog) { oDialog.close(); });
+                }
+                // Proceed with approval action
+                oController.onApproveFromReport();
+            };
 
             // Local model for logs
             var oLogListModel = new JSONModel([]);
@@ -78,7 +151,7 @@ sap.ui.define([
 
             // ── SYNC: Wait for identity resolution before fetching/filtering ──
             if (oComponent.SecurityDelegate && oComponent.SecurityDelegate.whenUserIdentified) {
-                oComponent.SecurityDelegate.whenUserIdentified().then(function(sUserId) {
+                oComponent.SecurityDelegate.whenUserIdentified().then(function (sUserId) {
                     console.log("ApprovalLog: Session confirmed for " + sUserId + ", binding logs...");
                     this._doLoadAndFilter(sWbsId);
                 }.bind(this));
@@ -90,7 +163,7 @@ sap.ui.define([
         /**
          * Internal: Fetches logs and filters for the current local user ID.
          */
-        _doLoadAndFilter: function(sWbsId) {
+        _doLoadAndFilter: function (sWbsId) {
             var oView = this.getView();
             var oModel = oView.getModel();
             var oLogListModel = oView.getModel("logListModel");
@@ -100,24 +173,47 @@ sap.ui.define([
 
             oModel.read("/ApprovalLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", true)],
+                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", false)], // Newest first
                 success: function (oData) {
                     oView.setBusy(false);
                     var aLogs = oData.results || [];
-                    var sCurrentId = (oUserModel.getProperty("/userId") || "").toUpperCase().trim();
                     
-                    var aFiltered = aLogs.filter(function (log) {
-                        var sAction = (log.Action || "").toUpperCase();
-                        var bIsTargetAction = sAction.indexOf("CHẤP THUẬN") !== -1 || sAction.indexOf("TỪ CHỐI") !== -1;
-                        var bUserMatch = (log.ActionBy || "").toUpperCase().trim() === sCurrentId;
-                        return bUserMatch && bIsTargetAction;
-                    });
+                    // Filter logs by current user ID
+                    var sCurrentUserId = oUserModel ? oUserModel.getProperty("/userId") : null;
+                    if (sCurrentUserId) {
+                        aLogs = aLogs.filter(function(log) {
+                            var author = log.ActionBy || log.CreatedBy;
+                            return author === sCurrentUserId;
+                        });
+                    }
+                    
+                    if (oLogListModel) oLogListModel.setData(aLogs);
 
-                    console.log("ApprovalLog: Fetched " + aLogs.length + " total. Sync'd to " + aFiltered.length + " for " + sCurrentId);
-                    if (oLogListModel) oLogListModel.setData(aFiltered);
-                    
+                    // Async fetch user names to replace user IDs in the list
+                    if (oLogListModel) {
+                        aLogs.forEach(function (oLog) {
+                            var sUserId = oLog.ActionBy || oLog.CreatedBy;
+                            if (!sUserId) return;
+
+                            var sPath = "/UserRoleSet('" + sUserId + "')";
+                            var sUserName = oModel.getProperty(sPath + "/UserName");
+                            
+                            if (sUserName) {
+                                oLog.ActionBy = sUserName;
+                                oLogListModel.refresh(true);
+                            } else {
+                                oModel.read(sPath, {
+                                    success: function (oUserData) {
+                                        oLog.ActionBy = oUserData.UserName;
+                                        oLogListModel.refresh(true);
+                                    }
+                                });
+                            }
+                        });
+                    }
+
                     // Re-init canvas after load
-                    setTimeout(function() { this._initInvestorCanvas(); }.bind(this), 200);
+                    setTimeout(function () { this._initInvestorCanvas(); }.bind(this), 200);
                 }.bind(this),
                 error: function () {
                     oView.setBusy(false);
@@ -162,32 +258,7 @@ sap.ui.define([
         /* =========================================================== */
 
         onLogSelectionChange: function (oEvent) {
-            var that = this;
-            var oModel = this.getView().getModel("approvalModel");
-
-            var oItem = oEvent.getParameter("listItem");
-            if (oItem) {
-                var oContext = oItem.getBindingContext("logListModel");
-                if (oContext) {
-                    var oData = oContext.getObject();
-                    oModel.setProperty("/selectedLog", oData);
-                    oModel.setProperty("/ui/isSelected", true);
-                } else {
-                    oModel.setProperty("/selectedLog", {});
-                    oModel.setProperty("/ui/isSelected", false);
-                }
-            } else {
-                oModel.setProperty("/selectedLog", {});
-                oModel.setProperty("/ui/isSelected", false);
-            }
-
-            var oCanvas = document.getElementById("investorCanvas");
-            if (oCanvas) {
-                oCanvas.getContext("2d").clearRect(0, 0, oCanvas.width, oCanvas.height);
-                this._initInvestorCanvas();
-            } else {
-                setTimeout(function () { that._initInvestorCanvas(); }, 100);
-            }
+            // No longer used in the new Dialog-based UX
         },
 
         /* =========================================================== */

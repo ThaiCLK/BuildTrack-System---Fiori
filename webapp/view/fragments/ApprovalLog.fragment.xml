@@ -7,167 +7,32 @@
 
     <VBox height="100%" fitContainer="true">
         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WBSStatusProgress" type="XML" />
-        <l:Splitter height="100%" width="100%">
-        <!-- ── MASTER: List of logs (Versions) ─────────────────────────── -->
+        
         <VBox height="100%" fitContainer="true" class="approvalLogMasterPanel">
-            <layoutData><l:SplitterLayoutData size="380px" minSize="300px"/></layoutData>
             <Toolbar design="Transparent">
-                <Title text="Lịch sử nghiệm thu" level="H5" />
+                <Title text="Nhật ký phê duyệt" level="H5" />
                 <ToolbarSpacer />
+                <Button 
+                    text="Gửi duyệt WBS hiện tại" 
+                    type="Emphasized" 
+                    icon="sap-icon://paper-plane"
+                    press=".onSubmitApprovalPress"
+                    visible="{= ${userModel>/userId} === 'LEARN-549' }" />
                 <Button icon="sap-icon://sort" type="Transparent" />
             </Toolbar>
             <ScrollContainer height="calc(100vh - 250px)" vertical="true" horizontal="false">
                 <List id="idApprovalLogList" 
-                    mode="SingleSelectMaster" 
-                    selectionChange="onLogSelectionChange"
+                    mode="None" 
                     items="{logListModel>/}"
-                    noDataText="No logs found for your account">
+                    noDataText="Chưa có nhật ký phê duyệt cho hạng mục này">
                     <StandardListItem
-                        title="{logListModel>Action} - Cấp {logListModel>ApprovalLevel}"
+                        title="{logListModel>Action} - {logListModel>WorkItemId}"
                         description="{logListModel>ActionBy}"
-                        info="{logListModel>WorkItemId}"
+                        info="{path: 'logListModel>CreatedTimestamp', type: 'sap.ui.model.type.DateTime', formatOptions: {pattern: 'dd/MM/yyyy HH:mm:ss'}}"
                         infoState="{path: 'logListModel>Action', formatter: '.formatApprovalActionState'}"
                         icon="{path: 'logListModel>Action', formatter: '.formatApprovalActionIcon'}" />
                 </List>
             </ScrollContainer>
         </VBox>
-
-        <!-- ── DETAIL: A4 Document View ────────────────────────────────── -->
-        <VBox height="100%" fitContainer="true" backgroundDesign="Translucent">
-            
-            <!-- Placeholder when no log is selected -->
-            <VBox
-                visible="{= !${approvalModel>/ui/isSelected} }"
-                justifyContent="Center"
-                alignItems="Center"
-                height="100%">
-                <core:Icon src="sap-icon://document" size="3rem" color="#bbb"/>
-                <Text text="Select a log entry to view details" class="sapUiSmallMarginTop"/>
-            </VBox>
-
-            <!-- Actual Document Container -->
-            <ScrollContainer height="calc(100vh - 215px)" width="100%" vertical="true" horizontal="false" 
-                             class="approvalLogDetailArea" visible="{approvalModel>/ui/isSelected}">
-                <VBox class="paperA4">
-                    
-                    <!-- Header -->
-                    <VBox class="acceptanceHeader">
-                        <Label text="CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" class="signatureLabel" />
-                        <Label text="Độc lập - Tự do - Hạnh phúc" class="signatureLabel" />
-                        <html:div class="acceptanceHeaderLine" />
-                        
-                        <Title text="BIÊN BẢN NGHIỆM THU KHỐI LƯỢNG" class="acceptanceTitle sapUiMediumMarginTop" />
-                        <Text text="Số: NT-{WbsCode}" class="infoTableValue" />
-                        <Text text="(Giai đoạn: {path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}} - {path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}})" 
-                              class="signatureSubLabel sapUiTinyMarginTop"/>
-                    </VBox>
-
-                    <!-- Section I: Thông tin chung -->
-                    <VBox class="sapUiMediumMarginTop">
-                        <Label text="I. THÔNG TIN CHUNG" class="signatureLabel sapUiSmallMarginBottom" />
-                        <VBox class="sapUiSmallMarginBegin">
-                            <HBox class="infoTableRow">
-                                <Label text="Dự án / Gói thầu:" class="infoTableLabel" />
-                                <Text text="{projectModel>/ProjectName}" class="infoTableValue" />
-                            </HBox>
-                            <HBox class="infoTableRow">
-                                <Label text="Hạng mục (WBS):" class="infoTableLabel" />
-                                <Text text="{WbsName} (Mã: {WbsCode})" class="infoTableValue" />
-                            </HBox>
-                            <HBox class="infoTableRow">
-                                <Label text="Phân khu:" class="infoTableLabel" />
-                                <Text text="{projectModel>/SiteName}" class="infoTableValue" />
-                            </HBox>
-                            <HBox class="infoTableRow">
-                                <Label text="Vị trí:" class="infoTableLabel" />
-                                <Text text="{locationModel>/LocationName}" class="infoTableValue" />
-                            </HBox>
-                            <HBox class="infoTableRow">
-                                <Label text="Nhà thầu:" class="infoTableLabel" />
-                                <Text text="Công ty Thầu Xây dựng (Mặc định)" class="infoTableValue" />
-                            </HBox>
-                        </VBox>
-                    </VBox>
-
-                    <!-- Section II: Nội dung nghiệm thu -->
-                    <VBox class="sapUiMediumMarginTop">
-                        <Label text="II. NỘI DUNG NGHIỆM THU" class="signatureLabel sapUiSmallMarginBottom" />
-                        
-                        <!-- Manual Table using HTML -->
-                        <html:table class="acceptanceTable">
-                            <html:thead>
-                                <html:tr>
-                                    <html:th>Nội dung công việc</html:th>
-                                    <html:th style="width: 10%;">ĐVT</html:th>
-                                    <html:th style="width: 15%;">Kế hoạch</html:th>
-                                    <html:th style="width: 15%;">Thực tế</html:th>
-                                    <html:th style="width: 15%;">Đánh giá</html:th>
-                                </html:tr>
-                            </html:thead>
-                            <html:tbody>
-                                <html:tr>
-                                    <html:td class="textLeft">{WbsName}</html:td>
-                                    <html:td>{UnitCode}</html:td>
-                                    <html:td>{Quantity}</html:td>
-                                    <html:td>{TotalQuantityDone}</html:td>
-                                    <html:td>
-                                        <html:span class="{= ${TotalQuantityDone} >= ${Quantity} ? 'evalPass' : '' }">
-                                            {= ${TotalQuantityDone} >= ${Quantity} ? 'Đạt' : 'Chưa Đạt' }
-                                        </html:span>
-                                    </html:td>
-                                </html:tr>
-                            </html:tbody>
-                        </html:table>
-                    </VBox>
-
-                    <!-- Section III: Kết luận -->
-                    <VBox class="sapUiMediumMarginTop">
-                        <Label text="III. KẾT LUẬN" class="signatureLabel sapUiTinyMarginBottom" />
-                        <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên theo ghi nhận lúc {path: 'approvalModel>/selectedLog/CreatedTimestamp', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}. Đạt yêu cầu kỹ thuật để triển khai công việc tiếp theo." 
-                              class="acceptanceConclusion" />
-                    </VBox>
-
-                    <!-- Signatures -->
-                    <l:Grid defaultSpan="L4 M4 S12" class="sapUiLargeMarginTop sapUiMediumMarginBottom">
-                        <l:content>
-                            <!-- Kỹ sư phụ trách -->
-                            <VBox alignItems="Center">
-                                <Label text="KỸ SƯ PHỤ TRÁCH" class="signatureLabel" />
-                                <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
-                                <VBox height="90px" justifyContent="Center" alignItems="Center">
-                                    <Text text="[Đã ký: {approvalModel>/selectedLog/ActionBy}]" class="signatureStamp" 
-                                          visible="{= ${approvalModel>/selectedLog/Action} === 'SUBMITTED' || ${approvalModel>/selectedLog/Action} === 'APPROVED' }" />
-                                </VBox>                      
-                            </VBox>
-
-                            <!-- Tư vấn giám sát -->
-                            <VBox alignItems="Center">
-                                <Label text="TƯ VẤN GIÁM SÁT" class="signatureLabel" />
-                                <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
-                                <VBox height="90px" justifyContent="Center" alignItems="Center">
-                                    <Text text="[Đã ký: Người Duyệt TVGS]" class="signatureStamp" 
-                                          visible="{= ${approvalModel>/selectedLog/Action} === 'APPROVED' }" />
-                                </VBox>                      
-                            </VBox>
-
-                            <!-- Đại diện chủ đầu tư -->
-                            <VBox alignItems="Center">
-                                <Label text="ĐẠI DIỆN CHỦ ĐẦU TƯ" class="signatureLabel" />
-                                <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
-                                <VBox height="90px" justifyContent="Center" alignItems="Center">
-                                    <Button text="Vào SAP Ký Duyệt" 
-                                            class="btnAcceptanceSign"
-                                            visible="{= ${approvalModel>/selectedLog/Action} !== 'APPROVED' &amp;&amp; ${approvalModel>/selectedLog/ApprovalLevel} === '2' }" />
-                                    <Text text="[Đã duyệt hệ thống]" class="signatureStamp"
-                                          visible="{= ${approvalModel>/selectedLog/Action} === 'APPROVED' &amp;&amp; ${approvalModel>/selectedLog/ApprovalLevel} === '2' }" />
-                                </VBox>
-                            </VBox>
-                        </l:content>
-                    </l:Grid>
-
-                </VBox>
-            </ScrollContainer>
-        </VBox>
-        </l:Splitter>
     </VBox>
 </core:FragmentDefinition>

@@ -169,6 +169,7 @@
                 <Property Name="UserName"  Type="Edm.String" MaxLength="100" sap:label="User Name" />
                 <Property Name="Role"      Type="Edm.String" MaxLength="50"  sap:label="Role" />
                 <Property Name="AuthLevel" Type="Edm.Int32"                  sap:label="Auth Level" />
+                <Property Name="LeadId"    Type="Edm.String" MaxLength="12"  sap:label="Lead ID" />
                 <Property Name="Status"    Type="Edm.String" MaxLength="10"  sap:label="Status" />
                 <Property Name="CreatedBy" Type="Edm.String" MaxLength="12"  sap:label="Created By" />
                 <Property Name="CreatedOn" Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
@@ -311,6 +312,10 @@
 
                 <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
                     <Parameter Name="WS_ID" Type="Edm.Guid" Mode="In" />
+                </FunctionImport>
+
+                <FunctionImport Name="CloseWbsApproval" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
+                    <Parameter Name="WBS_IDS" Type="Edm.Guid" Mode="In" />
                 </FunctionImport>
 
                 <FunctionImport Name="CheckDecision" ReturnType="Edm.Int32" m:HttpMethod="POST">

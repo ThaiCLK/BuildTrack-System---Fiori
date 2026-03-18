@@ -116,7 +116,7 @@
                     <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="Tổng hợp" key="workSummaryTab">
                          <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WorkSummary" type="XML" />
                     </IconTabFilter>
-                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Lịch sử duyệt" key="approvalLogTab">
+                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Nhật ký phê duyệt" key="approvalLogTab">
                          <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.ApprovalLog" type="XML" />
                     </IconTabFilter>
                 </items>

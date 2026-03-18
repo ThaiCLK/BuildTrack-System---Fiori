@@ -18,7 +18,7 @@
                         <Label text="Work Item Title" design="Bold"/>
                         <VBox>
                             <Text text="{WbsName}" design="Bold" style="font-size: 1.1rem;"/>
-                            <Text text="Code: {WbsCode}" size="Tiny" color="Neutral" />
+                            <Text text="Code: {WbsCode}" color="Neutral" />
                         </VBox>
                         
                         <Label text="Project" design="Bold"/>
@@ -37,7 +37,7 @@
             <Panel headerText="II. Progress Evaluation (Target vs Actual)" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                 <VBox width="100%">
                         <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom" width="100%">
-                            <Label text="Completion Rate (Target: {Quantity} {UnitCode})" design="Bold"/>
+                            <Label text="{parts: ['Quantity', 'UnitCode'], formatter: '.formatCompletionRateTitle'}" design="Bold"/>
                             <ObjectStatus 
                                 text="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}" 
                                 state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
@@ -55,7 +55,7 @@
                         <l:content>
                             <VBox>
                                 <Label text="Target (Planned)" class="sapUiTinyMarginBottom"/>
-                                <ObjectNumber number="{Quantity}" unit="{UnitCode}" state="None" />
+                                <ObjectNumber number="{path: 'Quantity', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="None" />
                             </VBox>
                             <VBox>
                                 <Label text="Actual (Total Done)" class="sapUiTinyMarginBottom"/>
@@ -94,9 +94,9 @@
                             <cells>
                                 <Text text="{workSummaryModel>WbsCode}" />
                                 <Text text="{workSummaryModel>WbsName}" design="Bold" wrapping="true" />
-                                <ObjectNumber number="{workSummaryModel>Quantity}" unit="{workSummaryModel>UnitCode}" />
+                                <ObjectNumber number="{path: 'workSummaryModel>Quantity', formatter: '.formatTotalQty'}" unit="{workSummaryModel>UnitCode}" />
                                 <ObjectNumber 
-                                    number="{workSummaryModel>TotalQtyDone}" 
+                                    number="{path: 'workSummaryModel>TotalQtyDone', formatter: '.formatTotalQty'}" 
                                     unit="{workSummaryModel>UnitCode}" 
                                     state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" />
                                 

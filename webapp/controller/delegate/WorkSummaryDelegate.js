@@ -15,13 +15,14 @@ sap.ui.define([
             oController.formatWorkSummaryStatusState = this.formatWorkSummaryStatusState.bind(oController);
             oController.formatWorkSummaryStatusIcon = this.formatWorkSummaryStatusIcon.bind(oController);
             oController.onSubmitForApproval = this.onSubmitForApproval.bind(oController);
-            
+
             // Stepper Formatters
             oController.formatStepClass = this.formatStepClass.bind(oController);
             oController.formatStepLabelClass = this.formatStepLabelClass.bind(oController);
             oController.formatStepLineClass = this.formatStepLineClass.bind(oController);
             oController.formatStepIcon = this.formatStepIcon.bind(oController);
             oController.formatStepLabel = this.formatStepLabel.bind(oController);
+            oController.formatCompletionRateTitle = this.formatCompletionRateTitle.bind(oController);
         },
 
         /**
@@ -46,7 +47,7 @@ sap.ui.define([
                 success: function (oWbs) {
                     var bIsParent = false;
                     var vParentId = oWbs.ParentId;
-                    
+
                     if (!vParentId) {
                         bIsParent = true;
                     } else {
@@ -68,7 +69,7 @@ sap.ui.define([
             });
         },
 
-        _loadParentAggregation: function(sWbsId, oWSModel, oModel) {
+        _loadParentAggregation: function (sWbsId, oWSModel, oModel) {
             oModel.read("/WBSSet", {
                 filters: [new Filter("ParentId", FilterOperator.EQ, sWbsId)],
                 urlParameters: {
@@ -76,11 +77,11 @@ sap.ui.define([
                 },
                 success: function (oData) {
                     var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
-                    var aChildren = (oData.results || []).filter(function(w) {
+                    var aChildren = (oData.results || []).filter(function (w) {
                         if (!w.ParentId) return false;
                         return w.ParentId.toLowerCase().replace(/-/g, "") === sNormParentId;
                     });
-                    
+
                     if (aChildren.length === 0) {
                         oWSModel.setProperty("/Children", []);
                         return;
@@ -95,18 +96,18 @@ sap.ui.define([
                                 (oLogData.results || []).forEach(function (l) {
                                     fSum += parseFloat(l.QuantityDone) || 0;
                                 });
-                                oChild.TotalQtyDone = fSum.toFixed(3);
-                                
+                                oChild.TotalQtyDone = Math.round(fSum).toString();
+
                                 iProcessed++;
                                 if (iProcessed === aChildren.length) {
                                     var fParentAggregate = 0;
-                                    aChildren.forEach(function(c) {
+                                    aChildren.forEach(function (c) {
                                         fParentAggregate += parseFloat(c.TotalQtyDone) || 0;
                                     });
-                                    
+
                                     oWSModel.setData({
                                         Children: aChildren,
-                                        TotalQtyDone: fParentAggregate.toFixed(3),
+                                        TotalQtyDone: Math.round(fParentAggregate).toString(),
                                         WbsId: sWbsId
                                     });
                                 }
@@ -126,7 +127,7 @@ sap.ui.define([
             });
         },
 
-        _loadLeafNodeAggregation: function(sWbsId, oWSModel, oModel) {
+        _loadLeafNodeAggregation: function (sWbsId, oWSModel, oModel) {
             var that = this;
             oModel.read("/DailyLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
@@ -137,7 +138,7 @@ sap.ui.define([
                     });
 
                     oWSModel.setData({
-                        TotalQtyDone: fTotal.toFixed(3),
+                        TotalQtyDone: Math.round(fTotal).toString(),
                         WbsId: sWbsId,
                         Children: []
                     });
@@ -165,6 +166,12 @@ sap.ui.define([
             return ((fActual / fTarget) * 100).toFixed(0) + "%";
         },
 
+        formatCompletionRateTitle: function (sTarget, sUnit) {
+            var fTarget = Math.round(parseFloat(sTarget) || 0);
+            var sU = sUnit ? " " + sUnit : "";
+            return "Completion Rate (Target: " + fTarget + sU + ")";
+        },
+
         formatProgress: function (sActual, sTarget) {
             var fActual = parseFloat(sActual);
             var fTarget = parseFloat(sTarget);
@@ -188,7 +195,7 @@ sap.ui.define([
             var fActual = parseFloat(sActual) || 0;
             var fTarget = parseFloat(sTarget) || 0;
             var sU = sUnit ? " " + sUnit : "";
-            return fActual + " / " + fTarget + sU;
+            return Math.round(fActual) + " / " + Math.round(fTarget) + sU;
         },
 
         formatTotalQty: function (sActual) {
@@ -197,7 +204,8 @@ sap.ui.define([
             }
             var fActual = parseFloat(sActual);
             if (isNaN(fActual)) return "0";
-            return sActual.toString(); 
+            // Return as integer string
+            return Math.round(fActual).toString();
         },
 
         formatWorkSummaryStatusState: function (sStatus) {
@@ -234,23 +242,23 @@ sap.ui.define([
             var m = {
                 "PLANNING": 1,
                 "PENDING_OPEN": 2,
+                "OPEN_REJECTED": 2,
                 "OPENED": 3,
-                "OPEN_REJECTED": 3,
                 "IN_PROGRESS": 4,
                 "PENDING_CLOSE": 5,
-                "CLOSED": 6,
-                "CLOSE_REJECTED": 6
+                "CLOSE_REJECTED": 5,
+                "CLOSED": 6
             };
             return m[sStatus] || 0;
         },
 
         formatStepClass: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
-            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "stepRejected";
-            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "stepRejected";
-            if (iCurrent > iStep) return "stepCompleted";
-            if (iCurrent === iStep) return "stepActive";
-            return "stepPending";
+            if (iStep === 2 && sStatus === "OPEN_REJECTED") return "wbsStepCircle stepRejected";
+            if (iStep === 5 && sStatus === "CLOSE_REJECTED") return "wbsStepCircle stepRejected";
+            if (iCurrent > iStep) return "wbsStepCircle stepCompleted";
+            if (iCurrent === iStep) return "wbsStepCircle stepActive";
+            return "wbsStepCircle stepPending";
         },
 
         formatStepLabelClass: function (sStatus, iStep) {
@@ -269,10 +277,23 @@ sap.ui.define([
 
         formatStepIcon: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
-            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "sap-icon://decline";
-            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "sap-icon://decline";
+            if (iStep === 2 && sStatus === "OPEN_REJECTED") return "sap-icon://decline";
+            if (iStep === 5 && sStatus === "CLOSE_REJECTED") return "sap-icon://decline";
+
+            // Success icon for completed steps
             if (iCurrent > iStep) return "sap-icon://accept";
-            return null; 
+
+            // Optional: return specific icons for each phase if not completed
+            var aIcons = [
+                "sap-icon://edit",          // Planning
+                "sap-icon://paper-plane",   // Pending Open
+                "sap-icon://it-host",       // Opened
+                "sap-icon://customer",      // In Progress
+                "sap-icon://pending",       // Pending Close
+                "sap-icon://accept"         // Closed
+            ];
+
+            return aIcons[iStep - 1] || null;
         },
 
         formatStepLabel: function (iStep, sStatus) {
@@ -283,7 +304,7 @@ sap.ui.define([
 
             if (iStepNum === 3 && sStatus === "OPEN_REJECTED") return "Open Rejected";
             if (iStepNum === 6 && sStatus === "CLOSE_REJECTED") return "Close Rejected";
-            
+
             return sLabel;
         },
 
@@ -302,12 +323,22 @@ sap.ui.define([
 
             var fnCallAction = function () {
                 var oModel = this.getOwnerComponent().getModel();
+                var oWbsCtx = this.getView().getBindingContext();
+                var sStatus = oWbsCtx ? oWbsCtx.getProperty("Status") : "";
+
+                // Strict status guard for Closing flow
+                if (sStatus !== "IN_PROGRESS") {
+                    sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' (Đang thi công) mới có thể gửi phê duyệt đóng.");
+                    return;
+                }
+
                 oView.setBusy(true);
 
-                oModel.callFunction("/StartWSProcess", {
+                // Official API for Closing flow
+                oModel.callFunction("/CloseWbsApproval", {
                     method: "POST",
                     urlParameters: {
-                        WS_ID: sWbsId
+                        WBS_IDS: sWbsId
                     },
                     success: function (oData, response) {
                         oView.setBusy(false);
