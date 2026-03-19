@@ -9,6 +9,22 @@
         <Title text="WBS &amp; Gantt Schedule" level="H4"/>
         <ToolbarSpacer/>
         <Button
+            id="btnSubmitOpenWbs"
+            text="Gửi duyệt Mở"
+            icon="sap-icon://sys-enter-2"
+            type="Accept"
+            press=".onSubmitOpenWbsApproval"
+            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
+            tooltip="Gửi duyệt yêu cầu Mở WBS"/>
+        <Button
+            id="btnSubmitCloseWbs"
+            text="Gửi duyệt Đóng"
+            icon="sap-icon://locked"
+            type="Accept"
+            press=".onSubmitCloseWbsApproval"
+            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
+            tooltip="Gửi duyệt yêu cầu Đóng (Nghiệm thu) WBS"/>
+        <Button
             id="btnRunWbs"
             text="Run WBS"
             icon="sap-icon://play"

@@ -178,6 +178,11 @@ sap.ui.define([
                     oView.setBusy(false);
                     var aLogs = oData.results || [];
                     
+                    // Force WbsId filter natively because backend ignores the API filter
+                    aLogs = aLogs.filter(function(log) {
+                        return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                    });
+                    
                     // Filter logs by current user ID
                     var sCurrentUserId = oUserModel ? oUserModel.getProperty("/userId") : null;
                     if (sCurrentUserId) {

@@ -75,7 +75,7 @@
                         <form:SimpleForm
                             editable="false"
                             layout="ResponsiveGridLayout"
-                            title="📍 Work Location"
+                            title="Work Location"
                             labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
                             adjustLabelSpan="false"
                             emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
@@ -109,7 +109,7 @@
 
                     </IconTabFilter>
                     
-                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Nhật ký" visible="{path: 'ParentId', formatter: '.isChildNode'}">
+                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Nhật ký thi công" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                         <!-- Fragment được include trực tiếp — không cần lazy load -->
                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.DailyLog" type="XML"/>
                     </IconTabFilter>

@@ -24,7 +24,7 @@
 
             <!-- Toolbar: title + add button -->
             <OverflowToolbar design="Solid">
-                <Title text="Daily Log" level="H3"/>
+                <Title text="Nhật ký thi công" level="H3"/>
                 <ToolbarSpacer/>
                 <!-- Excel actions grouped in a dropdown MenuButton -->
                 <MenuButton
@@ -103,7 +103,7 @@
 
             <!-- ── Top toolbar: title + edit/delete buttons ── -->
             <OverflowToolbar design="Solid">
-                <Title text="Log Detail" level="H3"/>
+                <Title text="Chi tiết nhật ký" level="H3"/>
                 <ToolbarSpacer/>
                 <Button
                     text="Edit"

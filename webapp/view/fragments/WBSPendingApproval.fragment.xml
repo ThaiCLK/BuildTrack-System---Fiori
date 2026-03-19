@@ -2,16 +2,16 @@
     xmlns="sap.m"
     xmlns:core="sap.ui.core">
     <VBox>
-        <!-- Section 1: Pending Open -->
+        <!-- Single Table for all Pending Approvals (Open and Close) -->
         <Table
-            id="pendingOpenTable"
-            items="{viewData>/pendingOpenWBS}"
-            noDataText="No WBS items pending Open approval."
+            id="pendingApprovalTable"
+            items="{viewData>/pendingWBS}"
+            noDataText="No WBS items pending approval."
             mode="MultiSelect"
             sticky="HeaderToolbar,ColumnHeaders">
             <headerToolbar>
                 <OverflowToolbar>
-                    <Title text="1. Hạng mục chờ Mở" level="H3"/>
+                    <Title text="Hạng mục chờ duyệt" level="H3"/>
                     <ToolbarSpacer/>
                     <Button
                         text="Approve"
@@ -41,54 +41,6 @@
             </columns>
             <items>
                 <ColumnListItem vAlign="Middle">
-                    <cells>
-                        <Text text="{viewData>WbsCode}" />
-                        <Text text="{viewData>WbsName}" />
-                        
-                        <ObjectStatus
-                            text="{path: 'viewData>Status', formatter: '.formatWbsStatusText'}"
-                            state="{path: 'viewData>Status', formatter: '.formatWbsStatusState'}"
-                            icon="{path: 'viewData>Status', formatter: '.formatWbsStatusIcon'}"
-                            inverted="true" />
-                            
-                        <ObjectNumber
-                            number="{viewData>Quantity}"
-                            unit="{viewData>UnitCode}"
-                            state="None" />
-                    </cells>
-                </ColumnListItem>
-            </items>
-        </Table>
-
-        <!-- Section 2: Pending Close -->
-        <Table
-            id="pendingCloseTable"
-            items="{viewData>/pendingCloseWBS}"
-            noDataText="No WBS items pending Close approval."
-            sticky="HeaderToolbar,ColumnHeaders"
-            class="sapUiMediumMarginTop">
-            <headerToolbar>
-                <OverflowToolbar>
-                    <Title text="2. Hạng mục chờ Đóng (Nghiệm thu)" level="H3"/>
-                    <ToolbarSpacer/>
-                </OverflowToolbar>
-            </headerToolbar>
-            <columns>
-                <Column width="8rem">
-                    <Text text="Mã WBS" />
-                </Column>
-                <Column>
-                    <Text text="Tên hạng mục" />
-                </Column>
-                <Column width="10rem" hAlign="Center">
-                    <Text text="Trạng thái" />
-                </Column>
-                <Column width="9rem" hAlign="End">
-                    <Text text="Khối lượng" />
-                </Column>
-            </columns>
-            <items>
-                <ColumnListItem vAlign="Middle" type="Active" press=".onPendingCloseItemPress">
                     <cells>
                         <Text text="{viewData>WbsCode}" />
                         <Text text="{viewData>WbsName}" />

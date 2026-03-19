@@ -41,35 +41,63 @@ sap.ui.define([
             var oTable = this.byId("idDailyLogList");
             if (!oTable) { return; }
 
-            var oFilter = new Filter("WbsId", FilterOperator.EQ, sWbsId);
-            var oSorter = new Sorter("LogDate", false);
-
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var oModel = this.getOwnerComponent().getModel();
+            
             oTable.unbindAggregation("items");
 
-            var oTemplate = new sap.m.ColumnListItem({
-                type: "Active",
-                cells: [
-                    new sap.m.Text({
-                        text: {
-                            path: "LogDate",
-                            type: "sap.ui.model.type.Date",
-                            formatOptions: { pattern: "dd/MM/yyyy" }
-                        }
-                    }),
-                    new sap.m.ObjectNumber({
-                        number: "{QuantityDone}",
-                        unit: "{UnitCode}",
-                        state: "None"
-                    })
-                ]
-            });
+            var oFilter = new Filter("WbsId", FilterOperator.EQ, sWbsId);
+            oTable.setBusy(true);
 
-            oTable.bindItems({
-                path: "/DailyLogSet",
+            oModel.read("/DailyLogSet", {
                 filters: [oFilter],
-                sorter: oSorter,
-                template: oTemplate,
-                templateShareable: false
+                success: function (oData) {
+                    oTable.setBusy(false);
+                    var aLogs = oData.results || [];
+                    
+                    // FALLBACK: Force client-side filtering because 
+                    // the backend ignores the $filter=WbsId eq '...'
+                    var aFilteredLogs = aLogs.filter(function(log) {
+                        return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                    });
+                    
+                    // Sort descending by LogDate manually
+                    aFilteredLogs.sort(function(a, b) {
+                        var d1 = new Date(a.LogDate).getTime();
+                        var d2 = new Date(b.LogDate).getTime();
+                        return d2 - d1;
+                    });
+                    
+                    oUIModel.setProperty("/list", aFilteredLogs);
+                    
+                    var oTemplate = new sap.m.ColumnListItem({
+                        type: "Active",
+                        cells: [
+                            new sap.m.Text({
+                                text: {
+                                    path: "dailyLogModel>LogDate",
+                                    type: "sap.ui.model.type.Date",
+                                    formatOptions: { pattern: "dd/MM/yyyy" }
+                                }
+                            }),
+                            new sap.m.ObjectNumber({
+                                number: "{dailyLogModel>QuantityDone}",
+                                unit: "{dailyLogModel>UnitCode}",
+                                state: "None"
+                            })
+                        ]
+                    });
+
+                    oTable.bindItems({
+                        path: "dailyLogModel>/list",
+                        template: oTemplate,
+                        templateShareable: false
+                    });
+                },
+                error: function () {
+                    oTable.setBusy(false);
+                    oUIModel.setProperty("/list", []);
+                }
             });
         },
 

@@ -351,17 +351,17 @@ sap.ui.define([
         },
 
         // ── WBS: APPROVAL FLOW ──────────────────────────────────────────────
-        onSubmitWbsApproval: function () {
+        onSubmitOpenWbsApproval: function () {
             var that = this;
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
             if (aIndices.length === 0) {
-                MessageToast.show("Please select WBS items to submit for approval.");
+                MessageToast.show("Please select WBS items to submit for Open approval.");
                 return;
             }
 
-            // Check if all selected items are in PLANNING status
+            // Check if all selected items are in PLANNING or OPEN_REJECTED status
             var aInvalidItems = [];
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
@@ -372,21 +372,54 @@ sap.ui.define([
             });
 
             if (aInvalidItems.length > 0) {
-                var sAllowed = "'Planning' or 'Open Rejected'";
-                MessageBox.error("Only WBS items in " + sAllowed + " status can be submitted. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                MessageBox.error("Only WBS items in 'Planning' or 'Open Rejected' status can be submitted for Open approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
                 return;
             }
 
-            MessageBox.confirm("Submit " + aIndices.length + " items for approval?", {
+            MessageBox.confirm("Submit " + aIndices.length + " items for Open approval?", {
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
-                        that._submitMultipleWbs(aIndices);
+                        that._submitMultipleWbs(aIndices, false);
                     }
                 }
             });
         },
 
-        _submitMultipleWbs: function (aIndices) {
+        onSubmitCloseWbsApproval: function () {
+            var that = this;
+            var oTable = this.byId("wbsTreeTable");
+            var aIndices = oTable ? oTable.getSelectedIndices() : [];
+
+            if (aIndices.length === 0) {
+                MessageToast.show("Please select WBS items to submit for Close approval.");
+                return;
+            }
+
+            // Check if all selected items are in IN_PROGRESS or CLOSE_REJECTED status
+            var aInvalidItems = [];
+            aIndices.forEach(function (iIdx) {
+                var oCtx = oTable.getContextByIndex(iIdx);
+                var oData = oCtx.getObject();
+                if (oData.Status !== "IN_PROGRESS" && oData.Status !== "CLOSE_REJECTED") {
+                    aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
+                }
+            });
+
+            if (aInvalidItems.length > 0) {
+                MessageBox.error("Only WBS items in 'In Progress' or 'Close Rejected' status can be submitted for Close approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                return;
+            }
+
+            MessageBox.confirm("Submit " + aIndices.length + " items for Close (Acceptance) approval?", {
+                onClose: function (sAction) {
+                    if (sAction === MessageBox.Action.OK) {
+                        that._submitMultipleWbs(aIndices, true);
+                    }
+                }
+            });
+        },
+
+        _submitMultipleWbs: function (aIndices, bIsClose) {
             var that = this;
             var oTable = this.byId("wbsTreeTable");
             var oModel = this.getOwnerComponent().getModel();
@@ -411,11 +444,12 @@ sap.ui.define([
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
 
-                oModel.callFunction("/StartWSProcess", {
+                var sEndpoint = bIsClose ? "/CloseWbsApproval" : "/StartWSProcess";
+                var oParams = bIsClose ? { WBS_IDS: oData.WbsId } : { WS_ID: oData.WbsId };
+
+                oModel.callFunction(sEndpoint, {
                     method: "POST",
-                    urlParameters: {
-                        WS_ID: oData.WbsId
-                    },
+                    urlParameters: oParams,
                     changeSetId: oData.WbsId, // Ensure separate changeset per item
                     success: function () {
                         iDone++;
@@ -502,7 +536,7 @@ sap.ui.define([
 
         _processPendingWbs: function (sDecisionCode) {
             var that = this;
-            var oTable = this.byId("pendingOpenTable"); // Fixed ID after refactor
+            var oTable = this.byId("pendingApprovalTable"); // Unified table for both Open & Close
             var aSelectedItems = oTable.getSelectedItems();
 
             if (aSelectedItems.length === 0) {
@@ -883,208 +917,8 @@ sap.ui.define([
             return isNaN(f) ? "0" : Math.round(f).toString();
         },
 
-        // ── PENDING APPROVAL - CLOSE (ACCEPTANCE REPORT) ──────────────────────
-        onPendingCloseItemPress: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext("viewData");
-            if (!oBindingContext) return;
-            var oWbs = oBindingContext.getObject();
-            var oView = this.getView();
-            var oModel = this.getOwnerComponent().getModel();
-            var that = this;
+        // ── PENDING APPROVAL - CLOSE (ACCEPTANCE REPORT) REMOVED AS REQUESTED ──
 
-            // 1. Prepare View Data
-            var oViewData = this.getView().getModel("viewData");
-            oViewData.setProperty("/isApprovalMode", true);
-            oViewData.setProperty("/activeWbs", oWbs);
-            oViewData.setProperty("/userLevel", oWbs.UserLevel);
-
-            oView.setBusy(true);
-
-            // 2. FETCH LATEST LOGS DIRECTLY from ApprovalLogSet (FILTER BY CLOSE TYPE)
-            oModel.read("/ApprovalLogSet", {
-                filters: [
-                    new sap.ui.model.Filter("WbsId", sap.ui.model.FilterOperator.EQ, oWbs.WbsId),
-                    new sap.ui.model.Filter("ApprovalType", sap.ui.model.FilterOperator.EQ, "CLOSE")
-                ],
-                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", false)],
-                success: function (oLogData) {
-                    oView.setBusy(false);
-                    var aLogs = oLogData.results || [];
-                    
-                    var oSignStatus = {
-                        level1: { text: "[Chờ duyệt]", signed: false },
-                        level2: { text: "[Chờ duyệt]", signed: false },
-                        level3: { text: "[Chờ duyệt]", signed: false }
-                    };
-
-                    var bCycleEnded = false;
-
-                    aLogs.slice().reverse().forEach(function (log) {
-                        if (bCycleEnded) return;
-
-                        var sAction = (log.Action || "").toUpperCase().trim();
-                        var iLevel = parseInt(log.ApprovalLevel);
-                        
-                        // STRICT check: Must be "CHẤP THUẬN" or "0001"
-                        // Specifically EXCLUDE: "ĐÃ NHẬN", "ĐÃ CHUYỂN", "GỬI"
-                        var bApproved = false;
-                        if (sAction === "0001" || sAction === "APPROVED" || sAction === "SUCCESS" || sAction === "ĐÃ PHÊ DUYỆT" || sAction === "KÝ DUYỆT") {
-                            bApproved = true;
-                        } else if (sAction.indexOf("CHẤP THUẬN YÊU CẦU ĐÓNG WBS") === 0) {
-                            // Only match exactly "CHẤP THUẬN YÊU CẦU ĐÓNG WBS" (possibly followed by "(Cấp X)")
-                            bApproved = true;
-                        }
-
-                        if (bApproved && !isNaN(iLevel)) {
-                            var sSigner = log.ActionBy || log.CreatedBy || "Đã ký";
-                            
-                            var sPath = "/UserRoleSet('" + sSigner + "')";
-                            var sUserName = oView.getModel().getProperty(sPath + "/UserName");
-                            if (sUserName) {
-                                sSigner = sUserName;
-                            } else {
-                                // Fetch async if not cached
-                                (function(userId, levelToUpdate) {
-                                    oView.getModel().read("/UserRoleSet('" + userId + "')", {
-                                        success: function(oUserData) {
-                                            var currentStatus = oViewData.getProperty("/signStatus");
-                                            if (levelToUpdate === 1) currentStatus.level1.text = oUserData.UserName;
-                                            if (levelToUpdate === 2) currentStatus.level2.text = oUserData.UserName;
-                                            if (levelToUpdate === 3) currentStatus.level3.text = oUserData.UserName;
-                                            oViewData.setProperty("/signStatus", currentStatus);
-                                        }
-                                    });
-                                })(sSigner, iLevel);
-                            }
-                            
-                            if (iLevel === 1 && !oSignStatus.level1.signed) oSignStatus.level1 = { text: sSigner, signed: true };
-                            if (iLevel === 2 && !oSignStatus.level2.signed) oSignStatus.level2 = { text: sSigner, signed: true };
-                            if (iLevel === 3 && !oSignStatus.level3.signed) oSignStatus.level3 = { text: sSigner, signed: true };
-                        }
-                        
-                        // IF THIS LOG IS THE START OF A CYCLE, STOP LOOKING AT OLDER LOGS
-                        if (sAction === "GỬI YÊU CẦU PHÊ DUYỆT ĐÓNG WBS" || sAction === "GỬI YÊU CẦU PHÊ DUYỆT MỞ WBS" || sAction === "0000" || sAction === "SUBMITTED") {
-                            bCycleEnded = true;
-                        }
-                    });
-
-                    // Ensure defaults
-                    if (!oSignStatus.level1.signed) {
-                        oSignStatus.level1 = { text: "[Chờ duyệt]", signed: false };
-                    }
-                    if (!oSignStatus.level2.signed) {
-                        oSignStatus.level2 = { text: "[Chờ duyệt]", signed: false };
-                    }
-                    if (!oSignStatus.level3.signed) {
-                        oSignStatus.level3 = { text: "[Chờ duyệt]", signed: false };
-                    }
-
-                    oViewData.setProperty("/signStatus", oSignStatus);
-
-                    // 3. Action Visibility
-                    var oUserModel = that.getOwnerComponent().getModel("userModel");
-                    var iUserLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : 0;
-                    var bCanSign = (iUserLevel > 0); 
-                    
-                    console.log("Approval Debug: UserLevel =", iUserLevel, "bCanSign =", bCanSign);
-                    console.log("Sign Statuses:", oSignStatus);
-                    
-                    oViewData.setProperty("/canApproveLevel1", bCanSign && iUserLevel === 1 && !oSignStatus.level1.signed);
-                    oViewData.setProperty("/canApproveLevel2", bCanSign && iUserLevel === 2 && !oSignStatus.level2.signed);
-                    oViewData.setProperty("/canApproveLevel3", bCanSign && iUserLevel === 3 && !oSignStatus.level3.signed);
-                    oViewData.setProperty("/canRejectFromReport", bCanSign);
-
-                    // 4. Load details
-                    that._loadWorkSummary(oWbs.WbsId);
-                    that._loadLocation(oWbs.WbsId);
-                    that._loadProjectInfo(that._sCurrentSiteId);
-
-                    // 5. Open Dialog
-                    if (!that._pAcceptanceDialog) {
-                        that._pAcceptanceDialog = Fragment.load({
-                            id: oView.getId(),
-                            name: "z.bts.buildtrack.view.fragments.AcceptanceReport",
-                            controller: that
-                        }).then(function (oDialog) {
-                            oView.addDependent(oDialog);
-                            return oDialog;
-                        });
-                    }
-
-                    that._pAcceptanceDialog.then(function (oDialog) {
-                        oDialog.setBindingContext(oModel.createBindingContext("/WBSSet(guid'" + oWbs.WbsId + "')"));
-                        oDialog.open();
-                    });
-                },
-                error: function (oError) {
-                    oView.setBusy(false);
-                    console.error("Failed to fetch logs:", oError);
-                    MessageBox.error("Không thể tải lịch sử phê duyệt.");
-                }
-            });
-        },
-
-        onApproveFromReport: function () {
-            this._submitDecisionFromReport("0001"); // 0001 = Approve
-        },
-
-        onRejectFromReport: function () {
-            this._submitDecisionFromReport("0002"); // 0002 = Reject
-        },
-
-        _submitDecisionFromReport: function (sDecisionCode) {
-            var that = this;
-            var oWbs = this.getView().getModel("viewData").getProperty("/activeWbs");
-            var oModel = this.getOwnerComponent().getModel();
-
-            if (!oWbs || !oWbs.WorkItemId) {
-                MessageBox.error("Cannot find Work Item ID. Please refresh and try again.");
-                return;
-            }
-
-            var sActionText = (sDecisionCode === "0001") ? "KÝ DUYỆT" : "TỪ CHỐI";
-            MessageBox.confirm("Bạn có chắc chắn muốn " + sActionText + " hạng mục này?", {
-                title: "Xác nhận hành động",
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.OK) {
-                        that.getView().setBusy(true);
-                        oModel.callFunction("/PostDecision", {
-                            method: "POST",
-                            urlParameters: {
-                                WI_ID: oWbs.WorkItemId,
-                                Decision: sDecisionCode,
-                                Note: sDecisionCode === "0001" ? "Approved via Acceptance Report" : "Rejected via Acceptance Report"
-                            },
-                            success: function (oData) {
-                                that.getView().setBusy(false);
-                                var oResult = oData.PostDecision || oData;
-                                if (oResult && oResult.SUCCESS === false) {
-                                    MessageBox.error(oResult.MESSAGE || "Lỗi xử lý hệ thống.");
-                                } else {
-                                    MessageBox.success("Đã xử lý quyết định thành công.");
-                                    that._bindApprovalLogList(oWbs.WbsId);
-                                    that._loadWbsData();
-                                    oModel.refresh(true);
-                                }
-                            },
-                            error: function (oError) {
-                                that.getView().setBusy(false);
-                                console.error("PostDecision Error:", oError);
-                                MessageBox.error("Lỗi giao tiếp với máy chủ.");
-                            }
-                        });
-                    }
-                }
-            });
-        },
-
-        onCloseAcceptanceDialog: function () {
-            if (this._pAcceptanceDialog) {
-                this._pAcceptanceDialog.then(function (oDialog) {
-                    oDialog.close();
-                });
-            }
-        },
 
         onSubmitForApproval: function () {
             // This is handled in WBS Detail, for Site Detail it shouldn't be visible in Approval Mode.
