@@ -68,7 +68,6 @@
     color: #333333;
     white-space: nowrap;
 
-    /* Căn chỉnh lại vị trí một chút nếu chữ bị lệch */
     position: relative;
     top: -1px;
     /* Đẩy chữ lên 1px nếu thấy nó bị thấp hơn thanh bar */
