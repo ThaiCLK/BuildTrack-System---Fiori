@@ -12,7 +12,55 @@
     >
         <VBox class="sapUiSmallMargin">
             <!-- ── Section I: Executive Summary (Header) ────────────────────────────────────────── -->
-            <Panel headerText="Work Summary" class="sapUiSmallMarginBottom">
+            <Panel class="sapUiSmallMarginBottom">
+                <headerToolbar>
+                    <Toolbar>
+                        <Title text="Work Summary" level="H4" />
+                        <ToolbarSpacer />
+                        <!-- Mở WBS -->
+                        <Button
+                            id="btnSubmitOpenWorkSummary"
+                            text="Gửi duyệt Mở"
+                            icon="sap-icon://sys-enter-2"
+                            type="Accept"
+                            press=".onPressSubmitOpenWorkSummary"
+                            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
+                        />
+                        <Button
+                            id="btnApproveOpenWorkSummary"
+                            text="Ký duyệt Mở"
+                            icon="sap-icon://signature"
+                            type="Emphasized"
+                            press=".onApproveOpenWorkSummary"
+                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' &amp;&amp; ${viewData>/isActionableWorkSummary} }"
+                        />
+                        <Button
+                            id="btnRejectOpenWorkSummary"
+                            text="Từ chối Mở"
+                            icon="sap-icon://decline"
+                            type="Reject"
+                            press=".onRejectOpenWorkSummary"
+                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' &amp;&amp; ${viewData>/isActionableWorkSummary} }"
+                        />
+                        <!-- Đóng WBS -->
+                        <Button
+                            id="btnSubmitCloseWorkSummary"
+                            text="Gửi duyệt Đóng"
+                            icon="sap-icon://sys-enter-2"
+                            type="Accept"
+                            press=".onPressSubmitCloseWorkSummary"
+                            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
+                        />
+                        <Button
+                            id="btnApproveCloseWorkSummary"
+                            text="{= ${viewData>/isActionableWorkSummary} ? 'Ký duyệt biên bản' : 'Xem biên bản nghiệm thu' }"
+                            icon="{= ${viewData>/isActionableWorkSummary} ? 'sap-icon://signature' : 'sap-icon://display' }"
+                            type="Emphasized"
+                            press="._openAcceptanceReport"
+                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_CLOSE' }"
+                        />
+                    </Toolbar>
+                </headerToolbar>
                 <f:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
                     <f:content>
                         <Label text="Work Item Title" design="Bold"/>

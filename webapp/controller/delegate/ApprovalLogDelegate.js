@@ -18,6 +18,7 @@ sap.ui.define([
         init: function (oController) {
             oController._bindApprovalLogList = this._bindApprovalLogList.bind(oController);
             oController._doLoadAndFilter = this._doLoadAndFilter.bind(oController);
+            oController.updateProcessFlow = this.updateProcessFlow.bind(oController);
             oController.formatApprovalActionText = this.formatApprovalActionText.bind(oController);
             oController.formatApprovalActionState = this.formatApprovalActionState.bind(oController);
             oController.formatApprovalActionIcon = this.formatApprovalActionIcon.bind(oController);
@@ -75,7 +76,7 @@ sap.ui.define([
                 // Update sign status
                 var oSignStatus = oViewData.getProperty("/signStatus");
                 var signerName = "[Ký]"; // fallback
-                
+
                 var oComponent = oController.getOwnerComponent();
                 if (oComponent) {
                     var oUserModel = oComponent.getModel("userModel");
@@ -114,6 +115,10 @@ sap.ui.define([
                 investorSignature: null
             });
             oController.getView().setModel(oApprovalModel, "approvalModel");
+
+            // Local model for ProcessFlow
+            var oPfModel = new JSONModel({ nodes: [], lanes: [] });
+            oController.getView().setModel(oPfModel, "pfModel");
 
             // ── REACTIVITY: Watch for User ID changes and re-filter ──
             var oComponent = oController.getOwnerComponent();
@@ -177,21 +182,31 @@ sap.ui.define([
                 success: function (oData) {
                     oView.setBusy(false);
                     var aLogs = oData.results || [];
-                    
+
                     // Force WbsId filter natively because backend ignores the API filter
-                    aLogs = aLogs.filter(function(log) {
+                    var aGlobalLogs = aLogs.filter(function (log) {
                         return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
                     });
-                    
-                    // Filter logs by current user ID
+
+                    // Store globally for WBSDetail dataReceived fallback
+                    oView.getController()._aGlobalLogs = aGlobalLogs;
+
+                    // Generate ProcessFlow data BEFORE filtering out other users' logs
+                    if (typeof oView.getController().updateProcessFlow === "function") {
+                        oView.getController().updateProcessFlow(aGlobalLogs);
+                    }
+
+                    // Filter logs by current user ID for the bottom list
                     var sCurrentUserId = oUserModel ? oUserModel.getProperty("/userId") : null;
                     if (sCurrentUserId) {
-                        aLogs = aLogs.filter(function(log) {
+                        aLogs = aGlobalLogs.filter(function (log) {
                             var author = log.ActionBy || log.CreatedBy;
                             return author === sCurrentUserId;
                         });
+                    } else {
+                        aLogs = aGlobalLogs;
                     }
-                    
+
                     if (oLogListModel) oLogListModel.setData(aLogs);
 
                     // Async fetch user names to replace user IDs in the list
@@ -202,7 +217,7 @@ sap.ui.define([
 
                             var sPath = "/UserRoleSet('" + sUserId + "')";
                             var sUserName = oModel.getProperty(sPath + "/UserName");
-                            
+
                             if (sUserName) {
                                 oLog.ActionBy = sUserName;
                                 oLogListModel.refresh(true);
@@ -225,6 +240,215 @@ sap.ui.define([
                     if (oLogListModel) oLogListModel.setData([]);
                 }
             });
+        },
+
+        /* =========================================================== */
+        /* PROCESS FLOW LOGIC                                           */
+        /* =========================================================== */
+
+        updateProcessFlow: function (aGlobalLogs) {
+            var oView = this.getView();
+            var oPfModel = oView.getModel("pfModel");
+            var oCtx = oView.getBindingContext();
+            var sStatus = oCtx ? oCtx.getProperty("Status") : "";
+
+            if (!aGlobalLogs) aGlobalLogs = [];
+
+            // Helper to find latest log matching conditions
+            var findLatestLog = function (sType, sAction) {
+                var found = aGlobalLogs.find(function (l) {
+                    return l.ApprovalType === sType && l.Action === sAction;
+                });
+                return found;
+            };
+
+            var formatLogInfo = function (oLog) {
+                if (!oLog) return [];
+                var sName = oLog.ActionBy || oLog.CreatedBy || "";
+                var dDate = oLog.CreatedTimestamp ? new Date(oLog.CreatedTimestamp) : null;
+                var sDateString = dDate ? (dDate.getDate().toString().padStart(2, '0') + '/' +
+                    (dDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                    dDate.getFullYear()) : "";
+                return [sName, sDateString].filter(Boolean);
+            };
+
+            var iMaxVisibleLane = 5;
+            switch (sStatus) {
+                case "PLANNING": iMaxVisibleLane = 0; break;
+                case "PENDING_OPEN":
+                case "OPEN_REJECTED": iMaxVisibleLane = 1; break;
+                case "OPENED": iMaxVisibleLane = 2; break;
+                case "IN_PROGRESS": iMaxVisibleLane = 3; break;
+                case "PENDING_CLOSE":
+                case "CLOSE_REJECTED": iMaxVisibleLane = 4; break;
+                case "CLOSED": iMaxVisibleLane = 5; break;
+                default: iMaxVisibleLane = 0;
+            }
+
+            var aLanes = [
+                { id: "lane0", icon: "sap-icon://status-in-process", label: "Planning", position: 0 },
+                { id: "lane1", icon: "sap-icon://paper-plane", label: "Pending Open", position: 1 },
+                { id: "lane2", icon: "sap-icon://accept", label: "Opened", position: 2 },
+                { id: "lane3", icon: "sap-icon://machine", label: "In Progress", position: 3 },
+                { id: "lane4", icon: "sap-icon://paper-plane", label: "Pending Close", position: 4 },
+                { id: "lane5", icon: "sap-icon://locked", label: "Closed", position: 5 }
+            ].filter(function (l) { return l.position <= iMaxVisibleLane; });
+
+            // Default Mapping
+            var state0 = "Planned", state1 = "Planned", state2 = "Planned", state3 = "Planned", state4 = "Planned", state5 = "Planned";
+            var text0 = "Pending", text1 = "Pending", text2 = "Pending", text3 = "Pending", text4 = "Pending", text5 = "Pending";
+
+            // State evaluation
+            switch (sStatus) {
+                case "PLANNING":
+                    state0 = "Positive"; text0 = "Active";
+                    break;
+                case "PENDING_OPEN":
+                    state0 = "Positive"; text0 = "Completed";
+                    state1 = "Neutral"; text1 = "In Review";
+                    break;
+                case "OPEN_REJECTED":
+                    state0 = "Positive"; text0 = "Completed";
+                    state1 = "Negative"; text1 = "Rejected";
+                    break;
+                case "OPENED":
+                    state0 = "Positive"; text0 = "Completed";
+                    state1 = "Positive"; text1 = "Approved";
+                    state2 = "Positive"; text2 = "Active";
+                    break;
+                case "IN_PROGRESS":
+                    state0 = "Positive"; text0 = "Completed";
+                    state1 = "Positive"; text1 = "Approved";
+                    state2 = "Positive"; text2 = "Completed";
+                    state3 = "Positive"; text3 = "Active";
+                    break;
+                case "PENDING_CLOSE":
+                    state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
+                    text0 = "Completed"; text1 = "Approved"; text2 = "Completed"; text3 = "Completed";
+                    state4 = "Neutral"; text4 = "In Review";
+                    break;
+                case "CLOSE_REJECTED":
+                    state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
+                    text0 = "Completed"; text1 = "Approved"; text2 = "Completed"; text3 = "Completed";
+                    state4 = "Negative"; text4 = "Rejected";
+                    break;
+                case "CLOSED":
+                    state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive"; state4 = "Positive"; state5 = "Positive";
+                    text0 = "Completed"; text1 = "Approved"; text2 = "Completed"; text3 = "Completed"; text4 = "Approved"; text5 = "Completed";
+                    break;
+                default:
+                    state0 = "Neutral"; text0 = "Unknown";
+            }
+
+            var getInfoForLane = function (laneIdx) {
+                var oLog;
+                if (laneIdx === 2) { // Opened
+                    oLog = findLatestLog("OPEN", "APPROVED");
+                } else if (laneIdx === 5) { // Closed
+                    oLog = findLatestLog("CLOSE", "APPROVED");
+                }
+                return formatLogInfo(oLog);
+            };
+
+            var getLevelNodeInfo = function (sType, iLevel, overallState, overallText) {
+                var oLog = aGlobalLogs.find(function (l) {
+                    var act = (l.Action || "").toUpperCase().trim();
+                    var isApprove = act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") === 0;
+                    var isReject = act === "0002" || act === "REJECTED" || act === "ERROR" || act === "TỪ CHỐI";
+                    return l.ApprovalType === sType && parseInt(l.ApprovalLevel) === iLevel && (isApprove || isReject);
+                });
+
+                var st = overallState;
+                var txt = overallText;
+
+                if (st === "Planned") {
+                    return { state: "Planned", text: "Pending", texts: [] };
+                }
+
+                if (oLog) {
+                    var act = (oLog.Action || "").toUpperCase().trim();
+                    var isApp = act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") === 0;
+                    if (isApp) {
+                        st = "Positive"; txt = "Approved";
+                    } else {
+                        st = "Negative"; txt = "Rejected";
+                    }
+                    return { state: st, text: txt, texts: formatLogInfo(oLog) };
+                } else {
+                    if (st === "Positive") {
+                        return { state: "Positive", text: "Approved", texts: [] };
+                    } else if (st === "Negative") {
+                        return { state: "Neutral", text: "Pending", texts: [] };
+                    } else {
+                        return { state: "Neutral", text: "In Review", texts: [] };
+                    }
+                }
+            };
+
+            var aNodes = [
+                { id: "node0", lane: "lane0", title: "Kế hoạch", state: state0, stateText: text0, texts: [], children: iMaxVisibleLane >= 1 ? ["node1_1"] : [] }
+            ];
+
+            if (iMaxVisibleLane >= 1) {
+                // Pending Open Nodes (3 Levels)
+                [1, 2, 3].forEach(function (lvl) {
+                    var info = getLevelNodeInfo("OPEN", lvl, state1, text1);
+                    var nextNodeId = lvl === 3 ? "node2" : "node1_" + (lvl + 1);
+                    if (lvl === 3 && iMaxVisibleLane < 2) nextNodeId = null;
+                    aNodes.push({
+                        id: "node1_" + lvl,
+                        lane: "lane1",
+                        title: "Trình duyệt Mở (Cấp " + lvl + ")",
+                        state: info.state,
+                        stateText: info.text,
+                        texts: info.texts,
+                        children: nextNodeId ? [nextNodeId] : []
+                    });
+                });
+            }
+
+            if (iMaxVisibleLane >= 2) {
+                aNodes.push({ id: "node2", lane: "lane2", title: "Đã Mở", state: state2, stateText: text2, texts: getInfoForLane(2), children: iMaxVisibleLane >= 3 ? ["node3"] : [] });
+            }
+            
+            if (iMaxVisibleLane >= 3) {
+                aNodes.push({ id: "node3", lane: "lane3", title: "Đang Thi công", state: state3, stateText: text3, texts: [], children: iMaxVisibleLane >= 4 ? ["node4_1"] : [] });
+            }
+
+            if (iMaxVisibleLane >= 4) {
+                // Pending Close Nodes (3 Levels)
+                [1, 2, 3].forEach(function (lvl) {
+                    var info = getLevelNodeInfo("CLOSE", lvl, state4, text4);
+                    var nextNodeId = lvl === 3 ? "node5" : "node4_" + (lvl + 1);
+                    if (lvl === 3 && iMaxVisibleLane < 5) nextNodeId = null;
+                    aNodes.push({
+                        id: "node4_" + lvl,
+                        lane: "lane4",
+                        title: "Nghiệm thu Đóng (Cấp " + lvl + ")",
+                        state: info.state,
+                        stateText: info.text,
+                        texts: info.texts,
+                        children: nextNodeId ? [nextNodeId] : []
+                    });
+                });
+            }
+
+            if (iMaxVisibleLane >= 5) {
+                aNodes.push({ id: "node5", lane: "lane5", title: "Hoàn thành", state: state5, stateText: text5, texts: getInfoForLane(5), children: [] });
+            }
+
+            if (oPfModel) {
+                oPfModel.setData({
+                    lanes: aLanes,
+                    nodes: aNodes
+                });
+                oPfModel.refresh(true);
+
+                var oProcessFlow = oView.byId("wbsProcessFlow");
+                if (oProcessFlow && typeof oProcessFlow.updateModel === "function") {
+                    oProcessFlow.updateModel();
+                }
+            }
         },
 
         /* =========================================================== */

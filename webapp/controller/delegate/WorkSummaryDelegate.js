@@ -327,8 +327,8 @@ sap.ui.define([
                 var sStatus = oWbsCtx ? oWbsCtx.getProperty("Status") : "";
 
                 // Strict status guard for Closing flow
-                if (sStatus !== "IN_PROGRESS") {
-                    sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' (Đang thi công) mới có thể gửi phê duyệt đóng.");
+                if (sStatus !== "IN_PROGRESS" && sStatus !== "CLOSE_REJECTED") {
+                    sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' hoặc 'Close Rejected' mới có thể gửi phê duyệt đóng.");
                     return;
                 }
 
@@ -347,7 +347,13 @@ sap.ui.define([
                             return;
                         }
 
-                        sap.m.MessageBox.success(oData.MESSAGE || "Work Summary submitted for approval successfully.");
+                        sap.m.MessageBox.success(oData.MESSAGE || "Gửi duyệt thành công.", {
+                            onClose: function () {
+                                if (typeof this.onCloseAcceptanceDialog === "function") {
+                                    this.onCloseAcceptanceDialog();
+                                }
+                            }.bind(this)
+                        });
                         this._loadWorkSummary(sWbsId);
                         var oBinding = oView.getElementBinding();
                         if (oBinding) { oBinding.refresh(); }

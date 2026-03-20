@@ -1,71 +1,30 @@
-<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
-    <VBox class="wbsStatusStepper">
-        <HBox class="wbsStepperContainer" justifyContent="Center" alignItems="Center">
-            
-            <!-- Step 1: Planning -->
-            <VBox class="wbsStep">
-                <Avatar displaySize="S"
-                        src="{parts: [{path: 'Status'}, {value: 1}], formatter: '.formatStepIcon'}"
-                        class="wbsStepCircle {parts: [{path: 'Status'}, {value: 1}], formatter: '.formatStepClass'}" />
-                <Label text="{parts: [{value: 1}, {path: 'Status'}], formatter: '.formatStepLabel'}" 
-                       class="wbsStepLabelText {parts: [{path: 'Status'}, {value: 1}], formatter: '.formatStepLabelClass'}" />
-            </VBox>
-
-            <Text text="»" class="wbsStepSeparator {parts: [{path: 'Status'}, {value: 1}], formatter: '.formatStepLineClass'}" />
-
-            <!-- Step 2: Pending Opened -->
-            <VBox class="wbsStep">
-                <Avatar displaySize="S"
-                        src="{parts: [{path: 'Status'}, {value: 2}], formatter: '.formatStepIcon'}"
-                        class="wbsStepCircle {parts: [{path: 'Status'}, {value: 2}], formatter: '.formatStepClass'}" />
-                <Label text="{parts: [{value: 2}, {path: 'Status'}], formatter: '.formatStepLabel'}" 
-                       class="wbsStepLabelText {parts: [{path: 'Status'}, {value: 2}], formatter: '.formatStepLabelClass'}" />
-            </VBox>
-
-            <Text text="»" class="wbsStepSeparator {parts: [{path: 'Status'}, {value: 2}], formatter: '.formatStepLineClass'}" />
-
-            <!-- Step 3: Opened -->
-            <VBox class="wbsStep">
-                <Avatar displaySize="S"
-                        src="{parts: [{path: 'Status'}, {value: 3}], formatter: '.formatStepIcon'}"
-                        class="wbsStepCircle {parts: [{path: 'Status'}, {value: 3}], formatter: '.formatStepClass'}" />
-                <Label text="{parts: [{value: 3}, {path: 'Status'}], formatter: '.formatStepLabel'}" 
-                       class="wbsStepLabelText {parts: [{path: 'Status'}, {value: 3}], formatter: '.formatStepLabelClass'}" />
-            </VBox>
-
-            <Text text="»" class="wbsStepSeparator {parts: [{path: 'Status'}, {value: 3}], formatter: '.formatStepLineClass'}" />
-
-            <!-- Step 4: In Progress -->
-            <VBox class="wbsStep">
-                <Avatar displaySize="S"
-                        src="{parts: [{path: 'Status'}, {value: 4}], formatter: '.formatStepIcon'}"
-                        class="wbsStepCircle {parts: [{path: 'Status'}, {value: 4}], formatter: '.formatStepClass'}" />
-                <Label text="{parts: [{value: 4}, {path: 'Status'}], formatter: '.formatStepLabel'}" 
-                       class="wbsStepLabelText {parts: [{path: 'Status'}, {value: 4}], formatter: '.formatStepLabelClass'}" />
-            </VBox>
-
-            <Text text="»" class="wbsStepSeparator {parts: [{path: 'Status'}, {value: 4}], formatter: '.formatStepLineClass'}" />
-
-            <!-- Step 5: Pending Closed -->
-            <VBox class="wbsStep">
-                <Avatar displaySize="S"
-                        src="{parts: [{path: 'Status'}, {value: 5}], formatter: '.formatStepIcon'}"
-                        class="wbsStepCircle {parts: [{path: 'Status'}, {value: 5}], formatter: '.formatStepClass'}" />
-                <Label text="{parts: [{value: 5}, {path: 'Status'}], formatter: '.formatStepLabel'}" 
-                       class="wbsStepLabelText {parts: [{path: 'Status'}, {value: 5}], formatter: '.formatStepLabelClass'}" />
-            </VBox>
-
-            <Text text="»" class="wbsStepSeparator {parts: [{path: 'Status'}, {value: 5}], formatter: '.formatStepLineClass'}" />
-
-            <!-- Step 6: Closed -->
-            <VBox class="wbsStep">
-                <Avatar displaySize="S"
-                        src="{parts: [{path: 'Status'}, {value: 6}], formatter: '.formatStepIcon'}"
-                        class="wbsStepCircle {parts: [{path: 'Status'}, {value: 6}], formatter: '.formatStepClass'}" />
-                <Label text="{parts: [{value: 6}, {path: 'Status'}], formatter: '.formatStepLabel'}" 
-                       class="wbsStepLabelText {parts: [{path: 'Status'}, {value: 6}], formatter: '.formatStepLabelClass'}" />
-            </VBox>
-
-        </HBox>
-    </VBox>
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:suite="sap.suite.ui.commons">
+    <suite:ProcessFlow
+        id="wbsProcessFlow"
+        scrollable="false"
+        wheelZoomable="false"
+        foldedCorners="true"
+        nodes="{pfModel>/nodes}"
+        lanes="{pfModel>/lanes}"
+        class="sapUiSmallMarginTopBottom">
+        <suite:nodes>
+            <suite:ProcessFlowNode
+                laneId="{pfModel>lane}"
+                nodeId="{pfModel>id}"
+                title="{pfModel>title}"
+                children="{pfModel>children}"
+                state="{pfModel>state}"
+                stateText="{pfModel>stateText}"
+                texts="{pfModel>texts}"
+                highlighted="{pfModel>highlighted}"
+                focused="{pfModel>focused}" />
+        </suite:nodes>
+        <suite:lanes>
+            <suite:ProcessFlowLaneHeader
+                laneId="{pfModel>id}"
+                iconSrc="{pfModel>icon}"
+                text="{pfModel>label}"
+                position="{pfModel>position}" />
+        </suite:lanes>
+    </suite:ProcessFlow>
 </core:FragmentDefinition>
