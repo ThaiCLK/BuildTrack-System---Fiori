@@ -56,9 +56,32 @@ sap.ui.define([
                 }
             });
             this.getView().setModel(oViewData, "viewData");
-        },
 
-        /* =========================================================== */
+            // ── ĐỒNG BỘ ĐA TRÌNH DUYỆT SILENTLY CỰC XỊN ──
+            // Khi người dùng (Level 2) click chuyển sang cửa sổ trình duyệt này (event 'focus'), 
+            // tự động tải lại Log và CheckDecision một cách ÂM THẦM (không xoay vòng loading, không chớp giật)
+            var that = this;
+            window.addEventListener("focus", function() {
+                var oCtx = that.getView().getBindingContext();
+                if (oCtx && that._sWbsId) {
+                    var sStatus = oCtx.getProperty("Status");
+                    
+                    // 1. Silent Refresh Approval Logs (cập nhật Process Flow thẻ xanh)
+                    if (typeof that._bindApprovalLogList === "function") {
+                        that._bindApprovalLogList(that._sWbsId, true); // true = bSilent
+                    }
+
+                    // 2. Silent Refresh Actionability (hiện nút bấm nếu có quyền mới)
+                    var sActionableType = "OPEN";
+                    if (sStatus === "PENDING_CLOSE" || sStatus === "CLOSED" || sStatus === "CLOSE_REJECTED") {
+                        sActionableType = "CLOSE";
+                    }
+                    if (typeof that._checkIfActionable === "function") {
+                        that._checkIfActionable(that._sWbsId, sActionableType);
+                    }
+                }
+            });
+        },        /* =========================================================== */
         /* ROUTING                                                      */
         /* =========================================================== */
 
@@ -455,17 +478,28 @@ sap.ui.define([
             var oWbsCtx = oView.getBindingContext();
             var sWorkItemId = oViewData.getProperty("/activeWorkItemId");
 
+            // Xử lý fallback cực mạnh: Nếu view mảng activeWorkItemId bị rỗng do bất đồng bộ,
+            // ta chọc thẳng vào danh sách pendingOpenWBS mà bên SiteDetail đã lưu lại sẵn!
             if (!sWorkItemId) {
+                var aPending = oViewData.getProperty("/pendingOpenWBS") || [];
+                var sCurrentWbsId = oWbsCtx ? oWbsCtx.getProperty("WbsId") : "";
+                var oMatch = aPending.find(function (w) { return w.WbsId === sCurrentWbsId; });
+                if (oMatch && oMatch.WorkItemId && oMatch.WorkItemId !== "000000000000") {
+                    sWorkItemId = oMatch.WorkItemId;
+                }
+            }
+
+            if (!sWorkItemId || sWorkItemId === "000000000000") {
                 var oUserModel = oView.getModel("userModel");
                 var sAuthLevel = oUserModel ? String(oUserModel.getProperty("/authLevel")) : "";
-                var sMessage = "Không thể ký duyệt vì cấp trước chưa hoàn thành phê duyệt.";
+                var sMessage = "Không thể ký duyệt vui lòng kiểm tra lại.";
 
                 if (sAuthLevel === "2") {
                     sMessage = "Không thể ký duyệt vì Kỹ Sư Phụ Trách chưa hoàn thành phê duyệt.";
                 } else if (sAuthLevel === "3") {
                     sMessage = "Không thể ký duyệt vì Tư Vấn Giám Sát chưa hoàn thành phê duyệt.";
                 }
-                sap.m.MessageBox.error(sMessage);
+                sap.m.MessageBox.error(sMessage + " (Work Item ID is missing)");
                 return;
             }
 
@@ -530,7 +564,7 @@ sap.ui.define([
                     success: function (oLogData) {
                         oView.setBusy(false);
                         var aLogs = oLogData.results || [];
-                        
+
                         // Cực kỳ quan trọng: Server SAP BỎ QUA lệnh Sorter của OData, nên nó luôn trả về Log CŨ NHẤT nằm trên cùng!
                         // Do đó ta phải tự Sort lại thủ công bằng Javascript (Mới nhất lên đầu) trước khi duyệt vòng lặp.
                         aLogs.sort(function (a, b) {
@@ -559,7 +593,7 @@ sap.ui.define([
                             console.log("Đang xét Log - Action:", sAction, "| Level:", iLevel, "| By:", log.ActionBy);
 
                             var bApproved = false;
-                            
+
                             // Broaden approval check to catch all variations of approval actions
                             if (sAction.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0 || sAction.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0) {
                                 bApproved = true;
@@ -727,10 +761,10 @@ sap.ui.define([
             var oView = this.getView();
             var oModel = this.getOwnerComponent().getModel();
             var oViewData = oView.getModel("viewData");
-            
+
             // Try getting from primary CheckDecision field first
             var sWorkItemId = oViewData.getProperty("/activeWorkItemId");
-            
+
             // Fallback to the one saved specifically by _openAcceptanceReport's call
             if (!sWorkItemId) {
                 var oActiveWbs = oViewData.getProperty("/activeWbs");
@@ -739,17 +773,28 @@ sap.ui.define([
                 }
             }
 
+            // Xử lý fallback cực mạnh tương tự luồng MỞ: Chọc thẳng vào list pendingCloseWBS bên ngoài
             if (!sWorkItemId) {
+                var aPendingClose = oViewData.getProperty("/pendingCloseWBS") || [];
+                var oWbsCtx = oView.getBindingContext();
+                var sCurrentWbsId = oWbsCtx ? oWbsCtx.getProperty("WbsId") : "";
+                var oMatch = aPendingClose.find(function (w) { return w.WbsId === sCurrentWbsId; });
+                if (oMatch && oMatch.WorkItemId && oMatch.WorkItemId !== "000000000000") {
+                    sWorkItemId = oMatch.WorkItemId;
+                }
+            }
+
+            if (!sWorkItemId || sWorkItemId === "000000000000") {
                 var oUserModel = oView.getModel("userModel");
                 var sAuthLevel = oUserModel ? String(oUserModel.getProperty("/authLevel")) : "";
                 var sMessage = "Không thể ký duyệt vì cấp trước chưa hoàn thành phê duyệt.";
-                
+
                 if (sAuthLevel === "2") {
                     sMessage = "Không thể ký duyệt vì Kỹ Sư Phụ Trách chưa hoàn thành phê duyệt.";
                 } else if (sAuthLevel === "3") {
                     sMessage = "Không thể ký duyệt vì Tư Vấn Giám Sát chưa hoàn thành phê duyệt.";
                 }
-                
+
                 sap.m.MessageBox.error(sMessage);
                 return;
             }
@@ -767,16 +812,16 @@ sap.ui.define([
                             },
                             success: function (oData) {
                                 oView.setBusy(false);
-                                
+
                                 sap.m.MessageBox.success("Đã xử lý quyết định thành công.");
-                                
+
                                 // Update local signStatus immediately so UI reflects signature
                                 if (sDecisionCode === "0001") {
                                     var oUserModel = oView.getModel("userModel");
                                     var sAuthLevel = oUserModel ? String(oUserModel.getProperty("/authLevel")) : "";
                                     var sFullName = oUserModel ? (oUserModel.getProperty("/fullName") || oUserModel.getProperty("/userName") || "Đã ký") : "Đã ký";
                                     var oSignStatus = oViewData.getProperty("/signStatus");
-                                    
+
                                     if (sAuthLevel === "1") {
                                         oSignStatus.level1 = { text: sFullName, signed: true };
                                     } else if (sAuthLevel === "2") {
@@ -784,7 +829,7 @@ sap.ui.define([
                                     } else if (sAuthLevel === "3") {
                                         oSignStatus.level3 = { text: sFullName, signed: true };
                                     }
-                                    
+
                                     oViewData.setProperty("/signStatus", oSignStatus);
                                 } else {
                                     // If reject, close the dialog because the flow is broken
@@ -792,7 +837,7 @@ sap.ui.define([
                                         that.onCloseAcceptanceDialog();
                                     }
                                 }
-                                
+
                                 var oWbsCtx = oView.getBindingContext();
                                 if (oWbsCtx) {
                                     var sWbsId = oWbsCtx.getProperty("WbsId");

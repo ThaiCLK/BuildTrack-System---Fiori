@@ -141,7 +141,7 @@ sap.ui.define([
          * Binds the approval log list for a given WBS ID.
          * Waits for the SecurityDelegate promise to ensure we have a valid user ID.
          */
-        _bindApprovalLogList: function (sWbsId) {
+        _bindApprovalLogList: function (sWbsId, bSilent) {
             var that = this;
             var oView = this.getView();
             var oComponent = this.getOwnerComponent();
@@ -151,36 +151,43 @@ sap.ui.define([
 
             this._sCurrentWbsId = sWbsId;
 
-            // Clear old logs while identifying
-            if (oLogListModel) oLogListModel.setData([]);
+            // Clear old logs while identifying (only if not silent)
+            if (oLogListModel && !bSilent) oLogListModel.setData([]);
 
             // ── SYNC: Wait for identity resolution before fetching/filtering ──
             if (oComponent.SecurityDelegate && oComponent.SecurityDelegate.whenUserIdentified) {
                 oComponent.SecurityDelegate.whenUserIdentified().then(function (sUserId) {
-                    console.log("ApprovalLog: Session confirmed for " + sUserId + ", binding logs...");
-                    this._doLoadAndFilter(sWbsId);
+                    if (!bSilent) console.log("ApprovalLog: Session confirmed for " + sUserId + ", binding logs...");
+                    this._doLoadAndFilter(sWbsId, bSilent);
                 }.bind(this));
             } else {
-                this._doLoadAndFilter(sWbsId);
+                this._doLoadAndFilter(sWbsId, bSilent);
             }
         },
 
         /**
          * Internal: Fetches logs and filters for the current local user ID.
          */
-        _doLoadAndFilter: function (sWbsId) {
+        _doLoadAndFilter: function (sWbsId, bSilent) {
             var oView = this.getView();
             var oModel = oView.getModel();
             var oLogListModel = oView.getModel("logListModel");
             var oUserModel = this.getOwnerComponent().getModel("userModel");
 
-            oView.setBusy(true);
+            if (!bSilent) {
+                oView.setBusy(true);
+            }
 
             oModel.read("/ApprovalLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                 sorters: [new sap.ui.model.Sorter("CreatedTimestamp", false)], // Newest first
+                urlParameters: {
+                    "cb": new Date().getTime() // Cache buster
+                },
                 success: function (oData) {
-                    oView.setBusy(false);
+                    if (!bSilent) {
+                        oView.setBusy(false);
+                    }
                     var aLogs = oData.results || [];
 
                     // Force WbsId filter natively because backend ignores the API filter
@@ -353,7 +360,7 @@ sap.ui.define([
             var getLevelNodeInfo = function (sType, iLevel, overallState, overallText) {
                 var oLog = aGlobalLogs.find(function (l) {
                     var act = (l.Action || "").toUpperCase().trim();
-                    var isApprove = act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") === 0;
+                    var isApprove = act.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0 || act.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0 || act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") >= 0;
                     var isReject = act === "0002" || act === "REJECTED" || act === "ERROR" || act === "TỪ CHỐI";
                     return l.ApprovalType === sType && parseInt(l.ApprovalLevel) === iLevel && (isApprove || isReject);
                 });
@@ -367,7 +374,7 @@ sap.ui.define([
 
                 if (oLog) {
                     var act = (oLog.Action || "").toUpperCase().trim();
-                    var isApp = act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") === 0;
+                    var isApp = act.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0 || act.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0 || act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") >= 0;
                     if (isApp) {
                         st = "Positive"; txt = "Approved";
                     } else {
