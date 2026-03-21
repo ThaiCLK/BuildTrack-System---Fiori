@@ -1,8 +1,7 @@
 <core:FragmentDefinition
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
-    xmlns:t="sap.ui.table"
-    xmlns:rowmodes="sap.ui.table.rowmodes">
+    xmlns:t="sap.ui.table">
 
     <!-- Toolbar WBS CRUD -->
     <OverflowToolbar style="Clear" class="sapUiSmallMarginBottom">
@@ -55,11 +54,10 @@
     <t:TreeTable id="wbsTreeTable"
         rows="{path: 'viewData>/WBS', parameters: {arrayNames: ['children'], numberOfExpandedLevels: 2}}"
         selectionMode="MultiToggle"
+        visibleRowCountMode="Fixed" 
+        visibleRowCount="18" 
+        rowHeight="32"
         cellClick=".onGanttTaskClick">
-
-        <t:rowMode>
-            <rowmodes:Fixed rowCount="18" rowContentHeight="32" />
-        </t:rowMode>
 
         <t:columns>
             <t:Column width="15rem">

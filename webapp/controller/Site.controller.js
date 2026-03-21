@@ -18,7 +18,7 @@ sap.ui.define([
     Dialog, Button, Label, Input, Select, Item, VBox, HBox, SimpleForm, Filter, FilterOperator) {
     "use strict";
 
-    return Controller.extend("z.bts.buildtrack.controller.Site", {
+    return Controller.extend("z.bts.buildtrack551.controller.Site", {
 
         onInit: function () {
             var oRouter = this.getOwnerComponent().getRouter();

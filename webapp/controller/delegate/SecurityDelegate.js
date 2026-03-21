@@ -4,7 +4,7 @@ sap.ui.define([
 ], function (ManagedObject, JSONModel) {
     "use strict";
 
-    return ManagedObject.extend("z.bts.buildtrack.controller.delegate.SecurityDelegate", {
+    return ManagedObject.extend("z.bts.buildtrack551.controller.delegate.SecurityDelegate", {
 
         /**
          * Initializes the global user model and attempts to identify the current user.

@@ -1,5 +1,5 @@
 <mvc:View
-    controllerName="z.bts.buildtrack.controller.Dashboard"
+    controllerName="z.bts.buildtrack551.controller.Dashboard"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:l="sap.ui.layout"

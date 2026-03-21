@@ -5,7 +5,7 @@ sap.ui.define([
     "sap/ui/model/Sorter",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "z/bts/buildtrack/utils/DailyLogExcelHandler"
+    "z/bts/buildtrack551/utils/DailyLogExcelHandler"
 ], function (JSONModel, Filter, FilterOperator, Sorter, MessageBox, MessageToast, DailyLogExcelHandler) {
     "use strict";
 
@@ -377,7 +377,7 @@ sap.ui.define([
             if (!this._pImportPreviewDialog) {
                 this._pImportPreviewDialog = sap.ui.core.Fragment.load({
                     id: oView.getId(),
-                    name: "z.bts.buildtrack.view.fragments.ImportPreviewDialog",
+                    name: "z.bts.buildtrack551.view.fragments.ImportPreviewDialog",
                     controller: this
                 }).then(function (oDialog) {
                     oView.addDependent(oDialog);

@@ -1,12 +1,12 @@
 sap.ui.define([
     "sap/ui/core/UIComponent",
-    "z/bts/buildtrack/model/models",
-    "z/bts/buildtrack/controller/ErrorHandler",
-    "z/bts/buildtrack/controller/delegate/SecurityDelegate"
+    "z/bts/buildtrack551/model/models",
+    "z/bts/buildtrack551/controller/ErrorHandler",
+    "z/bts/buildtrack551/controller/delegate/SecurityDelegate"
 ], (UIComponent, models, ErrorHandler, SecurityDelegate) => {
     "use strict";
 
-    return UIComponent.extend("z.bts.buildtrack.Component", {
+    return UIComponent.extend("z.bts.buildtrack551.Component", {
         metadata: {
             manifest: "json",
             interfaces: [

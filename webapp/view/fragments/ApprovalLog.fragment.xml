@@ -6,7 +6,7 @@
     xmlns:html="http://www.w3.org/1999/xhtml">
 
     <VBox height="100%" fitContainer="true">
-        <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WBSStatusProgress" type="XML" />
+        <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBSStatusProgress" type="XML" />
         
         <VBox height="100%" fitContainer="true" class="approvalLogMasterPanel">
             <Toolbar design="Transparent">

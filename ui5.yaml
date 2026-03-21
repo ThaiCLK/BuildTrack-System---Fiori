@@ -2,7 +2,7 @@
 
 specVersion: "4.0"
 metadata:
-  name: z.bts.buildtrack
+  name: z.bts.buildtrack551
 type: application
 server:
   customMiddleware:

@@ -7,7 +7,7 @@ sap.ui.define([
 
 	Opa5.extendConfig({
 		arrangements: new Startup(),
-		viewNamespace: "z.bts.buildtrack.view.",
+		viewNamespace: "z.bts.buildtrack551.view.",
 		autoWait: true
 	});
 });

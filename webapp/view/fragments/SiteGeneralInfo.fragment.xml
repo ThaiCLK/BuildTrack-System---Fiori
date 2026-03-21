@@ -16,7 +16,7 @@
                     state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }"/>
             </statuses>
             <attributes>
-                <ObjectAttribute text="{Address}" icon="sap-icon://map-2" />
+                <ObjectAttribute text="{Address}" />
             </attributes>
         </ObjectHeader>
 

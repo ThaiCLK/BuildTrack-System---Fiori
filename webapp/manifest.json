@@ -1,7 +1,7 @@
 {
   "_version": "1.81.0",
   "sap.app": {
-    "id": "z.bts.buildtrack",
+    "id": "z.bts.buildtrack551",
     "type": "application",
     "i18n": "i18n/i18n.properties",
     "applicationVersion": {
@@ -64,7 +64,7 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
-          "bundleName": "z.bts.buildtrack.i18n.i18n"
+          "bundleName": "z.bts.buildtrack551.i18n.i18n"
         }
       },
       "": {
@@ -84,7 +84,7 @@
       "config": {
         "routerClass": "sap.m.routing.Router",
         "viewType": "XML",
-        "viewPath": "z.bts.buildtrack.view",
+        "viewPath": "z.bts.buildtrack551.view",
         "controlId": "app",
         "controlAggregation": "pages",
         "transition": "slide",
@@ -166,7 +166,7 @@
       }
     },
     "rootView": {
-      "viewName": "z.bts.buildtrack.view.App",
+      "viewName": "z.bts.buildtrack551.view.App",
       "type": "XML",
       "id": "App",
       "async": true

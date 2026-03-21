@@ -74,6 +74,7 @@
                 <NavigationProperty Name="ToLogs" Relationship="ZBT_ODATA_SRV.WBS_to_DailyLog" FromRole="FromWBS"   ToRole="ToLog" />
                 <NavigationProperty Name="ToLocations" Relationship="ZBT_ODATA_SRV.WBS_to_Location" FromRole="FromWBS" ToRole="ToLocation" />
                 <NavigationProperty Name="ToApprovalLog" Relationship="ZBT_ODATA_SRV.WBS_to_ApprovalLog" FromRole="FromWBS" ToRole="ToApprovalLog" />
+                <NavigationProperty Name="ToDependencies" Relationship="ZBT_ODATA_SRV.WBS_to_Dependency" FromRole="FromWBS" ToRole="ToDependency" />
             </EntityType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
@@ -198,6 +199,27 @@
                 <Property Name="ApprovalNote"     Type="Edm.String"   MaxLength="255" sap:label="Approval Note" />
             </EntityType>
 
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Dependency (ZBT_DEPENDENCIES — WBS dependencies)            -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="Dependency">
+                <Key>
+                    <PropertyRef Name="DepId" />
+                </Key>
+                <Property Name="Client"         Type="Edm.String"   MaxLength="3"   sap:label="Client" />
+                <Property Name="DepId"          Type="Edm.Guid"     Nullable="false" sap:label="Dependency UUID" />
+                <Property Name="PredWbsId"      Type="Edm.Guid"     sap:label="Predecessor WBS UUID" />
+                <Property Name="WbsId"          Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="DepType"        Type="Edm.String"   MaxLength="2"   sap:label="Dependency Type" />
+                <Property Name="DepDescription" Type="Edm.String"   MaxLength="50"  sap:label="Dependency Description" />
+                <Property Name="CreatedBy"      Type="Edm.String"   MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn"      Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt"      Type="Edm.Time"     Precision="0"   sap:label="Created At" />
+                <Property Name="UpdatedBy"      Type="Edm.String"   MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn"      Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt"      Type="Edm.Time"     Precision="0"   sap:label="Updated At" />
+            </EntityType>
+
             <Association Name="Proj_to_Site">
                 <End Role="FromProj" Type="ZBT_ODATA_SRV.Project" Multiplicity="1" />
                 <End Role="ToSite"   Type="ZBT_ODATA_SRV.Site"    Multiplicity="*" />
@@ -270,6 +292,16 @@
                 </ReferentialConstraint>
             </Association>
 
+            <Association Name="WBS_to_Dependency">
+                <End Role="FromWBS"      Type="ZBT_ODATA_SRV.WBS"        Multiplicity="1" />
+                <End Role="ToDependency" Type="ZBT_ODATA_SRV.Dependency" Multiplicity="*" />
+                <ReferentialConstraint>
+                    <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
+                    <Dependent  Role="ToDependency"><PropertyRef Name="WbsId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
+
             <EntityContainer Name="ZBT_ODATA_SRV_Entities" m:IsDefaultEntityContainer="true">
                 <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
                 <EntitySet Name="SiteSet"              EntityType="ZBT_ODATA_SRV.Site" />
@@ -280,6 +312,7 @@
                 <EntitySet Name="LocationSet"          EntityType="ZBT_ODATA_SRV.Location" />
                 <EntitySet Name="ApprovalLogSet"       EntityType="ZBT_ODATA_SRV.ApprovalLog" />
                 <EntitySet Name="UserRoleSet"          EntityType="ZBT_ODATA_SRV.UserRole" />
+                <EntitySet Name="DependencySet"        EntityType="ZBT_ODATA_SRV.Dependency" />
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
                     <End Role="FromProj" EntitySet="ProjectSet" />
@@ -308,6 +341,10 @@
                 <AssociationSet Name="WBS_to_ApprovalLog_Set" Association="ZBT_ODATA_SRV.WBS_to_ApprovalLog">
                     <End Role="FromWBS"       EntitySet="WBSSet" />
                     <End Role="ToApprovalLog" EntitySet="ApprovalLogSet" />
+                </AssociationSet>
+                <AssociationSet Name="WBS_to_Dependency_Set" Association="ZBT_ODATA_SRV.WBS_to_Dependency">
+                    <End Role="FromWBS"      EntitySet="WBSSet" />
+                    <End Role="ToDependency" EntitySet="DependencySet" />
                 </AssociationSet>
 
                 <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">

@@ -14,7 +14,7 @@ sap.ui.define([
 			// start the app UI component
 			this.iStartMyUIComponent({
 				componentConfig: {
-					name: "z.bts.buildtrack",
+					name: "z.bts.buildtrack551",
 					async: true
 				},
 				hash: oOptions.hash,

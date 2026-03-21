@@ -7,7 +7,7 @@ sap.ui.define([
 ], function (Controller, JSONModel, MessageToast, Filter, FilterOperator) {
     "use strict";
 
-    return Controller.extend("z.bts.buildtrack.controller.Dashboard", {
+    return Controller.extend("z.bts.buildtrack551.controller.Dashboard", {
 
         onInit: function () {
             var oDashboardModel = new JSONModel({

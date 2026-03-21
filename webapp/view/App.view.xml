@@ -1,4 +1,4 @@
-<mvc:View controllerName="z.bts.buildtrack.controller.App"
+<mvc:View controllerName="z.bts.buildtrack551.controller.App"
     xmlns:html="http://www.w3.org/1999/xhtml"
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns:core="sap.ui.core"

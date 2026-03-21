@@ -1,6 +1,6 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "z/bts/buildtrack/controller/delegate/WBSDelegate",
+    "z/bts/buildtrack551/controller/delegate/WBSDelegate",
     "sap/ui/model/json/JSONModel",
     "sap/ui/core/format/DateFormat",
     "sap/m/MessageToast",
@@ -16,15 +16,15 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/ui/layout/form/SimpleForm",
-    "z/bts/buildtrack/controller/delegate/WorkSummaryDelegate",
+    "z/bts/buildtrack551/controller/delegate/WorkSummaryDelegate",
     "sap/ui/core/Fragment",
-    "z/bts/buildtrack/controller/delegate/ApprovalLogDelegate"
+    "z/bts/buildtrack551/controller/delegate/ApprovalLogDelegate"
 ], function (Controller, WBSDelegate, JSONModel, DateFormat,
     MessageToast, MessageBox, Dialog, Button, Label, Input,
     Select, Item, DatePicker, TextArea, Filter, FilterOperator, SimpleForm, WorkSummaryDelegate, Fragment, ApprovalLogDelegate) {
     "use strict";
 
-    var SiteDetailController = Controller.extend("z.bts.buildtrack.controller.SiteDetail", {
+    var SiteDetailController = Controller.extend("z.bts.buildtrack551.controller.SiteDetail", {
 
         onInit: function () {
             this._oWBSDelegate = new WBSDelegate(this);

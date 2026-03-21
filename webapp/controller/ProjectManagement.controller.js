@@ -19,7 +19,7 @@ sap.ui.define([
     Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, VBox, SimpleForm) {
     "use strict";
 
-    return Controller.extend("z.bts.buildtrack.controller.ProjectManagement", {
+    return Controller.extend("z.bts.buildtrack551.controller.ProjectManagement", {
 
         onInit: function () { },
 

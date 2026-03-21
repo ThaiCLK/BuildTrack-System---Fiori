@@ -1,5 +1,5 @@
 <mvc:View
-    controllerName="z.bts.buildtrack.controller.WBSDetail"
+    controllerName="z.bts.buildtrack551.controller.WBSDetail"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
@@ -108,13 +108,13 @@
                     
                     <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Nhật ký thi công" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                         <!-- Fragment được include trực tiếp — không cần lazy load -->
-                        <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.DailyLog" type="XML"/>
+                        <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.DailyLog" type="XML"/>
                     </IconTabFilter>
                     <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="Tổng hợp" key="workSummaryTab">
-                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.WorkSummary" type="XML" />
+                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WorkSummary" type="XML" />
                     </IconTabFilter>
                     <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Nhật ký phê duyệt" key="approvalLogTab">
-                         <core:Fragment fragmentName="z.bts.buildtrack.view.fragments.ApprovalLog" type="XML" />
+                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.ApprovalLog" type="XML" />
                     </IconTabFilter>
                 </items>
             </IconTabBar>

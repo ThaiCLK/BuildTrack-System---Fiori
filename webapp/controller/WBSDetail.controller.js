@@ -7,14 +7,14 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/ui/model/Sorter",
-    "z/bts/buildtrack/controller/delegate/DailyLogDelegate",
-    "z/bts/buildtrack/controller/delegate/WorkSummaryDelegate",
-    "z/bts/buildtrack/controller/delegate/ApprovalLogDelegate"
+    "z/bts/buildtrack551/controller/delegate/DailyLogDelegate",
+    "z/bts/buildtrack551/controller/delegate/WorkSummaryDelegate",
+    "z/bts/buildtrack551/controller/delegate/ApprovalLogDelegate"
 ], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter, DailyLogDelegate, WorkSummaryDelegate, ApprovalLogDelegate) {
     "use strict";
 
 
-    var WBSDetailController = Controller.extend("z.bts.buildtrack.controller.WBSDetail", {
+    var WBSDetailController = Controller.extend("z.bts.buildtrack551.controller.WBSDetail", {
 
         /* =========================================================== */
         /* LIFECYCLE                                                    */
@@ -672,7 +672,7 @@ sap.ui.define([
                         if (!that._pAcceptanceDialog) {
                             that._pAcceptanceDialog = sap.ui.core.Fragment.load({
                                 id: oView.getId(),
-                                name: "z.bts.buildtrack.view.fragments.AcceptanceReport",
+                                name: "z.bts.buildtrack551.view.fragments.AcceptanceReport",
                                 controller: that
                             }).then(function (oDialog) {
                                 oView.addDependent(oDialog);
@@ -692,7 +692,7 @@ sap.ui.define([
                         if (!that._pAcceptanceDialog) {
                             that._pAcceptanceDialog = sap.ui.core.Fragment.load({
                                 id: oView.getId(),
-                                name: "z.bts.buildtrack.view.fragments.AcceptanceReport",
+                                name: "z.bts.buildtrack551.view.fragments.AcceptanceReport",
                                 controller: that
                             }).then(function (oDialog) {
                                 oView.addDependent(oDialog);

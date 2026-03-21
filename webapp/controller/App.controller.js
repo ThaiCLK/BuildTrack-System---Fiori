@@ -1,9 +1,10 @@
 sap.ui.define([
-  "sap/ui/core/mvc/Controller"
-], (BaseController) => {
+  "sap/ui/core/mvc/Controller",
+  "sap/ui/core/Fragment"
+], (BaseController, Fragment) => {
   "use strict";
 
-  return BaseController.extend("z.bts.buildtrack.controller.App", {
+  return BaseController.extend("z.bts.buildtrack551.controller.App", {
       onInit() {
       },
       onNavToDashboard: function () {
@@ -12,9 +13,9 @@ sap.ui.define([
       onPressProfile: function (oEvent) {
           var oButton = oEvent.getSource();
           if (!this._pProfilePopover) {
-              this._pProfilePopover = sap.ui.core.Fragment.load({
+              this._pProfilePopover = Fragment.load({
                   id: this.getView().getId(),
-                  name: "z.bts.buildtrack.view.fragments.ProfilePopover",
+                  name: "z.bts.buildtrack551.view.fragments.ProfilePopover",
                   controller: this
               }).then(function (oPopover) {
                   this.getView().addDependent(oPopover);

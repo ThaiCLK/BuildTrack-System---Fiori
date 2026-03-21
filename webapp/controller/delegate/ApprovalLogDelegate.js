@@ -39,7 +39,7 @@ sap.ui.define([
                 if (!oController._pSignatureDialog) {
                     oController._pSignatureDialog = sap.ui.core.Fragment.load({
                         id: oView.getId(),
-                        name: "z.bts.buildtrack.view.fragments.SignatureDialog",
+                        name: "z.bts.buildtrack551.view.fragments.SignatureDialog",
                         controller: oController
                     }).then(function (oDialog) {
                         oView.addDependent(oDialog);
