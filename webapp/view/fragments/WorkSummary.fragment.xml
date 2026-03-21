@@ -32,7 +32,7 @@
                             icon="sap-icon://signature"
                             type="Emphasized"
                             press=".onApproveOpenWorkSummary"
-                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' &amp;&amp; ${viewData>/isActionableWorkSummary} }"
+                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' }"
                         />
                         <Button
                             id="btnRejectOpenWorkSummary"
@@ -40,7 +40,7 @@
                             icon="sap-icon://decline"
                             type="Reject"
                             press=".onRejectOpenWorkSummary"
-                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' &amp;&amp; ${viewData>/isActionableWorkSummary} }"
+                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' }"
                         />
                         <!-- Đóng WBS -->
                         <Button
@@ -53,11 +53,11 @@
                         />
                         <Button
                             id="btnApproveCloseWorkSummary"
-                            text="{= ${viewData>/isActionableWorkSummary} ? 'Ký duyệt biên bản' : 'Xem biên bản nghiệm thu' }"
-                            icon="{= ${viewData>/isActionableWorkSummary} ? 'sap-icon://signature' : 'sap-icon://display' }"
+                            text="Xem biên bản nghiệm thu"
+                            icon="sap-icon://display"
                             type="Emphasized"
                             press="._openAcceptanceReport"
-                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_CLOSE' }"
+                            visible="{= ${Status} === 'PENDING_CLOSE' || ${Status} === 'CLOSE_REJECTED' || ${Status} === 'CLOSED' }"
                         />
                     </Toolbar>
                 </headerToolbar>

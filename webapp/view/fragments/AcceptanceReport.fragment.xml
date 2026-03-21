@@ -109,9 +109,10 @@
                                 <Text text="{viewData>/signStatus/level1/text}" 
                                       class="{= ${viewData>/signStatus/level1/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level1/signed}" />
-                                <Button text="Ký duyệt" type="Accept" class="btnAcceptanceSign" 
-                                        visible="{viewData>/canApproveLevel1}"
-                                        press=".onSignInvestorPress" />
+                                <Button text="Ký duyệt"
+                                        type="Emphasized"
+                                        press=".onApproveFromReport"
+                                        visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; (${userModel>/authLevel} === '1' || ${userModel>/authLevel} === 1) &amp;&amp; !${viewData>/signStatus/level1/signed} }" />
                             </VBox>                      
                         </VBox>
 
@@ -123,9 +124,10 @@
                                 <Text text="{viewData>/signStatus/level2/text}" 
                                       class="{= ${viewData>/signStatus/level2/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level2/signed}" />
-                                <Button text="Ký duyệt" type="Accept" class="btnAcceptanceSign" 
-                                        visible="{viewData>/canApproveLevel2}"
-                                        press=".onSignInvestorPress" />
+                                <Button text="Ký duyệt"
+                                        type="Emphasized"
+                                        press=".onApproveFromReport"
+                                        visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; (${userModel>/authLevel} === '2' || ${userModel>/authLevel} === 2) &amp;&amp; !${viewData>/signStatus/level2/signed} }" />
                             </VBox>                      
                         </VBox>
 
@@ -137,9 +139,10 @@
                                 <Text text="{viewData>/signStatus/level3/text}" 
                                       class="{= ${viewData>/signStatus/level3/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level3/signed}" />
-                                <Button text="Ký duyệt" type="Accept" class="btnAcceptanceSign" 
-                                        visible="{viewData>/canApproveLevel3}"
-                                        press=".onSignInvestorPress" />
+                                <Button text="Ký duyệt"
+                                        type="Emphasized"
+                                        press=".onApproveFromReport"
+                                        visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; (${userModel>/authLevel} === '3' || ${userModel>/authLevel} === 3) &amp;&amp; !${viewData>/signStatus/level3/signed} }" />
                             </VBox>                      
                         </VBox>
                     </l:content>
@@ -147,9 +150,8 @@
             </VBox>
         </content>
         <buttons>
-             <Button text="Gửi phê duyệt" type="Emphasized" press=".onSubmitForApproval" visible="{= !${viewData>/isApprovalMode} }" />
-             <Button text="Từ chối (Reject)" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
-             <Button text="Hủy/Đóng" press=".onCloseAcceptanceDialog" />
+             <Button text="Từ chối" type="Reject" press=".onRejectFromReport" visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; ( ((${userModel>/authLevel} === '1' || ${userModel>/authLevel} === 1) &amp;&amp; !${viewData>/signStatus/level1/signed}) || ((${userModel>/authLevel} === '2' || ${userModel>/authLevel} === 2) &amp;&amp; !${viewData>/signStatus/level2/signed}) || ((${userModel>/authLevel} === '3' || ${userModel>/authLevel} === 3) &amp;&amp; !${viewData>/signStatus/level3/signed}) ) }" />
+             <Button text="Đóng" press=".onCloseAcceptanceDialog" />
         </buttons>
     </Dialog>
 </core:FragmentDefinition>

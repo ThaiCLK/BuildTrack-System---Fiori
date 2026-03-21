@@ -12,12 +12,7 @@
             <Toolbar design="Transparent">
                 <Title text="Nhật ký phê duyệt" level="H5" />
                 <ToolbarSpacer />
-                <Button 
-                    text="Gửi duyệt WBS hiện tại" 
-                    type="Emphasized" 
-                    icon="sap-icon://paper-plane"
-                    press=".onSubmitApprovalPress"
-                    visible="{= ${userModel>/userId} === 'LEARN-549' }" />
+
                 <Button icon="sap-icon://sort" type="Transparent" />
             </Toolbar>
             <ScrollContainer height="calc(100vh - 250px)" vertical="true" horizontal="false">

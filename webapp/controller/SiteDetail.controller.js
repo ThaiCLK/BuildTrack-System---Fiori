@@ -551,20 +551,8 @@ sap.ui.define([
                 var oCtx = oItem.getBindingContext("viewData");
                 var oWbs = oCtx.getObject();
 
-                // Extract the LATEST WorkItemId from the logs
-                var sWorkItemId = "";
-                var aLogs = (oWbs.ToApprovalLog && oWbs.ToApprovalLog.results) ? oWbs.ToApprovalLog.results : [];
-
-                if (aLogs.length > 0) {
-                    aLogs.sort(function (a, b) {
-                        return new Date(b.CreatedTimestamp) - new Date(a.CreatedTimestamp);
-                    });
-                    sWorkItemId = aLogs[0].WorkItemId;
-                }
-
-                if (!sWorkItemId) {
-                    sWorkItemId = oWbs.WorkItemId || "";
-                }
+                // Extract the EXACT active WorkItemId populated by CheckDecision
+                var sWorkItemId = oWbs.WorkItemId || "";
 
                 if (!sWorkItemId) {
                     bError = true;
@@ -577,7 +565,7 @@ sap.ui.define([
             });
 
             if (bError && aItemsToProcess.length === 0) {
-                MessageBox.error("Cannot find Work Item ID for selected items. Please refresh and try again.");
+                MessageBox.error("Không tìm thấy Work Item ID của hạng mục được chọn. Vui lòng tải lại trang và thử lại.");
                 return;
             }
 
@@ -598,6 +586,10 @@ sap.ui.define([
                         type: "Emphasized",
                         press: function () {
                             var sUserNote = sap.ui.getCore().byId("approveNote").getValue();
+                            if (this._sPendingDecision === "0002" && (!sUserNote || sUserNote.trim() === "")) {
+                                MessageBox.error("Vui lòng nhập lý do từ chối (Note) trước khi Submit.");
+                                return;
+                            }
                             this._oApproveDialog.close();
                             this._submitDecisionBatch(this._aPendingItems, this._sPendingDecision, sUserNote);
                         }.bind(this)

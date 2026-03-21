@@ -382,67 +382,12 @@ sap.ui.define([
         _bindApprovalLogList: ApprovalLogDelegate._bindApprovalLogList,
         _initInvestorCanvas: ApprovalLogDelegate._initInvestorCanvas,
 
-        /* =========================================================== */
-        /* ACCEPTANCE DIALOG LOGIC                                     */
-        /* =========================================================== */
 
-        onSubmitApprovalPress: function () {
-            var oView = this.getView();
-            var oContext = oView.getBindingContext();
-            if (!oContext) return;
-
-            if (!this._pSubmitTypeDialog) {
-                this._pSubmitTypeDialog = sap.ui.core.Fragment.load({
-                    id: oView.getId(),
-                    name: "z.bts.buildtrack.view.fragments.SubmitTypeSelection",
-                    controller: this
-                }).then(function (oDialog) {
-                    oView.addDependent(oDialog);
-                    return oDialog;
-                });
-            }
-
-            this._pSubmitTypeDialog.then(function (oDialog) {
-                oDialog.open();
-            });
-        },
-
-        onCloseSubmitTypeDialog: function () {
-            if (this._pSubmitTypeDialog) {
-                this._pSubmitTypeDialog.then(function (oDialog) {
-                    oDialog.close();
-                });
-            }
-        },
-
-        onSelectOpenSubmission: function () {
-            this.onCloseSubmitTypeDialog();
-            var oView = this.getView();
-
-            if (!this._pWbsInfoDialog) {
-                this._pWbsInfoDialog = sap.ui.core.Fragment.load({
-                    id: oView.getId(),
-                    name: "z.bts.buildtrack.view.fragments.WbsInfoDialog",
-                    controller: this
-                }).then(function (oDialog) {
-                    oView.addDependent(oDialog);
-                    return oDialog;
-                });
-            }
-
-            this._pWbsInfoDialog.then(function (oDialog) {
-                oDialog.open();
-            });
-        },
-
-        onSelectCloseSubmission: function () {
-            this.onCloseSubmitTypeDialog();
-            this._openAcceptanceReport();
-        },
 
         onPressSubmitCloseWorkSummary: function () {
             var oView = this.getView();
             var oWbsCtx = oView.getBindingContext();
+            var that = this;
 
             if (!oWbsCtx) return;
 
@@ -452,8 +397,13 @@ sap.ui.define([
                 return;
             }
 
-            // Immediately open report without redundant prompt
-            this._openAcceptanceReport();
+            sap.m.MessageBox.confirm("Bạn có chắc chắn muốn gửi duyệt Đóng hạng mục này không?", {
+                onClose: function (sAction) {
+                    if (sAction === sap.m.MessageBox.Action.OK) {
+                        WorkSummaryDelegate.onSubmitForApproval.call(that);
+                    }
+                }
+            });
         },
 
         onPressSubmitOpenWorkSummary: function () {
@@ -506,7 +456,16 @@ sap.ui.define([
             var sWorkItemId = oViewData.getProperty("/activeWorkItemId");
 
             if (!sWorkItemId) {
-                sap.m.MessageBox.error("Không tìm thấy mã công việc (WorkItemId) để xử lý.");
+                var oUserModel = oView.getModel("userModel");
+                var sAuthLevel = oUserModel ? String(oUserModel.getProperty("/authLevel")) : "";
+                var sMessage = "Không thể ký duyệt vì cấp trước chưa hoàn thành phê duyệt.";
+
+                if (sAuthLevel === "2") {
+                    sMessage = "Không thể ký duyệt vì Kỹ Sư Phụ Trách chưa hoàn thành phê duyệt.";
+                } else if (sAuthLevel === "3") {
+                    sMessage = "Không thể ký duyệt vì Tư Vấn Giám Sát chưa hoàn thành phê duyệt.";
+                }
+                sap.m.MessageBox.error(sMessage);
                 return;
             }
 
@@ -558,16 +517,31 @@ sap.ui.define([
                     oViewData.setProperty("/activeWbs", Object.assign({}, oWbs, { WorkItemId: oResult.WORKITEM_ID }));
                 }
 
-                // 2. FETCH LATEST LOGS DIRECTLY (FILTER BY CLOSE TYPE)
+                // 2. FETCH LATEST LOGS DIRECTLY WITH NO APPROVALTYPE RESTRICTION
+                // The SAP backend might not set 'ApprovalType'='CLOSE' for signature logs, so fetch all logs for this WbsId
                 oModel.read("/ApprovalLogSet", {
                     filters: [
-                        new Filter("WbsId", FilterOperator.EQ, sWbsId),
-                        new Filter("ApprovalType", FilterOperator.EQ, "CLOSE")
+                        new Filter("WbsId", FilterOperator.EQ, sWbsId)
                     ],
                     sorters: [new Sorter("CreatedTimestamp", false)],
+                    urlParameters: {
+                        "cb": new Date().getTime() // Cache buster
+                    },
                     success: function (oLogData) {
                         oView.setBusy(false);
                         var aLogs = oLogData.results || [];
+                        
+                        // Cực kỳ quan trọng: Server SAP BỎ QUA lệnh Sorter của OData, nên nó luôn trả về Log CŨ NHẤT nằm trên cùng!
+                        // Do đó ta phải tự Sort lại thủ công bằng Javascript (Mới nhất lên đầu) trước khi duyệt vòng lặp.
+                        aLogs.sort(function (a, b) {
+                            var t1 = a.CreatedTimestamp ? new Date(a.CreatedTimestamp).getTime() : 0;
+                            var t2 = b.CreatedTimestamp ? new Date(b.CreatedTimestamp).getTime() : 0;
+                            return t2 - t1; // Descending: Newest first
+                        });
+
+                        console.log("=== THÔNG TIN TỪ BACKEND SAP: ===");
+                        console.log("SỐ LƯỢNG LOGS VỀ WBS NÀY:", aLogs.length);
+                        console.log("CHI TIẾT MẢNG L0GS:", aLogs);
 
                         var oSignStatus = {
                             level1: { text: "[Chờ duyệt]", signed: false },
@@ -577,17 +551,21 @@ sap.ui.define([
 
                         var bCycleEnded = false;
 
-                        aLogs.slice().reverse().forEach(function (log) {
+                        aLogs.forEach(function (log) {
                             if (bCycleEnded) return;
 
                             var sAction = (log.Action || "").toUpperCase().trim();
                             var iLevel = parseInt(log.ApprovalLevel);
+                            console.log("Đang xét Log - Action:", sAction, "| Level:", iLevel, "| By:", log.ActionBy);
 
                             var bApproved = false;
-                            if (sAction === "0001" || sAction === "APPROVED" || sAction === "SUCCESS" || sAction === "ĐÃ PHÊ DUYỆT" || sAction === "KÝ DUYÊT") {
+                            
+                            // Broaden approval check to catch all variations of approval actions
+                            if (sAction.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0 || sAction.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0) {
                                 bApproved = true;
-                            } else if (sAction.indexOf("CHẤP THUẬN YÊU CẦU ĐÓNG WBS") === 0) {
-                                // Only match exactly "CHẤP THUẬN YÊU CẦU ĐÓNG WBS" (possibly followed by "(Cấp X)")
+                            } else if (sAction === "0001" || sAction === "APPROVED" || sAction === "SUCCESS" || sAction === "ĐÃ PHÊ DUYỆT" || sAction === "KÝ DUYÊT" || sAction === "KÝ DUYỆT") {
+                                bApproved = true;
+                            } else if (sAction.indexOf("CHẤP THUẬN") >= 0 || sAction.indexOf("APPROVE") >= 0) {
                                 bApproved = true;
                             }
 
@@ -749,79 +727,92 @@ sap.ui.define([
             var oView = this.getView();
             var oModel = this.getOwnerComponent().getModel();
             var oViewData = oView.getModel("viewData");
-            var oActiveWbs = oViewData.getProperty("/activeWbs");
+            
+            // Try getting from primary CheckDecision field first
+            var sWorkItemId = oViewData.getProperty("/activeWorkItemId");
+            
+            // Fallback to the one saved specifically by _openAcceptanceReport's call
+            if (!sWorkItemId) {
+                var oActiveWbs = oViewData.getProperty("/activeWbs");
+                if (oActiveWbs && oActiveWbs.WorkItemId) {
+                    sWorkItemId = oActiveWbs.WorkItemId;
+                }
+            }
 
-            if (!oActiveWbs || !oActiveWbs.WorkItemId) {
-                MessageBox.error("Không tìm thấy mã công việc (WorkItemId) để xử lý.");
+            if (!sWorkItemId) {
+                var oUserModel = oView.getModel("userModel");
+                var sAuthLevel = oUserModel ? String(oUserModel.getProperty("/authLevel")) : "";
+                var sMessage = "Không thể ký duyệt vì cấp trước chưa hoàn thành phê duyệt.";
+                
+                if (sAuthLevel === "2") {
+                    sMessage = "Không thể ký duyệt vì Kỹ Sư Phụ Trách chưa hoàn thành phê duyệt.";
+                } else if (sAuthLevel === "3") {
+                    sMessage = "Không thể ký duyệt vì Tư Vấn Giám Sát chưa hoàn thành phê duyệt.";
+                }
+                
+                sap.m.MessageBox.error(sMessage);
                 return;
             }
 
-            MessageBox.confirm("Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
+            sap.m.MessageBox.confirm("Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
                 onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.OK) {
+                    if (sAction === sap.m.MessageBox.Action.OK) {
                         oView.setBusy(true);
                         oModel.callFunction("/PostDecision", {
                             method: "POST",
                             urlParameters: {
-                                WI_ID: oActiveWbs.WorkItemId,
+                                WI_ID: sWorkItemId,
                                 Decision: sDecisionCode,
                                 Note: "Processed from Acceptance Report"
                             },
                             success: function (oData) {
                                 oView.setBusy(false);
-                                if (typeof that.onCloseAcceptanceDialog === "function") {
-                                    that.onCloseAcceptanceDialog();
+                                
+                                sap.m.MessageBox.success("Đã xử lý quyết định thành công.");
+                                
+                                // Update local signStatus immediately so UI reflects signature
+                                if (sDecisionCode === "0001") {
+                                    var oUserModel = oView.getModel("userModel");
+                                    var sAuthLevel = oUserModel ? String(oUserModel.getProperty("/authLevel")) : "";
+                                    var sFullName = oUserModel ? (oUserModel.getProperty("/fullName") || oUserModel.getProperty("/userName") || "Đã ký") : "Đã ký";
+                                    var oSignStatus = oViewData.getProperty("/signStatus");
+                                    
+                                    if (sAuthLevel === "1") {
+                                        oSignStatus.level1 = { text: sFullName, signed: true };
+                                    } else if (sAuthLevel === "2") {
+                                        oSignStatus.level2 = { text: sFullName, signed: true };
+                                    } else if (sAuthLevel === "3") {
+                                        oSignStatus.level3 = { text: sFullName, signed: true };
+                                    }
+                                    
+                                    oViewData.setProperty("/signStatus", oSignStatus);
+                                } else {
+                                    // If reject, close the dialog because the flow is broken
+                                    if (typeof that.onCloseAcceptanceDialog === "function") {
+                                        that.onCloseAcceptanceDialog();
+                                    }
                                 }
-                                MessageBox.success("Đã xử lý quyết định thành công.");
-                                that._bindApprovalLogList(oActiveWbs.WbsId);
-
-                                // Re-check actionability so button text updates to 'Xem biên bản'
-                                if (typeof that._checkIfActionable === "function") {
-                                    that._checkIfActionable(oActiveWbs.WbsId);
+                                
+                                var oWbsCtx = oView.getBindingContext();
+                                if (oWbsCtx) {
+                                    var sWbsId = oWbsCtx.getProperty("WbsId");
+                                    that._bindApprovalLogList(sWbsId);
+                                    if (typeof that._checkIfActionable === "function") {
+                                        that._checkIfActionable(sWbsId, oWbsCtx.getProperty("Status"));
+                                    }
                                 }
 
-                                // Refresh WBS Detail
                                 var oBinding = oView.getElementBinding();
                                 if (oBinding) { oBinding.refresh(); }
                             },
                             error: function (oError) {
                                 oView.setBusy(false);
-                                var sMsg = "Lỗi khi xử lý quyết định.";
-                                try {
-                                    var oErr = JSON.parse(oError.responseText);
-                                    sMsg = oErr.error.message.value || sMsg;
-                                } catch (e) { }
-                                MessageBox.error(sMsg);
+                                sap.m.MessageBox.error("Lỗi khi xử lý quyết định.");
                             }
                         });
                     }
                 }
             });
-        },
-
-        onSubmitForApproval: function () {
-            // This is for "CLOSE" type - includes validation logic
-            var oView = this.getView();
-            var oContext = oView.getBindingContext();
-            var sStatus = oContext ? oContext.getProperty("Status") : "";
-
-            if (sStatus === "PENDING_CLOSE") {
-                sap.m.MessageBox.error("Hạng mục này đã được gửi phê duyệt đóng và đang chờ xử lý.");
-                return;
-            }
-
-            if (sStatus === "CLOSED") {
-                sap.m.MessageBox.information("Hạng mục này đã hoàn thành và được đóng.");
-                return;
-            }
-
-            if (sStatus !== "IN_PROGRESS") {
-                sap.m.MessageBox.warning("Hạng mục phải ở trạng thái 'In Progress' (Đang thi công) mới có thể gửi phê duyệt đóng.");
-                return;
-            }
-
-            this.onCloseAcceptanceDialog();
-            WorkSummaryDelegate.onSubmitForApproval.call(this);
         },
 
         onDirectSubmitWS: function () {
