@@ -1,8 +1,6 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
-    "sap/ui/model/Filter",
-    "sap/ui/model/FilterOperator",
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Sorter",
     "sap/m/MessageToast",
@@ -16,29 +14,102 @@ sap.ui.define([
     "sap/ui/core/Item",
     "sap/m/DatePicker",
     "sap/ui/layout/form/SimpleForm"
-], function (Controller, History, Filter, FilterOperator, JSONModel, Sorter, MessageToast, MessageBox,
+], function (Controller, History, JSONModel, Sorter, MessageToast, MessageBox,
     Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, SimpleForm) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.ProjectManagement", {
 
         onInit: function () {
+            this._mProjectField = {
+                id: "ProjectId",
+                code: "ProjectCode",
+                name: "ProjectName",
+                type: "ProjectType",
+                startDate: "StartDate",
+                endDate: "EndDate",
+                status: "Status"
+            };
+            this._sProjectCollectionPath = "/ProjectSet";
+            this._oCurrentCriteria = {
+                query: "",
+                status: "",
+                type: "",
+                startDate: null,
+                endDate: null
+            };
+
             this.getView().setModel(new JSONModel({
                 statusItems: [],
                 typeItems: []
             }), "vh");
+            this.getView().setModel(new JSONModel({
+                projects: []
+            }), "pm");
+
+            var oFilterBar = this.byId("projectFilterBar");
+            if (oFilterBar) {
+                oFilterBar.detachSearch(this.onFilterSearch, this);
+                oFilterBar.detachClear(this.onFilterClear, this);
+                oFilterBar.attachSearch(this.onFilterSearch, this);
+                oFilterBar.attachClear(this.onFilterClear, this);
+            }
+
+            var oSearchField = this.byId("fbSearchField");
+            if (oSearchField) {
+                oSearchField.attachSearch(this.onFilterSearch, this);
+            }
+
+            var oStatus = this.byId("fbStatus");
+            if (oStatus) {
+                oStatus.attachChange(this.onFilterSearch, this);
+                oStatus.attachSelectionChange(this.onFilterSearch, this);
+            }
+
+            var oType = this.byId("fbType");
+            if (oType) {
+                oType.attachChange(this.onFilterSearch, this);
+                oType.attachSelectionChange(this.onFilterSearch, this);
+            }
+
+            var oStartDate = this.byId("fbStartDate");
+            if (oStartDate) {
+                oStartDate.attachChange(this.onFilterSearch, this);
+            }
+
+            var oEndDate = this.byId("fbEndDate");
+            if (oEndDate) {
+                oEndDate.attachChange(this.onFilterSearch, this);
+            }
 
             this._loadProjectValueHelps();
+            this._readProjects("");
+        },
 
-            var oTable = this.byId("projectTable");
-            if (oTable) {
-                oTable.attachEventOnce("updateFinished", function () {
-                    var oBinding = oTable.getBinding("items");
-                    if (oBinding) {
-                        oBinding.sort(new Sorter("StartDate", true));
-                    }
-                });
+        _resolveProjectCollectionPath: function () {
+            var oMeta = this.getOwnerComponent().getModel().getServiceMetadata();
+            if (!oMeta || !oMeta.dataServices || !oMeta.dataServices.schema || !oMeta.dataServices.schema.length) {
+                return this._sProjectCollectionPath;
             }
+
+            var aEntitySets = [];
+            oMeta.dataServices.schema.forEach(function (oSchema) {
+                var aContainers = oSchema.entityContainer || [];
+                aContainers.forEach(function (oContainer) {
+                    var aSets = oContainer.entitySet || [];
+                    aSets.forEach(function (oSet) {
+                        aEntitySets.push(oSet.name);
+                    });
+                });
+            });
+
+            if (aEntitySets.indexOf("ProjectSet") !== -1) {
+                this._sProjectCollectionPath = "/ProjectSet";
+            } else if (aEntitySets.indexOf("ZC_BT_PROJECT") !== -1) {
+                this._sProjectCollectionPath = "/ZC_BT_PROJECT";
+            }
+
+            return this._sProjectCollectionPath;
         },
 
         _loadProjectValueHelps: function () {
@@ -48,11 +119,9 @@ sap.ui.define([
                 return;
             }
 
-            oModel.read("/ProjectSet", {
-                urlParameters: {
-                    "$select": "Status,ProjectType",
-                    "$top": "200"
-                },
+            var sPath = this._resolveProjectCollectionPath();
+
+            oModel.read(sPath, {
                 success: function (oData) {
                     var aResults = (oData && oData.results) ? oData.results : [];
 
@@ -60,8 +129,8 @@ sap.ui.define([
                     var mTypes = Object.create(null);
 
                     aResults.forEach(function (oRow) {
-                        var sStatus = (oRow.Status || "").toString().trim();
-                        var sType = (oRow.ProjectType || "").toString().trim();
+                        var sStatus = (oRow.Status || oRow.status || "").toString().trim();
+                        var sType = (oRow.ProjectType || oRow.project_type || "").toString().trim();
                         if (sStatus) {
                             mStatuses[sStatus] = true;
                         }
@@ -85,6 +154,159 @@ sap.ui.define([
                     oVhModel.setProperty("/typeItems", []);
                 }
             });
+        },
+
+        _escapeODataString: function (sValue) {
+            return (sValue || "").replace(/'/g, "''");
+        },
+
+        _detectProjectFieldMap: function (oSample) {
+            if (!oSample || typeof oSample !== "object") {
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(oSample, "project_id")) {
+                this._mProjectField = {
+                    id: "project_id",
+                    code: "project_code",
+                    name: "project_name",
+                    type: "project_type",
+                    startDate: "start_date",
+                    endDate: "end_date",
+                    status: "status"
+                };
+            }
+        },
+
+        _buildFilterExpression: function (mInput) {
+            var mField = this._mProjectField;
+            var aExpr = [];
+
+            if (mInput.query) {
+                var sEscaped = this._escapeODataString(mInput.query);
+                aExpr.push("(substringof('" + sEscaped + "'," + mField.name + ") or substringof('" + sEscaped + "'," + mField.code + "))");
+            }
+            if (mInput.status) {
+                aExpr.push(mField.status + " eq '" + this._escapeODataString(mInput.status) + "'");
+            }
+            if (mInput.type) {
+                aExpr.push(mField.type + " eq '" + this._escapeODataString(mInput.type) + "'");
+            }
+            if (mInput.startDate) {
+                aExpr.push(mField.startDate + " eq " + this._formatDateTimeLiteral(mInput.startDate));
+            }
+            if (mInput.endDate) {
+                aExpr.push(mField.endDate + " eq " + this._formatDateTimeLiteral(mInput.endDate));
+            }
+
+            return aExpr.join(" and ");
+        },
+
+        _normalizeProjectRow: function (oRow) {
+            return {
+                ProjectId: oRow.ProjectId || oRow.project_id || "",
+                ProjectCode: oRow.ProjectCode || oRow.project_code || "",
+                ProjectName: oRow.ProjectName || oRow.project_name || "",
+                ProjectType: oRow.ProjectType || oRow.project_type || "",
+                StartDate: oRow.StartDate || oRow.start_date || null,
+                EndDate: oRow.EndDate || oRow.end_date || null,
+                Status: oRow.Status || oRow.status || ""
+            };
+        },
+
+        _dateOnlyKey: function (vDate) {
+            if (!vDate) {
+                return "";
+            }
+            var oDate = vDate instanceof Date ? vDate : new Date(vDate);
+            if (isNaN(oDate.getTime())) {
+                return "";
+            }
+            var y = oDate.getFullYear();
+            var m = oDate.getMonth() + 1;
+            var d = oDate.getDate();
+            return y + "-" + (m < 10 ? "0" + m : String(m)) + "-" + (d < 10 ? "0" + d : String(d));
+        },
+
+        _applyCriteriaLocal: function (aRows) {
+            var oC = this._oCurrentCriteria || {};
+            var sQuery = (oC.query || "").toLowerCase();
+            var sStatus = (oC.status || "").trim();
+            var sType = (oC.type || "").trim();
+            var sStart = this._dateOnlyKey(oC.startDate);
+            var sEnd = this._dateOnlyKey(oC.endDate);
+
+            return (aRows || []).filter(function (oRow) {
+                var bSearch = !sQuery ||
+                    (oRow.ProjectName || "").toLowerCase().indexOf(sQuery) !== -1 ||
+                    (oRow.ProjectCode || "").toLowerCase().indexOf(sQuery) !== -1;
+                var bStatus = !sStatus || (oRow.Status || "") === sStatus;
+                var bType = !sType || (oRow.ProjectType || "") === sType;
+                var bStart = !sStart || this._dateOnlyKey(oRow.StartDate) === sStart;
+                var bEnd = !sEnd || this._dateOnlyKey(oRow.EndDate) === sEnd;
+                return bSearch && bStatus && bType && bStart && bEnd;
+            }.bind(this));
+        },
+
+        _formatDateTimeLiteral: function (oDate) {
+            var iYear = oDate.getFullYear();
+            var iMonth = oDate.getMonth() + 1;
+            var iDay = oDate.getDate();
+            var sMonth = iMonth < 10 ? "0" + iMonth : String(iMonth);
+            var sDay = iDay < 10 ? "0" + iDay : String(iDay);
+            return "datetime'" + iYear + "-" + sMonth + "-" + sDay + "T00:00:00'";
+        },
+
+        _readProjects: function (sFilterExpr) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oPmModel = this.getView().getModel("pm");
+            if (!oModel || !oPmModel) {
+                return;
+            }
+
+            var sPath = this._resolveProjectCollectionPath();
+            var mUrlParameters = {};
+            if (sFilterExpr) {
+                mUrlParameters.$filter = sFilterExpr;
+            }
+
+            oModel.read(sPath, {
+                urlParameters: mUrlParameters,
+                success: function (oData) {
+                    var aResults = (oData && oData.results) ? oData.results : [];
+                    if (aResults.length > 0) {
+                        this._detectProjectFieldMap(aResults[0]);
+                    }
+                    var aNormalized = aResults.map(this._normalizeProjectRow.bind(this));
+                    aNormalized = this._applyCriteriaLocal(aNormalized);
+                    aNormalized.sort(function (a, b) {
+                        var iA = a.StartDate ? new Date(a.StartDate).getTime() : 0;
+                        var iB = b.StartDate ? new Date(b.StartDate).getTime() : 0;
+                        return iB - iA;
+                    });
+                    oPmModel.setProperty("/projects", aNormalized);
+                }.bind(this),
+                error: function () {
+                    oPmModel.setProperty("/projects", []);
+                }
+            });
+        },
+
+        _getProjectEntityPath: function (oContext) {
+            if (!oContext) {
+                return null;
+            }
+
+            var sPath = oContext.getPath ? oContext.getPath() : "";
+            if (sPath && sPath.indexOf("/ProjectSet(") === 0) {
+                return sPath;
+            }
+
+            var sProjectId = oContext.getProperty("ProjectId");
+            if (!sProjectId) {
+                return null;
+            }
+            return this._resolveProjectCollectionPath() + "(guid'" + sProjectId + "')";
         },
 
         // ── FORMATTERS ────────────────────────────────────────────────────────
@@ -124,12 +346,6 @@ sap.ui.define([
 
         // ── FILTER BAR (GO) ───────────────────────────────────────────────
         onFilterSearch: function () {
-            var oTable = this.byId("projectTable");
-            var oBinding = oTable ? oTable.getBinding("items") : null;
-            if (!oBinding) {
-                return;
-            }
-
             var sQuery = (this.byId("fbSearchField").getValue() || "").trim();
 
             var oStatus = this.byId("fbStatus");
@@ -142,32 +358,23 @@ sap.ui.define([
             var dStart = this.byId("fbStartDate").getDateValue();
             var dEnd = this.byId("fbEndDate").getDateValue();
 
-            var aFilters = [];
-            
-            if (sQuery) {
-                aFilters.push(new Filter({
-                    filters: [
-                        new Filter("ProjectCode", FilterOperator.Contains, sQuery),
-                        new Filter("ProjectName", FilterOperator.Contains, sQuery)
-                    ],
-                    and: false
-                }));
-            }
-            if (sStatus) {
-                aFilters.push(new Filter("Status", FilterOperator.EQ, sStatus));
-            }
-            if (sType) {
-                aFilters.push(new Filter("ProjectType", FilterOperator.EQ, sType));
-            }
-            if (dStart) {
-                aFilters.push(new Filter("StartDate", FilterOperator.GE, dStart));
-            }
-            if (dEnd) {
-                aFilters.push(new Filter("EndDate", FilterOperator.LE, dEnd));
-            }
+            var sFilterExpr = this._buildFilterExpression({
+                query: sQuery,
+                status: sStatus,
+                type: sType,
+                startDate: dStart,
+                endDate: dEnd
+            });
 
-            oBinding.filter(aFilters);
-            oBinding.sort(new Sorter("StartDate", true));
+            this._oCurrentCriteria = {
+                query: sQuery,
+                status: sStatus,
+                type: sType,
+                startDate: dStart,
+                endDate: dEnd
+            };
+
+            this._readProjects(sFilterExpr);
         },
 
         onFilterClear: function () {
@@ -183,7 +390,7 @@ sap.ui.define([
 
         // ── NAVIGATE ─────────────────────────────────────────────────────────
         onPressProject: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext();
+            var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
             var sProjectId = oContext.getProperty("ProjectId");
             var sProjectName = oContext.getProperty("ProjectName");
             this.getOwnerComponent().getRouter().navTo("Site", { project_id: sProjectId });
@@ -197,16 +404,22 @@ sap.ui.define([
 
         // ── EDIT ──────────────────────────────────────────────────────────────
         onEditProject: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext();
+            var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
             this._openProjectDialog(oContext);
         },
 
         // ── DELETE ────────────────────────────────────────────────────────────
         onDeleteProject: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext();
+            var that = this;
+            var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
             var sName = oContext.getProperty("ProjectName");
-            var sPath = oContext.getPath();
+            var sPath = this._getProjectEntityPath(oContext);
             var oModel = this.getOwnerComponent().getModel();
+
+            if (!sPath) {
+                MessageBox.error("Cannot determine Project path for delete.");
+                return;
+            }
 
             MessageBox.confirm("Are you sure you want to delete project \"" + sName + "\"?", {
                 title: "Confirm Delete",
@@ -215,13 +428,14 @@ sap.ui.define([
                         oModel.remove(sPath, {
                             success: function () {
                                 MessageToast.show("Project deleted successfully!");
+                                that._readProjects("");
                             },
                             error: function () {
                                 MessageBox.error("Unable to delete project. Please try again.");
                             }
                         });
                     }
-                }
+                }.bind(this)
             });
         },
 
@@ -322,13 +536,18 @@ sap.ui.define([
                             Status: oSelectStatus.getSelectedKey()
                         };
                         if (bEdit) {
-                            oModel.update(oContext.getPath(), oPayload, {
-                                success: function () { MessageToast.show("Project updated!"); oDialog.close(); },
+                            var sUpdatePath = that._getProjectEntityPath(oContext);
+                            if (!sUpdatePath) {
+                                MessageBox.error("Cannot determine Project path for update.");
+                                return;
+                            }
+                            oModel.update(sUpdatePath, oPayload, {
+                                success: function () { MessageToast.show("Project updated!"); that._readProjects(""); oDialog.close(); },
                                 error: function () { MessageBox.error("Error updating project!"); }
                             });
                         } else {
                             oModel.create("/ProjectSet", oPayload, {
-                                success: function () { MessageToast.show("Project created successfully!"); oDialog.close(); },
+                                success: function () { MessageToast.show("Project created successfully!"); that._readProjects(""); oDialog.close(); },
                                 error: function () { MessageBox.error("Error creating project!"); }
                             });
                         }

@@ -167,3 +167,27 @@ define view ZC_BT_PROJECT
     @UI.lineItem: [{ position: 60 }]
     status
 }
+
+test 
+/sap/opu/odata/sap/ZC_BT_PROJECT_CDS/ZC_BT_PROJECT?$filter=substringof('Aurora', project_name)
+
+{
+  "d" : {
+    "results" : [
+      {
+        "__metadata" : {
+          "id" : "http://s35lp1.ucc.cit.tum.de:8000/sap/opu/odata/sap/ZC_BT_PROJECT_CDS/ZC_BT_PROJECT(guid'cf0a5ab1-74e6-1fe1-88aa-d414fe590981')",
+          "uri" : "http://s35lp1.ucc.cit.tum.de:8000/sap/opu/odata/sap/ZC_BT_PROJECT_CDS/ZC_BT_PROJECT(guid'cf0a5ab1-74e6-1fe1-88aa-d414fe590981')",
+          "type" : "ZC_BT_PROJECT_CDS.ZC_BT_PROJECTType"
+        },
+        "project_id" : "cf0a5ab1-74e6-1fe1-88aa-d414fe590981",
+        "project_code" : "PRJ-2024-001",
+        "project_name" : "Tổ hợp Thương mại & Căn hộ Cao cấp Aurora",
+        "project_type" : "CIVIL_BUILDING",
+        "start_date" : "\/Date(1776211200000)\/",
+        "end_date" : "\/Date(1836691200000)\/",
+        "status" : "PLANNING"
+      }
+    ]
+  }
+}

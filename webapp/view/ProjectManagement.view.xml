@@ -12,13 +12,13 @@
                 <fb:FilterBar id="projectFilterBar"
                     useToolbar="false"
                     showGoOnFB="true"
-                    search=".onFilterSearch"
-                    clear=".onFilterClear"
+                    search="onFilterSearch"
+                    clear="onFilterClear"
                     showClearOnFB="true">
                     <fb:filterGroupItems>
                         <fb:FilterGroupItem name="Search" label="Search" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <SearchField id="fbSearchField" placeholder="Project Name, Code..."/>
+                                <SearchField id="fbSearchField" placeholder="Project Name, Code..." search="onFilterSearch"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
@@ -53,7 +53,7 @@
                     growing="true"
                     growingThreshold="20"
                     alternateRowColors="true"
-                    items="{ path: '/ProjectSet' }">
+                    items="{ path: 'pm>/projects' }">
 
                 <headerToolbar>
                     <OverflowToolbar id="otbSubheader" style="Clear">
@@ -103,24 +103,24 @@
                         <cells>
                             <!-- Project Code: bold identifier -->
                             <ObjectIdentifier id="objProjectCode"
-                                title="{ProjectCode}"
+                                title="{pm>ProjectCode}"
                                 titleActive="false"/>
 
                             <!-- Project Name -->
                             <ObjectIdentifier id="objProjectName"
-                                title="{ProjectName}"
+                                title="{pm>ProjectName}"
                                 titleActive="false"/>
 
                             <!-- Type badge — icon & colour via formatter (avoids XML whitespace issues) -->
                             <ObjectStatus id="objProjectType"
-                                text="{ProjectType}"
-                                icon="{ path: 'ProjectType', formatter: '.formatTypeIcon' }"
-                                state="{ path: 'ProjectType', formatter: '.formatTypeState' }"
+                                text="{pm>ProjectType}"
+                                icon="{ path: 'pm>ProjectType', formatter: '.formatTypeIcon' }"
+                                state="{ path: 'pm>ProjectType', formatter: '.formatTypeState' }"
                                 inverted="true"/>
 
                             <!-- Start Date -->
                             <Text id="txtStartDate" text="{
-                                path: 'StartDate',
+                                path: 'pm>StartDate',
                                 type: 'sap.ui.model.type.Date',
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
                             }"/>
@@ -128,7 +128,7 @@
                             <!-- End Date — highlight overdue in red -->
                             <ObjectStatus id="objEndDate"
                                 text="{
-                                    path: 'EndDate',
+                                    path: 'pm>EndDate',
                                     type: 'sap.ui.model.type.Date',
                                     formatOptions: { pattern: 'dd/MM/yyyy' }
                                 }"
@@ -136,14 +136,14 @@
 
                             <!-- Status badge with semantic colours -->
                             <ObjectStatus id="objStatus"
-                                text="{path: 'Status', formatter: '.formatStatusText'}"
-                                icon="{= ${Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
-                                       ${Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
-                                       ${Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
+                                text="{path: 'pm>Status', formatter: '.formatStatusText'}"
+                                icon="{= ${pm>Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
+                                    ${pm>Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
+                                    ${pm>Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
                                                                     'sap-icon://status-inactive' }"
-                                state="{= ${Status} === 'IN_PROGRESS' ? 'Success'     :
-                                        ${Status} === 'PLANNING' ? 'Warning'     :
-                                        ${Status} === 'CLOSED'   ? 'Error'       :
+                                state="{= ${pm>Status} === 'IN_PROGRESS' ? 'Success'     :
+                                     ${pm>Status} === 'PLANNING' ? 'Warning'     :
+                                     ${pm>Status} === 'CLOSED'   ? 'Error'       :
                                                                     'None' }"
                                 inverted="true"/>
 
