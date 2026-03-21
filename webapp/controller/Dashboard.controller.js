@@ -11,13 +11,12 @@ sap.ui.define([
 
         onInit: function () {
             var oDashboardModel = new JSONModel({
-                activeProjects: 0,
+                planningProjects: 0,
                 pendingApprovals: 0,
                 budgetSpentPct: 85,
                 criticalResources: 2,
-                workCompletedPct: 85,
                 totalSites: 0,
-                todayLogs: 0,
+                planningSites: 0,
                 // Weather
                 weatherTemp: "--°C",
                 weatherDesc: "Loading...",
@@ -38,9 +37,7 @@ sap.ui.define([
             var that = this;
             var aCardActions = [
                 { id: "cardMyProjects", fn: "onGoToProjects" },
-                { id: "cardProjectSites", fn: "onGoToProjects" },
-                { id: "cardDailyLogs", fn: "onGoToProjects" },
-                { id: "cardWorkSummary", fn: "onFeatureUnderdevelopment" }
+                { id: "cardProjectSites", fn: "onGoToProjects" }
             ];
             aCardActions.forEach(function (cfg) {
                 var oCard = that.byId(cfg.id);
@@ -67,14 +64,10 @@ sap.ui.define([
             oModel.read("/ProjectSet", {
                 success: function (oData) {
                     var aProj = oData.results || [];
-                    var iActive = aProj.filter(function (p) {
-                        var s = (p.Status || "").toUpperCase();
-                        return s === "RUNNING" || s === "INPROGRESS" || s === "ACTIVE";
-                    }).length;
                     var iPending = aProj.filter(function (p) {
                         return (p.Status || "").toUpperCase() === "PLANNING";
                     }).length;
-                    oDash.setProperty("/activeProjects", iActive);
+                    oDash.setProperty("/planningProjects", iPending);
                     oDash.setProperty("/pendingApprovals", iPending);
                 },
                 error: function () { }
@@ -82,21 +75,13 @@ sap.ui.define([
 
             oModel.read("/SiteSet", {
                 success: function (oData) {
-                    oDash.setProperty("/totalSites", (oData.results || []).length);
-                },
-                error: function () { }
-            });
-
-            oModel.read("/DailyLogSet", {
-                success: function (oData) {
-                    var today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    var iToday = (oData.results || []).filter(function (log) {
-                        var d = log.LogDate instanceof Date ? log.LogDate : new Date(log.LogDate);
-                        d.setHours(0, 0, 0, 0);
-                        return d.getTime() === today.getTime();
+                    var aSites = oData.results || [];
+                    var iPlanning = aSites.filter(function (s) {
+                        return (s.Status || "").toUpperCase() === "PLANNING";
                     }).length;
-                    oDash.setProperty("/todayLogs", iToday);
+
+                    oDash.setProperty("/totalSites", aSites.length);
+                    oDash.setProperty("/planningSites", iPlanning);
                 },
                 error: function () { }
             });

@@ -13,6 +13,8 @@ sap.ui.define([
             var oUserModel = new JSONModel({
                 userId: "",
                 userName: "Identifying...",
+                email: "",
+                avatarUrl: "",
                 role: "",
                 authLevel: 0,
                 isLoaded: false
@@ -131,6 +133,8 @@ sap.ui.define([
             this._oUserModel.setData({
                 userId: oData.UserId,
                 userName: oData.UserName,
+                email: oData.Email,
+                avatarUrl: oData.AvatarUrl,
                 role: oData.Role,
                 authLevel: oData.AuthLevel,
                 isLoaded: true

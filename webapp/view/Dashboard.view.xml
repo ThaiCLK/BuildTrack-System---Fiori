@@ -5,17 +5,7 @@
     xmlns:l="sap.ui.layout"
     xmlns:core="sap.ui.core">
 
-    <Page id="pageDashboard" showNavButton="false" class="dashboardPage">
-        <customHeader>
-            <Bar class="dashboardHeader">
-                <contentLeft>
-                    <HBox alignItems="Center">
-                        <core:Icon src="sap-icon://SAP-icons-TNT/application" class="sapUiSmallMarginEnd dashboardLogo" />
-                        <Title text="Construction Management Dashboard" level="H4" class="dashboardTitle"/>
-                    </HBox>
-                </contentLeft>
-            </Bar>
-        </customHeader>
+    <Page id="pageDashboard" showHeader="false" class="dashboardPage">
 
         <content>
             <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false">
@@ -42,8 +32,8 @@
                                 </HBox>
                                 <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
                                     <VBox alignItems="Center">
-                                        <Text text="{dashboard>/activeProjects}" class="dashboardBigNumber"/>
-                                        <Text text="Active Projects" class="dashboardSubLabel"/>
+                                        <Text text="{dashboard>/planningProjects}" class="dashboardBigNumber"/>
+                                        <Text text="Planning Projects" class="dashboardSubLabel"/>
                                     </VBox>
                                 </HBox>
                             </Panel>
@@ -58,8 +48,8 @@
                                 </HBox>
                                 <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
                                     <VBox alignItems="Center">
-                                        <Text text="{dashboard>/totalSites}" class="dashboardBigNumber"/>
-                                        <Text text="Active Sites" class="dashboardSubLabel"/>
+                                        <Text text="{dashboard>/planningSites}" class="dashboardBigNumber"/>
+                                        <Text text="Planning Sites" class="dashboardSubLabel"/>
                                     </VBox>
                                 </HBox>
                             </Panel>
@@ -72,19 +62,6 @@
                             class="dashboardSectionTitle"/>
 
                         <HBox class="dashboardCardRow">
-                            <Panel id="cardDailyLogs" class="dashboardCard dashboardCardClickable"
-                                   headerText="" expandable="false">
-                                <HBox alignItems="Center" class="dashboardCardHeader">
-                                    <core:Icon src="sap-icon://appointment-2" class="dashboardCardIcon iconBlue"/>
-                                    <VBox class="sapUiTinyMarginBegin">
-                                        <Title text="Today's Entries: {dashboard>/todayLogs}" level="H5"/>
-                                    </VBox>
-                                </HBox>
-                                <HBox alignItems="Center" justifyContent="Center" class="dashboardCardBody">
-                                    <Button text="New Entry" icon="sap-icon://add" type="Emphasized" press=".onGoToProjects" class="dashboardNewEntryBtn"/>
-                                </HBox>
-                            </Panel>
-
                             <Panel id="cardWeather" class="dashboardCard"
                                    headerText="" expandable="false">
                                 <HBox alignItems="Center" class="dashboardCardHeader">
@@ -142,23 +119,7 @@
                         <Text text="Delayed: 2" class="dashboardCardFooterWhite"/>
                     </Panel>
 
-                    <!-- Work Summary -->
-                    <Panel id="cardWorkSummary" class="dashboardCard dashboardCardClickable"
-                           headerText="" expandable="false">
-                        <HBox alignItems="Center" class="dashboardCardHeader">
-                            <core:Icon src="sap-icon://task" class="dashboardCardIcon iconGreen"/>
-                            <VBox class="sapUiTinyMarginBegin">
-                                <Title text="Work Summary" level="H5"/>
-                            </VBox>
-                        </HBox>
-                        <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
-                            <core:Icon src="sap-icon://circle-task-2" size="2.5rem" color="#27ae60" class="sapUiSmallMarginEnd"/>
-                            <VBox>
-                                <Text text="{dashboard>/workCompletedPct}% Completed Quantity" class="dashboardMediumText"/>
-                                <Text text="status" class="dashboardSubLabel"/>
-                            </VBox>
-                        </HBox>
-                    </Panel>
+
                 </HBox>
 
                 <core:HTML content="&lt;div style='height:2rem'&gt;&lt;/div&gt;"/>
