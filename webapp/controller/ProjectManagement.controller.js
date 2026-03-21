@@ -3,6 +3,13 @@ sap.ui.define([
     "sap/ui/core/routing/History",
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Sorter",
+    "sap/ui/comp/valuehelpdialog/ValueHelpDialog",
+    "sap/ui/comp/filterbar/FilterBar",
+    "sap/ui/comp/filterbar/FilterGroupItem",
+    "sap/m/Token",
+    "sap/m/Column",
+    "sap/m/ColumnListItem",
+    "sap/m/Text",
     "sap/m/MessageToast",
     "sap/m/MessageBox",
     "sap/m/Dialog",
@@ -14,7 +21,7 @@ sap.ui.define([
     "sap/ui/core/Item",
     "sap/m/DatePicker",
     "sap/ui/layout/form/SimpleForm"
-], function (Controller, History, JSONModel, Sorter, MessageToast, MessageBox,
+], function (Controller, History, JSONModel, Sorter, ValueHelpDialog, FilterBar, FilterGroupItem, Token, Column, ColumnListItem, Text, MessageToast, MessageBox,
     Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, SimpleForm) {
     "use strict";
 
@@ -41,6 +48,8 @@ sap.ui.define([
             };
 
             this.getView().setModel(new JSONModel({
+                projectCodeItems: [],
+                projectNameItems: [],
                 statusItems: [],
                 typeItems: []
             }), "vh");
@@ -99,12 +108,22 @@ sap.ui.define([
                 success: function (oData) {
                     var aResults = (oData && oData.results) ? oData.results : [];
 
+                    var mCodes = Object.create(null);
+                    var mNames = Object.create(null);
                     var mStatuses = Object.create(null);
                     var mTypes = Object.create(null);
 
                     aResults.forEach(function (oRow) {
+                        var sCode = (oRow.ProjectCode || oRow.project_code || "").toString().trim();
+                        var sName = (oRow.ProjectName || oRow.project_name || "").toString().trim();
                         var sStatus = (oRow.Status || oRow.status || "").toString().trim();
                         var sType = (oRow.ProjectType || oRow.project_type || "").toString().trim();
+                        if (sCode) {
+                            mCodes[sCode] = sName;
+                        }
+                        if (sName) {
+                            mNames[sName] = sCode;
+                        }
                         if (sStatus) {
                             mStatuses[sStatus] = true;
                         }
@@ -113,9 +132,17 @@ sap.ui.define([
                         }
                     });
 
+                    var aCodeKeys = Object.keys(mCodes).sort();
+                    var aNameKeys = Object.keys(mNames).sort();
                     var aStatusKeys = Object.keys(mStatuses).sort();
                     var aTypeKeys = Object.keys(mTypes).sort();
 
+                    oVhModel.setProperty("/projectCodeItems", aCodeKeys.map(function (sKey) {
+                        return { key: sKey, text: sKey, additionalText: mCodes[sKey] || "" };
+                    }));
+                    oVhModel.setProperty("/projectNameItems", aNameKeys.map(function (sKey) {
+                        return { key: sKey, text: sKey, additionalText: mNames[sKey] || "" };
+                    }));
                     oVhModel.setProperty("/statusItems", aStatusKeys.map(function (sKey) {
                         return { key: sKey, text: sKey };
                     }));
@@ -124,6 +151,8 @@ sap.ui.define([
                     }));
                 },
                 error: function () {
+                    oVhModel.setProperty("/projectCodeItems", []);
+                    oVhModel.setProperty("/projectNameItems", []);
                     oVhModel.setProperty("/statusItems", []);
                     oVhModel.setProperty("/typeItems", []);
                 }
@@ -132,6 +161,173 @@ sap.ui.define([
 
         _escapeODataString: function (sValue) {
             return (sValue || "").replace(/'/g, "''");
+        },
+
+        _openSimpleValueHelpDialog: function (mOptions) {
+            var oInput = this.byId(mOptions.inputId);
+            var oVhModel = this.getView().getModel("vh");
+            var aAllItems = (oVhModel && oVhModel.getProperty(mOptions.itemsPath)) || [];
+
+            var fnWildcardMatch = function (sValue, sPattern) {
+                if (!sPattern) {
+                    return true;
+                }
+                var sEscaped = sPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+                var oRegex = new RegExp("^" + sEscaped + "$", "i");
+                return oRegex.test(sValue || "");
+            };
+
+            var oTableModel = new JSONModel(aAllItems);
+            var fnApplyPatternFilter = function (sPatternRaw) {
+                var sPattern = (sPatternRaw || "").trim();
+                if (!sPattern) {
+                    oTableModel.setData(aAllItems);
+                    return;
+                }
+                var bHasWildcard = sPattern.indexOf("*") !== -1;
+                var aFiltered = aAllItems.filter(function (oItem) {
+                    var sKey = (oItem.key || "").toString();
+                    var sText = (oItem.text || "").toString();
+                    if (bHasWildcard) {
+                        return fnWildcardMatch(sKey, sPattern) || fnWildcardMatch(sText, sPattern);
+                    }
+                    var sNeedle = sPattern.toLowerCase();
+                    return sKey.toLowerCase().indexOf(sNeedle) !== -1 || sText.toLowerCase().indexOf(sNeedle) !== -1;
+                });
+                oTableModel.setData(aFiltered);
+            };
+
+            var oDialog = new ValueHelpDialog({
+                title: mOptions.title,
+                key: "key",
+                descriptionKey: "text",
+                supportMultiselect: false,
+                supportRanges: true,
+                ok: function (oEvent) {
+                    var aTokens = oEvent.getParameter("tokens") || [];
+                    var sValue = aTokens.length > 0 ? aTokens[0].getKey() : "";
+                    oInput.setValue(sValue);
+                    oDialog.close();
+                },
+                cancel: function () {
+                    oDialog.close();
+                },
+                afterClose: function () {
+                    oDialog.destroy();
+                }
+            });
+
+            oDialog.setRangeKeyFields([
+                {
+                    label: mOptions.title,
+                    key: "key",
+                    type: "string"
+                }
+            ]);
+
+            if (mOptions.enablePatternFilter) {
+                var oPatternInput = new Input({
+                    placeholder: "PRJ* hoặc *PRJ*"
+                });
+
+                var oInnerFilterBar = new FilterBar({
+                    useToolbar: true,
+                    showGoOnFB: true,
+                    search: function () {
+                        fnApplyPatternFilter(oPatternInput.getValue());
+                        oDialog.update();
+                    }
+                });
+
+                oInnerFilterBar.addFilterGroupItem(new FilterGroupItem({
+                    groupName: "Basic",
+                    name: "Pattern",
+                    label: "Pattern",
+                    visibleInFilterBar: true,
+                    control: oPatternInput
+                }));
+
+                oDialog.setFilterBar(oInnerFilterBar);
+            }
+
+            var sCurrent = (oInput.getValue() || "").trim();
+            if (sCurrent) {
+                oDialog.setTokens([
+                    new Token({ key: sCurrent, text: sCurrent })
+                ]);
+            }
+
+            oDialog.getTableAsync().then(function (oTable) {
+                oTable.setModel(oTableModel);
+
+                if (oTable.bindRows) {
+                    oTable.addColumn(new sap.ui.table.Column({ label: new Label({ text: mOptions.primaryLabel }), template: new Text({ text: "{key}" }) }));
+                    if (mOptions.showSecondary) {
+                        oTable.addColumn(new sap.ui.table.Column({ label: new Label({ text: mOptions.secondaryLabel }), template: new Text({ text: "{additionalText}" }) }));
+                    }
+                    oTable.bindRows("/");
+                } else {
+                    oTable.addColumn(new Column({ header: new Label({ text: mOptions.primaryLabel }) }));
+                    if (mOptions.showSecondary) {
+                        oTable.addColumn(new Column({ header: new Label({ text: mOptions.secondaryLabel }) }));
+                    }
+                    var aCells = [new Text({ text: "{key}" })];
+                    if (mOptions.showSecondary) {
+                        aCells.push(new Text({ text: "{additionalText}" }));
+                    }
+                    oTable.bindItems("/", new ColumnListItem({ cells: aCells }));
+                }
+
+                oDialog.update();
+            });
+
+            oDialog.open();
+        },
+
+        onValueHelpProjectCodeRequest: function () {
+            this._openSimpleValueHelpDialog({
+                inputId: "fbProjectCode",
+                title: "Project Code",
+                itemsPath: "/projectCodeItems",
+                primaryLabel: "Project Code",
+                enablePatternFilter: true,
+                showSecondary: true,
+                secondaryLabel: "Project Name"
+            });
+        },
+
+        onValueHelpProjectNameRequest: function () {
+            this._openSimpleValueHelpDialog({
+                inputId: "fbProjectName",
+                title: "Project Name",
+                itemsPath: "/projectNameItems",
+                primaryLabel: "Project Name",
+                enablePatternFilter: true,
+                showSecondary: true,
+                secondaryLabel: "Project Code"
+            });
+        },
+
+        onValueHelpStatusRequest: function () {
+            this._openSimpleValueHelpDialog({
+                inputId: "fbStatus",
+                title: "Status",
+                itemsPath: "/statusItems",
+                primaryLabel: "Status",
+                showSecondary: false,
+                secondaryLabel: ""
+            });
+        },
+
+        onValueHelpTypeRequest: function () {
+            this._openSimpleValueHelpDialog({
+                inputId: "fbType",
+                title: "Project Type",
+                itemsPath: "/typeItems",
+                primaryLabel: "Project Type",
+                showSecondary: false,
+                secondaryLabel: ""
+            });
         },
 
         _detectProjectFieldMap: function (oSample) {
@@ -326,13 +522,8 @@ sap.ui.define([
         onFilterSearch: function () {
             var sProjectCode = (this.byId("fbProjectCode").getValue() || "").trim();
             var sProjectName = (this.byId("fbProjectName").getValue() || "").trim();
-
-            var oStatus = this.byId("fbStatus");
-            var oType = this.byId("fbType");
-            var sStatus = (oStatus.getSelectedKey && oStatus.getSelectedKey()) || (oStatus.getValue && oStatus.getValue()) || "";
-            var sType = (oType.getSelectedKey && oType.getSelectedKey()) || (oType.getValue && oType.getValue()) || "";
-            sStatus = (sStatus || "").trim();
-            sType = (sType || "").trim();
+            var sStatus = (this.byId("fbStatus").getValue() || "").trim();
+            var sType = (this.byId("fbType").getValue() || "").trim();
 
             var dStart = this.byId("fbStartDate").getDateValue();
             var dEnd = this.byId("fbEndDate").getDateValue();
@@ -361,9 +552,7 @@ sap.ui.define([
         onFilterClear: function () {
             this.byId("fbProjectCode").setValue("");
             this.byId("fbProjectName").setValue("");
-            this.byId("fbStatus").setSelectedKey("");
             this.byId("fbStatus").setValue("");
-            this.byId("fbType").setSelectedKey("");
             this.byId("fbType").setValue("");
             this.byId("fbStartDate").setValue("");
             this.byId("fbEndDate").setValue("");

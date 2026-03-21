@@ -18,26 +18,34 @@
                     <fb:filterGroupItems>
                         <fb:FilterGroupItem name="ProjectCode" label="Project Code" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <Input id="fbProjectCode" placeholder="e.g. PRJ-2024-001"/>
+                                <Input id="fbProjectCode"
+                                    placeholder="Select Project Code"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpProjectCodeRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="ProjectName" label="Project Name" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <Input id="fbProjectName" placeholder="e.g. Aurora"/>
+                                <Input id="fbProjectName"
+                                    placeholder="Select Project Name"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpProjectNameRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <ComboBox id="fbStatus" placeholder="Select Status" items="{vh>/statusItems}">
-                                    <core:Item key="{vh>key}" text="{vh>text}"/>
-                                </ComboBox>
+                                <Input id="fbStatus"
+                                    placeholder="Select Status"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpStatusRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="ProjectType" label="Project Type" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <ComboBox id="fbType" placeholder="Select Type" items="{vh>/typeItems}">
-                                    <core:Item key="{vh>key}" text="{vh>text}"/>
-                                </ComboBox>
+                                <Input id="fbType"
+                                    placeholder="Select Type"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpTypeRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="StartDate" label="Start Date" groupName="Basic" visibleInFilterBar="true">
