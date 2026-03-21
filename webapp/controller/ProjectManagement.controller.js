@@ -3,6 +3,8 @@ sap.ui.define([
     "sap/ui/core/routing/History",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
+    "sap/ui/model/json/JSONModel",
+    "sap/ui/model/Sorter",
     "sap/m/MessageToast",
     "sap/m/MessageBox",
     "sap/m/Dialog",
@@ -13,15 +15,77 @@ sap.ui.define([
     "sap/m/ComboBox",
     "sap/ui/core/Item",
     "sap/m/DatePicker",
-    "sap/m/VBox",
     "sap/ui/layout/form/SimpleForm"
-], function (Controller, History, Filter, FilterOperator, MessageToast, MessageBox,
-    Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, VBox, SimpleForm) {
+], function (Controller, History, Filter, FilterOperator, JSONModel, Sorter, MessageToast, MessageBox,
+    Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, SimpleForm) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.ProjectManagement", {
 
-        onInit: function () { },
+        onInit: function () {
+            this.getView().setModel(new JSONModel({
+                statusItems: [],
+                typeItems: []
+            }), "vh");
+
+            this._loadProjectValueHelps();
+
+            var oTable = this.byId("projectTable");
+            if (oTable) {
+                oTable.attachEventOnce("updateFinished", function () {
+                    var oBinding = oTable.getBinding("items");
+                    if (oBinding) {
+                        oBinding.sort(new Sorter("StartDate", true));
+                    }
+                });
+            }
+        },
+
+        _loadProjectValueHelps: function () {
+            var oModel = this.getOwnerComponent().getModel();
+            var oVhModel = this.getView().getModel("vh");
+            if (!oModel || !oVhModel || !oModel.read) {
+                return;
+            }
+
+            oModel.read("/ProjectSet", {
+                urlParameters: {
+                    "$select": "Status,ProjectType",
+                    "$top": "200"
+                },
+                success: function (oData) {
+                    var aResults = (oData && oData.results) ? oData.results : [];
+
+                    var mStatuses = Object.create(null);
+                    var mTypes = Object.create(null);
+
+                    aResults.forEach(function (oRow) {
+                        var sStatus = (oRow.Status || "").toString().trim();
+                        var sType = (oRow.ProjectType || "").toString().trim();
+                        if (sStatus) {
+                            mStatuses[sStatus] = true;
+                        }
+                        if (sType) {
+                            mTypes[sType] = true;
+                        }
+                    });
+
+                    var aStatusKeys = Object.keys(mStatuses).sort();
+                    var aTypeKeys = Object.keys(mTypes).sort();
+
+                    oVhModel.setProperty("/statusItems", aStatusKeys.map(function (sKey) {
+                        return { key: sKey, text: sKey };
+                    }));
+                    oVhModel.setProperty("/typeItems", aTypeKeys.map(function (sKey) {
+                        return { key: sKey, text: sKey };
+                    }));
+                },
+                error: function () {
+                    oVhModel.setProperty("/statusItems", []);
+                    oVhModel.setProperty("/typeItems", []);
+                }
+            });
+        },
 
         // ── FORMATTERS ────────────────────────────────────────────────────────
         formatTypeIcon: function (sType) {
@@ -58,27 +122,63 @@ sap.ui.define([
             this.getOwnerComponent().getRouter().navTo("Dashboard", {}, true);
         },
 
-        // ── SEARCH ──────────────────────────────────────────────────────────
-        onSearch: function (oEvent) {
-            var sQuery = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
-            clearTimeout(this._searchTimer);
-            this._searchTimer = setTimeout(function () {
-                var aFilters = [];
-                if (sQuery && sQuery.length > 0) {
-                    var sUpperQuery = sQuery.toUpperCase();
-                    // Smart detection: If query contains '-' or 'PRJ' or 'SITE', treat it as a Code. Otherwise, Name.
-                    if (sUpperQuery.indexOf("-") !== -1 || sUpperQuery.indexOf("PRJ") !== -1 || sUpperQuery.indexOf("SITE") !== -1) {
-                        aFilters.push(new Filter("ProjectCode", FilterOperator.EQ, sQuery));
-                    } else {
-                        aFilters.push(new Filter("ProjectName", FilterOperator.EQ, sQuery));
-                    }
-                }
-                var oTable = this.byId("projectTable");
-                var oBinding = oTable.getBinding("items");
-                if (oBinding) {
-                    oBinding.filter(aFilters);
-                }
-            }.bind(this), 500);
+        // ── FILTER BAR (GO) ───────────────────────────────────────────────
+        onFilterSearch: function () {
+            var oTable = this.byId("projectTable");
+            var oBinding = oTable ? oTable.getBinding("items") : null;
+            if (!oBinding) {
+                return;
+            }
+
+            var sQuery = (this.byId("fbSearchField").getValue() || "").trim();
+
+            var oStatus = this.byId("fbStatus");
+            var oType = this.byId("fbType");
+            var sStatus = (oStatus.getSelectedKey && oStatus.getSelectedKey()) || (oStatus.getValue && oStatus.getValue()) || "";
+            var sType = (oType.getSelectedKey && oType.getSelectedKey()) || (oType.getValue && oType.getValue()) || "";
+            sStatus = (sStatus || "").trim();
+            sType = (sType || "").trim();
+
+            var dStart = this.byId("fbStartDate").getDateValue();
+            var dEnd = this.byId("fbEndDate").getDateValue();
+
+            var aFilters = [];
+            
+            if (sQuery) {
+                aFilters.push(new Filter({
+                    filters: [
+                        new Filter("ProjectCode", FilterOperator.Contains, sQuery),
+                        new Filter("ProjectName", FilterOperator.Contains, sQuery)
+                    ],
+                    and: false
+                }));
+            }
+            if (sStatus) {
+                aFilters.push(new Filter("Status", FilterOperator.EQ, sStatus));
+            }
+            if (sType) {
+                aFilters.push(new Filter("ProjectType", FilterOperator.EQ, sType));
+            }
+            if (dStart) {
+                aFilters.push(new Filter("StartDate", FilterOperator.GE, dStart));
+            }
+            if (dEnd) {
+                aFilters.push(new Filter("EndDate", FilterOperator.LE, dEnd));
+            }
+
+            oBinding.filter(aFilters);
+            oBinding.sort(new Sorter("StartDate", true));
+        },
+
+        onFilterClear: function () {
+            this.byId("fbSearchField").setValue("");
+            this.byId("fbStatus").setSelectedKey("");
+            this.byId("fbStatus").setValue("");
+            this.byId("fbType").setSelectedKey("");
+            this.byId("fbType").setValue("");
+            this.byId("fbStartDate").setValue("");
+            this.byId("fbEndDate").setValue("");
+            this.onFilterSearch();
         },
 
         // ── NAVIGATE ─────────────────────────────────────────────────────────

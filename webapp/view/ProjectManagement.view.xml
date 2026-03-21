@@ -2,17 +2,58 @@
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m"
     xmlns:f="sap.f"
-    xmlns:core="sap.ui.core">
+    xmlns:core="sap.ui.core"
+    xmlns:fb="sap.ui.comp.filterbar">
 
     <Page id="pageProjectList" showNavButton="true" navButtonPress=".onNavBack"
           showHeader="false">
         <content>
-            <Table id="projectTable"
-                inset="false"
-                growing="true"
-                growingThreshold="20"
-                alternateRowColors="true"
-                items="{ path: '/ProjectSet' }">
+            <VBox width="100%">
+                <fb:FilterBar id="projectFilterBar"
+                    useToolbar="false"
+                    showGoOnFB="true"
+                    search=".onFilterSearch"
+                    clear=".onFilterClear"
+                    showClearOnFB="true">
+                    <fb:filterGroupItems>
+                        <fb:FilterGroupItem name="Search" label="Search" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <SearchField id="fbSearchField" placeholder="Project Name, Code..."/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <ComboBox id="fbStatus" placeholder="Select Status" items="{vh>/statusItems}">
+                                    <core:Item key="{vh>key}" text="{vh>text}"/>
+                                </ComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="ProjectType" label="Project Type" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <ComboBox id="fbType" placeholder="Select Type" items="{vh>/typeItems}">
+                                    <core:Item key="{vh>key}" text="{vh>text}"/>
+                                </ComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="StartDate" label="Start Date" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="EndDate" label="End Date" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                    </fb:filterGroupItems>
+                </fb:FilterBar>
+
+                <Table id="projectTable"
+                    inset="false"
+                    growing="true"
+                    growingThreshold="20"
+                    alternateRowColors="true"
+                    items="{ path: '/ProjectSet' }">
 
                 <headerToolbar>
                     <OverflowToolbar id="otbSubheader" style="Clear">
@@ -21,12 +62,6 @@
                                 tooltip="Back to Dashboard"/>
                         <Title id="tableHeader" text="Project List" level="H2"/>
                         <ToolbarSpacer id="toolbarSpacer"/>
-                        <SearchField
-                            id="searchProject"
-                            width="22rem"
-                            placeholder="Search by name or code…"
-                            liveChange=".onSearch"
-                            search=".onSearch"/>
                         <Button
                             id="btnCreateProject"
                             text="Create Project"
@@ -134,7 +169,8 @@
                         description="Create a new project or adjust your search."/>
                 </noData>
 
-            </Table>
+                </Table>
+            </VBox>
         </content>
     </Page>
 </mvc:View>
