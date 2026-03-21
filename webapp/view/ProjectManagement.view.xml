@@ -16,9 +16,14 @@
                     clear="onFilterClear"
                     showClearOnFB="true">
                     <fb:filterGroupItems>
-                        <fb:FilterGroupItem name="Search" label="Search" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="ProjectCode" label="Project Code" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <SearchField id="fbSearchField" placeholder="Project Name, Code..." search="onFilterSearch"/>
+                                <Input id="fbProjectCode" placeholder="e.g. PRJ-2024-001"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="ProjectName" label="Project Name" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="fbProjectName" placeholder="e.g. Aurora"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">

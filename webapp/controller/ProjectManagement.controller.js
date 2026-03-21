@@ -32,7 +32,8 @@ sap.ui.define([
             };
             this._sProjectCollectionPath = "/ProjectSet";
             this._oCurrentCriteria = {
-                query: "",
+                projectCode: "",
+                projectName: "",
                 status: "",
                 type: "",
                 startDate: null,
@@ -53,33 +54,6 @@ sap.ui.define([
                 oFilterBar.detachClear(this.onFilterClear, this);
                 oFilterBar.attachSearch(this.onFilterSearch, this);
                 oFilterBar.attachClear(this.onFilterClear, this);
-            }
-
-            var oSearchField = this.byId("fbSearchField");
-            if (oSearchField) {
-                oSearchField.attachSearch(this.onFilterSearch, this);
-            }
-
-            var oStatus = this.byId("fbStatus");
-            if (oStatus) {
-                oStatus.attachChange(this.onFilterSearch, this);
-                oStatus.attachSelectionChange(this.onFilterSearch, this);
-            }
-
-            var oType = this.byId("fbType");
-            if (oType) {
-                oType.attachChange(this.onFilterSearch, this);
-                oType.attachSelectionChange(this.onFilterSearch, this);
-            }
-
-            var oStartDate = this.byId("fbStartDate");
-            if (oStartDate) {
-                oStartDate.attachChange(this.onFilterSearch, this);
-            }
-
-            var oEndDate = this.byId("fbEndDate");
-            if (oEndDate) {
-                oEndDate.attachChange(this.onFilterSearch, this);
             }
 
             this._loadProjectValueHelps();
@@ -182,9 +156,11 @@ sap.ui.define([
             var mField = this._mProjectField;
             var aExpr = [];
 
-            if (mInput.query) {
-                var sEscaped = this._escapeODataString(mInput.query);
-                aExpr.push("(substringof('" + sEscaped + "'," + mField.name + ") or substringof('" + sEscaped + "'," + mField.code + "))");
+            if (mInput.projectCode) {
+                aExpr.push(mField.code + " eq '" + this._escapeODataString(mInput.projectCode) + "'");
+            }
+            if (mInput.projectName) {
+                aExpr.push(mField.name + " eq '" + this._escapeODataString(mInput.projectName) + "'");
             }
             if (mInput.status) {
                 aExpr.push(mField.status + " eq '" + this._escapeODataString(mInput.status) + "'");
@@ -230,21 +206,23 @@ sap.ui.define([
 
         _applyCriteriaLocal: function (aRows) {
             var oC = this._oCurrentCriteria || {};
-            var sQuery = (oC.query || "").toLowerCase();
+            var sProjectCode = (oC.projectCode || "").toLowerCase();
+            var sProjectName = (oC.projectName || "").toLowerCase();
             var sStatus = (oC.status || "").trim();
             var sType = (oC.type || "").trim();
             var sStart = this._dateOnlyKey(oC.startDate);
             var sEnd = this._dateOnlyKey(oC.endDate);
 
             return (aRows || []).filter(function (oRow) {
-                var bSearch = !sQuery ||
-                    (oRow.ProjectName || "").toLowerCase().indexOf(sQuery) !== -1 ||
-                    (oRow.ProjectCode || "").toLowerCase().indexOf(sQuery) !== -1;
+                var sRowName = (oRow.ProjectName || "").toLowerCase();
+                var sRowCode = (oRow.ProjectCode || "").toLowerCase();
+                var bCode = !sProjectCode || sRowCode === sProjectCode;
+                var bName = !sProjectName || sRowName === sProjectName;
                 var bStatus = !sStatus || (oRow.Status || "") === sStatus;
                 var bType = !sType || (oRow.ProjectType || "") === sType;
                 var bStart = !sStart || this._dateOnlyKey(oRow.StartDate) === sStart;
                 var bEnd = !sEnd || this._dateOnlyKey(oRow.EndDate) === sEnd;
-                return bSearch && bStatus && bType && bStart && bEnd;
+                return bCode && bName && bStatus && bType && bStart && bEnd;
             }.bind(this));
         },
 
@@ -346,7 +324,8 @@ sap.ui.define([
 
         // ── FILTER BAR (GO) ───────────────────────────────────────────────
         onFilterSearch: function () {
-            var sQuery = (this.byId("fbSearchField").getValue() || "").trim();
+            var sProjectCode = (this.byId("fbProjectCode").getValue() || "").trim();
+            var sProjectName = (this.byId("fbProjectName").getValue() || "").trim();
 
             var oStatus = this.byId("fbStatus");
             var oType = this.byId("fbType");
@@ -359,7 +338,8 @@ sap.ui.define([
             var dEnd = this.byId("fbEndDate").getDateValue();
 
             var sFilterExpr = this._buildFilterExpression({
-                query: sQuery,
+                projectCode: sProjectCode,
+                projectName: sProjectName,
                 status: sStatus,
                 type: sType,
                 startDate: dStart,
@@ -367,7 +347,8 @@ sap.ui.define([
             });
 
             this._oCurrentCriteria = {
-                query: sQuery,
+                projectCode: sProjectCode,
+                projectName: sProjectName,
                 status: sStatus,
                 type: sType,
                 startDate: dStart,
@@ -378,7 +359,8 @@ sap.ui.define([
         },
 
         onFilterClear: function () {
-            this.byId("fbSearchField").setValue("");
+            this.byId("fbProjectCode").setValue("");
+            this.byId("fbProjectName").setValue("");
             this.byId("fbStatus").setSelectedKey("");
             this.byId("fbStatus").setValue("");
             this.byId("fbType").setSelectedKey("");
