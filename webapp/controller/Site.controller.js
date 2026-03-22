@@ -13,14 +13,30 @@ sap.ui.define([
     "sap/m/HBox",
     "sap/ui/layout/form/SimpleForm",
     "sap/ui/model/Filter",
-    "sap/ui/model/FilterOperator"
+    "sap/ui/model/FilterOperator",
+    "sap/ui/model/json/JSONModel",
+    "sap/ui/comp/valuehelpdialog/ValueHelpDialog",
+    "sap/ui/comp/filterbar/FilterBar",
+    "sap/ui/comp/filterbar/FilterGroupItem",
+    "sap/m/Token",
+    "sap/m/Column",
+    "sap/m/ColumnListItem",
+    "sap/m/Text",
+    "sap/ui/table/Column"
 ], function (Controller, History, MessageToast, MessageBox,
-    Dialog, Button, Label, Input, Select, Item, VBox, HBox, SimpleForm, Filter, FilterOperator) {
+    Dialog, Button, Label, Input, Select, Item, VBox, HBox, SimpleForm, Filter, FilterOperator,
+    JSONModel, ValueHelpDialog, FilterBar, FilterGroupItem, Token, MColumn, ColumnListItem, Text, UITableColumn) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack.controller.Site", {
 
         onInit: function () {
+            this.getView().setModel(new JSONModel({
+                siteCodeItems: [],
+                siteNameItems: [],
+                statusItems: []
+            }), "siteVh");
+
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("Site").attachPatternMatched(this._onObjectMatched, this);
         },
@@ -65,15 +81,262 @@ sap.ui.define([
         _onObjectMatched: function (oEvent) {
             var sProjectId = oEvent.getParameter("arguments").project_id;
             this._sCurrentProjectId = sProjectId;
+            this._sSiteVhProjectId = null;
+
+            var oVhModel = this.getView().getModel("siteVh");
+            if (oVhModel) {
+                oVhModel.setProperty("/siteCodeItems", []);
+                oVhModel.setProperty("/siteNameItems", []);
+                oVhModel.setProperty("/statusItems", []);
+            }
+
             var oView = this.getView();
             oView.bindElement({
                 path: "/ProjectSet(guid'" + sProjectId + "')",
                 parameters: { expand: "ToSites" },
                 events: {
                     dataRequested: function () { oView.setBusy(true); },
-                    dataReceived: function () { oView.setBusy(false); }
+                    dataReceived: function () {
+                        oView.setBusy(false);
+                        this._loadSiteValueHelps();
+                    }.bind(this)
                 }
             });
+        },
+
+        _loadSiteValueHelps: function (fnDone) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oVhModel = this.getView().getModel("siteVh");
+            if (!oModel || !oVhModel || !this._sCurrentProjectId) {
+                if (fnDone) {
+                    fnDone();
+                }
+                return;
+            }
+
+            var fnSetValueHelpItems = function (aRows) {
+                var mCodes = Object.create(null);
+                var mNames = Object.create(null);
+                var mStatuses = Object.create(null);
+
+                (aRows || []).forEach(function (oRow) {
+                    var sCode = (oRow.SiteCode || "").trim();
+                    var sName = (oRow.SiteName || "").trim();
+                    var sStatus = (oRow.Status || "").trim();
+                    if (sCode) { mCodes[sCode] = sName; }
+                    if (sName) { mNames[sName] = sCode; }
+                    if (sStatus) { mStatuses[sStatus] = true; }
+                });
+
+                oVhModel.setProperty("/siteCodeItems", Object.keys(mCodes).sort().map(function (sKey) {
+                    return { key: sKey, text: sKey, additionalText: mCodes[sKey] || "" };
+                }));
+                oVhModel.setProperty("/siteNameItems", Object.keys(mNames).sort().map(function (sKey) {
+                    return { key: sKey, text: sKey, additionalText: mNames[sKey] || "" };
+                }));
+                oVhModel.setProperty("/statusItems", Object.keys(mStatuses).sort().map(function (sKey) {
+                    return { key: sKey, text: sKey };
+                }));
+            };
+
+            oModel.read("/SiteSet", {
+                filters: [new Filter("ProjectId", FilterOperator.EQ, this._sCurrentProjectId)],
+                success: function (oData) {
+                    var sCurrentPid = (this._sCurrentProjectId || "").toLowerCase();
+                    var aResults = (oData && oData.results) ? oData.results : [];
+                    var aScoped = aResults.filter(function (oRow) {
+                        return ((oRow.ProjectId || "") + "").toLowerCase() === sCurrentPid;
+                    });
+                    fnSetValueHelpItems(aScoped);
+                    this._sSiteVhProjectId = this._sCurrentProjectId;
+                    if (fnDone) {
+                        fnDone();
+                    }
+                }.bind(this),
+                error: function () {
+                    oVhModel.setProperty("/siteCodeItems", []);
+                    oVhModel.setProperty("/siteNameItems", []);
+                    oVhModel.setProperty("/statusItems", []);
+                    if (fnDone) {
+                        fnDone();
+                    }
+                }
+            });
+        },
+
+        _openSiteValueHelpWithFreshData: function (mOptions) {
+            if (!this._sCurrentProjectId) {
+                return;
+            }
+
+            if (this._sSiteVhProjectId === this._sCurrentProjectId) {
+                this._openSimpleSiteValueHelpDialog(mOptions);
+                return;
+            }
+
+            this._loadSiteValueHelps(function () {
+                this._openSimpleSiteValueHelpDialog(mOptions);
+            }.bind(this));
+        },
+
+        _openSimpleSiteValueHelpDialog: function (mOptions) {
+            var oInput = this.byId(mOptions.inputId);
+            var oVhModel = this.getView().getModel("siteVh");
+            var aAllItems = (oVhModel && oVhModel.getProperty(mOptions.itemsPath)) || [];
+            var oTableModel = new JSONModel(aAllItems);
+
+            var fnWildcardMatch = function (sValue, sPattern) {
+                if (!sPattern) { return true; }
+                var sEscaped = sPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+                return new RegExp("^" + sEscaped + "$", "i").test(sValue || "");
+            };
+
+            var fnApplyPatternFilter = function (sPatternRaw) {
+                var sPattern = (sPatternRaw || "").trim();
+                if (!sPattern) {
+                    oTableModel.setData(aAllItems);
+                    return;
+                }
+                var bHasWildcard = sPattern.indexOf("*") !== -1;
+                var sNeedle = sPattern.toLowerCase();
+                var aFiltered = aAllItems.filter(function (oItem) {
+                    var sKey = (oItem.key || "").toString();
+                    var sText = (oItem.text || "").toString();
+                    if (bHasWildcard) {
+                        return fnWildcardMatch(sKey, sPattern) || fnWildcardMatch(sText, sPattern);
+                    }
+                    return sKey.toLowerCase().indexOf(sNeedle) !== -1 || sText.toLowerCase().indexOf(sNeedle) !== -1;
+                });
+                oTableModel.setData(aFiltered);
+            };
+
+            var oDialog = new ValueHelpDialog({
+                title: mOptions.title,
+                key: "key",
+                descriptionKey: "text",
+                supportMultiselect: false,
+                supportRanges: true,
+                ok: function (oEvent) {
+                    var aTokens = oEvent.getParameter("tokens") || [];
+                    oInput.setValue(aTokens.length ? aTokens[0].getKey() : "");
+                    oDialog.close();
+                },
+                cancel: function () { oDialog.close(); },
+                afterClose: function () { oDialog.destroy(); }
+            });
+
+            oDialog.setRangeKeyFields([{ label: mOptions.title, key: "key", type: "string" }]);
+            var sCurrent = (oInput.getValue() || "").trim();
+            if (sCurrent) {
+                oDialog.setTokens([new Token({ key: sCurrent, text: sCurrent })]);
+            }
+
+            var oPatternInput = new Input({ placeholder: mOptions.patternPlaceholder || "*text*" });
+            var oInnerFilterBar = new FilterBar({
+                useToolbar: true,
+                showGoOnFB: true,
+                search: function () {
+                    fnApplyPatternFilter(oPatternInput.getValue());
+                    oDialog.update();
+                }
+            });
+            oInnerFilterBar.addFilterGroupItem(new FilterGroupItem({
+                groupName: "Basic",
+                name: "Pattern",
+                label: "Pattern",
+                visibleInFilterBar: true,
+                control: oPatternInput
+            }));
+            oDialog.setFilterBar(oInnerFilterBar);
+
+            oDialog.getTableAsync().then(function (oTable) {
+                oTable.setModel(oTableModel);
+                if (oTable.bindRows) {
+                    oTable.addColumn(new UITableColumn({ label: new Label({ text: mOptions.primaryLabel }), template: new Text({ text: "{key}" }) }));
+                    if (mOptions.showSecondary) {
+                        oTable.addColumn(new UITableColumn({ label: new Label({ text: mOptions.secondaryLabel }), template: new Text({ text: "{additionalText}" }) }));
+                    }
+                    oTable.bindRows("/");
+                } else {
+                    oTable.addColumn(new MColumn({ header: new Label({ text: mOptions.primaryLabel }) }));
+                    if (mOptions.showSecondary) {
+                        oTable.addColumn(new MColumn({ header: new Label({ text: mOptions.secondaryLabel }) }));
+                    }
+                    var aCells = [new Text({ text: "{key}" })];
+                    if (mOptions.showSecondary) {
+                        aCells.push(new Text({ text: "{additionalText}" }));
+                    }
+                    oTable.bindItems("/", new ColumnListItem({ cells: aCells }));
+                }
+                oDialog.update();
+            });
+
+            oDialog.open();
+        },
+
+        onValueHelpSiteCodeRequest: function () {
+            this._openSiteValueHelpWithFreshData({
+                inputId: "fbSiteCode",
+                title: "Site Code",
+                itemsPath: "/siteCodeItems",
+                primaryLabel: "Site Code",
+                showSecondary: true,
+                secondaryLabel: "Site Name",
+                patternPlaceholder: "SITE* hoặc *SITE*"
+            });
+        },
+
+        onValueHelpSiteNameRequest: function () {
+            this._openSiteValueHelpWithFreshData({
+                inputId: "fbSiteName",
+                title: "Site Name",
+                itemsPath: "/siteNameItems",
+                primaryLabel: "Site Name",
+                showSecondary: true,
+                secondaryLabel: "Site Code",
+                patternPlaceholder: "*Name*"
+            });
+        },
+
+        onValueHelpSiteStatusRequest: function () {
+            this._openSiteValueHelpWithFreshData({
+                inputId: "fbSiteStatus",
+                title: "Status",
+                itemsPath: "/statusItems",
+                primaryLabel: "Status",
+                showSecondary: false,
+                secondaryLabel: "",
+                patternPlaceholder: "*PLAN*"
+            });
+        },
+
+        onFilterSearch: function () {
+            var sSiteCode = (this.byId("fbSiteCode").getValue() || "").trim();
+            var sSiteName = (this.byId("fbSiteName").getValue() || "").trim();
+            var sStatus = (this.byId("fbSiteStatus").getValue() || "").trim();
+
+            var aFilters = [];
+            if (sSiteCode) {
+                aFilters.push(new Filter("SiteCode", FilterOperator.EQ, sSiteCode));
+            }
+            if (sSiteName) {
+                aFilters.push(new Filter("SiteName", FilterOperator.EQ, sSiteName));
+            }
+            if (sStatus) {
+                aFilters.push(new Filter("Status", FilterOperator.EQ, sStatus));
+            }
+
+            var oBinding = this.byId("siteTable").getBinding("items");
+            if (oBinding) {
+                oBinding.filter(aFilters);
+            }
+        },
+
+        onFilterClear: function () {
+            this.byId("fbSiteCode").setValue("");
+            this.byId("fbSiteName").setValue("");
+            this.byId("fbSiteStatus").setValue("");
+            this.onFilterSearch();
         },
 
         // ── SEARCH ──────────────────────────────────────────────────────────
