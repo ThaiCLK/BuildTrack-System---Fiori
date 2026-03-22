@@ -112,7 +112,7 @@
                                 <Button text="Ký duyệt"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
-                                        visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; (${userModel>/authLevel} === '1' || ${userModel>/authLevel} === 1) &amp;&amp; !${viewData>/signStatus/level1/signed} }" />
+                                        visible="{viewData>/canApproveLevel1}" />
                             </VBox>                      
                         </VBox>
 
@@ -127,7 +127,7 @@
                                 <Button text="Ký duyệt"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
-                                        visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; (${userModel>/authLevel} === '2' || ${userModel>/authLevel} === 2) &amp;&amp; !${viewData>/signStatus/level2/signed} }" />
+                                        visible="{viewData>/canApproveLevel2}" />
                             </VBox>                      
                         </VBox>
 
@@ -142,7 +142,7 @@
                                 <Button text="Ký duyệt"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
-                                        visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; (${userModel>/authLevel} === '3' || ${userModel>/authLevel} === 3) &amp;&amp; !${viewData>/signStatus/level3/signed} }" />
+                                        visible="{viewData>/canApproveLevel3}" />
                             </VBox>                      
                         </VBox>
                     </l:content>
@@ -150,7 +150,8 @@
             </VBox>
         </content>
         <buttons>
-             <Button text="Từ chối" type="Reject" press=".onRejectFromReport" visible="{= ${Status} === 'PENDING_CLOSE' &amp;&amp; ( ((${userModel>/authLevel} === '1' || ${userModel>/authLevel} === 1) &amp;&amp; !${viewData>/signStatus/level1/signed}) || ((${userModel>/authLevel} === '2' || ${userModel>/authLevel} === 2) &amp;&amp; !${viewData>/signStatus/level2/signed}) || ((${userModel>/authLevel} === '3' || ${userModel>/authLevel} === 3) &amp;&amp; !${viewData>/signStatus/level3/signed}) ) }" />
+             <Button text="Gửi duyệt Đóng" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
+             <Button text="Từ chối" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
              <Button text="Đóng" press=".onCloseAcceptanceDialog" />
         </buttons>
     </Dialog>

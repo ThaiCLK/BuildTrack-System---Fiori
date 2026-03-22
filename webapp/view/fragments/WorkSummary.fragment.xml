@@ -56,7 +56,7 @@
                             text="Xem biên bản nghiệm thu"
                             icon="sap-icon://display"
                             type="Emphasized"
-                            press="._openAcceptanceReport"
+                            press=".onPressSignAcceptanceReport"
                             visible="{= ${Status} === 'PENDING_CLOSE' || ${Status} === 'CLOSE_REJECTED' || ${Status} === 'CLOSED' }"
                         />
                     </Toolbar>
