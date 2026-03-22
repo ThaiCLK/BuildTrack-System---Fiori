@@ -83,6 +83,8 @@ sap.ui.define([
             this._sCurrentProjectId = sProjectId;
             this._sSiteVhProjectId = null;
 
+            this._resetSiteFilterState();
+
             var oVhModel = this.getView().getModel("siteVh");
             if (oVhModel) {
                 oVhModel.setProperty("/siteCodeItems", []);
@@ -98,10 +100,27 @@ sap.ui.define([
                     dataRequested: function () { oView.setBusy(true); },
                     dataReceived: function () {
                         oView.setBusy(false);
-                        this._loadSiteValueHelps();
+                        this._loadSiteValueHelps(function () {
+                            this._warmUpSiteValueHelpDialogs();
+                        }.bind(this));
                     }.bind(this)
                 }
             });
+        },
+
+        _resetSiteFilterState: function () {
+            ["fbSiteCode", "fbSiteName", "fbSiteStatus"].forEach(function (sId) {
+                var oControl = this.byId(sId);
+                if (oControl && oControl.setValue) {
+                    oControl.setValue("");
+                }
+            }.bind(this));
+
+            var oTable = this.byId("siteTable");
+            var oBinding = oTable && oTable.getBinding("items");
+            if (oBinding) {
+                oBinding.filter([]);
+            }
         },
 
         _loadSiteValueHelps: function (fnDone) {
@@ -138,6 +157,18 @@ sap.ui.define([
                     return { key: sKey, text: sKey };
                 }));
             };
+
+            var oCtx = this.getView().getBindingContext();
+            var oProjectObj = oCtx && oCtx.getObject ? oCtx.getObject() : null;
+            var aExpandedSites = oProjectObj && oProjectObj.ToSites && oProjectObj.ToSites.results ? oProjectObj.ToSites.results : null;
+            if (Array.isArray(aExpandedSites) && aExpandedSites.length >= 0) {
+                fnSetValueHelpItems(aExpandedSites);
+                this._sSiteVhProjectId = this._sCurrentProjectId;
+                if (fnDone) {
+                    fnDone();
+                }
+                return;
+            }
 
             oModel.read("/SiteSet", {
                 filters: [new Filter("ProjectId", FilterOperator.EQ, this._sCurrentProjectId)],
@@ -179,11 +210,55 @@ sap.ui.define([
             }.bind(this));
         },
 
-        _openSimpleSiteValueHelpDialog: function (mOptions) {
-            var oInput = this.byId(mOptions.inputId);
-            var oVhModel = this.getView().getModel("siteVh");
-            var aAllItems = (oVhModel && oVhModel.getProperty(mOptions.itemsPath)) || [];
-            var oTableModel = new JSONModel(aAllItems);
+        _warmUpSiteValueHelpDialogs: function () {
+            [
+                {
+                    inputId: "fbSiteCode",
+                    title: "Site Code",
+                    itemsPath: "/siteCodeItems",
+                    primaryLabel: "Site Code",
+                    showSecondary: true,
+                    secondaryLabel: "Site Name",
+                    patternPlaceholder: "SITE* hoặc *SITE*"
+                },
+                {
+                    inputId: "fbSiteName",
+                    title: "Site Name",
+                    itemsPath: "/siteNameItems",
+                    primaryLabel: "Site Name",
+                    showSecondary: true,
+                    secondaryLabel: "Site Code",
+                    patternPlaceholder: "*Name*"
+                },
+                {
+                    inputId: "fbSiteStatus",
+                    title: "Status",
+                    itemsPath: "/statusItems",
+                    primaryLabel: "Status",
+                    showSecondary: false,
+                    secondaryLabel: "",
+                    patternPlaceholder: "*PLAN*"
+                }
+            ].forEach(function (mOptions) {
+                this._getOrCreateSiteValueHelpDialog(mOptions);
+            }.bind(this));
+        },
+
+        _getSiteValueHelpKey: function (mOptions) {
+            return mOptions && mOptions.inputId;
+        },
+
+        _getOrCreateSiteValueHelpDialog: function (mOptions) {
+            this._mSiteValueHelpCache = this._mSiteValueHelpCache || Object.create(null);
+
+            var sKey = this._getSiteValueHelpKey(mOptions);
+            var oCached = this._mSiteValueHelpCache[sKey];
+            if (oCached) {
+                return oCached;
+            }
+
+            var oTableModel = new JSONModel([]);
+            var oPatternInput = new Input({ placeholder: mOptions.patternPlaceholder || "*text*" });
 
             var fnWildcardMatch = function (sValue, sPattern) {
                 if (!sPattern) { return true; }
@@ -191,21 +266,27 @@ sap.ui.define([
                 return new RegExp("^" + sEscaped + "$", "i").test(sValue || "");
             };
 
+            var oCacheEntry = {
+                options: mOptions,
+                tableModel: oTableModel,
+                allItems: []
+            };
+
             var fnApplyPatternFilter = function (sPatternRaw) {
                 var sPattern = (sPatternRaw || "").trim();
                 if (!sPattern) {
-                    oTableModel.setData(aAllItems);
+                    oTableModel.setData(oCacheEntry.allItems);
                     return;
                 }
                 var bHasWildcard = sPattern.indexOf("*") !== -1;
                 var sNeedle = sPattern.toLowerCase();
-                var aFiltered = aAllItems.filter(function (oItem) {
-                    var sKey = (oItem.key || "").toString();
+                var aFiltered = oCacheEntry.allItems.filter(function (oItem) {
+                    var sValue = (oItem.key || "").toString();
                     var sText = (oItem.text || "").toString();
                     if (bHasWildcard) {
-                        return fnWildcardMatch(sKey, sPattern) || fnWildcardMatch(sText, sPattern);
+                        return fnWildcardMatch(sValue, sPattern) || fnWildcardMatch(sText, sPattern);
                     }
-                    return sKey.toLowerCase().indexOf(sNeedle) !== -1 || sText.toLowerCase().indexOf(sNeedle) !== -1;
+                    return sValue.toLowerCase().indexOf(sNeedle) !== -1 || sText.toLowerCase().indexOf(sNeedle) !== -1;
                 });
                 oTableModel.setData(aFiltered);
             };
@@ -218,20 +299,17 @@ sap.ui.define([
                 supportRanges: true,
                 ok: function (oEvent) {
                     var aTokens = oEvent.getParameter("tokens") || [];
-                    oInput.setValue(aTokens.length ? aTokens[0].getKey() : "");
+                    var oInput = this.byId(mOptions.inputId);
+                    if (oInput) {
+                        oInput.setValue(aTokens.length ? aTokens[0].getKey() : "");
+                    }
                     oDialog.close();
-                },
-                cancel: function () { oDialog.close(); },
-                afterClose: function () { oDialog.destroy(); }
+                }.bind(this),
+                cancel: function () { oDialog.close(); }
             });
 
             oDialog.setRangeKeyFields([{ label: mOptions.title, key: "key", type: "string" }]);
-            var sCurrent = (oInput.getValue() || "").trim();
-            if (sCurrent) {
-                oDialog.setTokens([new Token({ key: sCurrent, text: sCurrent })]);
-            }
 
-            var oPatternInput = new Input({ placeholder: mOptions.patternPlaceholder || "*text*" });
             var oInnerFilterBar = new FilterBar({
                 useToolbar: true,
                 showGoOnFB: true,
@@ -271,7 +349,43 @@ sap.ui.define([
                 oDialog.update();
             });
 
+            oCacheEntry.dialog = oDialog;
+            oCacheEntry.patternInput = oPatternInput;
+            oCacheEntry.applyPatternFilter = fnApplyPatternFilter;
+            this._mSiteValueHelpCache[sKey] = oCacheEntry;
+
+            return oCacheEntry;
+        },
+
+        _openSimpleSiteValueHelpDialog: function (mOptions) {
+            var oVhModel = this.getView().getModel("siteVh");
+            var oInput = this.byId(mOptions.inputId);
+            var oEntry = this._getOrCreateSiteValueHelpDialog(mOptions);
+            var oDialog = oEntry.dialog;
+
+            oEntry.allItems = (oVhModel && oVhModel.getProperty(mOptions.itemsPath)) || [];
+            oEntry.tableModel.setData(oEntry.allItems);
+            oEntry.patternInput.setValue("");
+
+            var sCurrent = (oInput.getValue() || "").trim();
+            if (sCurrent) {
+                oDialog.setTokens([new Token({ key: sCurrent, text: sCurrent })]);
+            } else {
+                oDialog.setTokens([]);
+            }
+
             oDialog.open();
+        },
+
+        onExit: function () {
+            var mCache = this._mSiteValueHelpCache || {};
+            Object.keys(mCache).forEach(function (sKey) {
+                var oEntry = mCache[sKey];
+                if (oEntry && oEntry.dialog) {
+                    oEntry.dialog.destroy();
+                }
+            });
+            this._mSiteValueHelpCache = null;
         },
 
         onValueHelpSiteCodeRequest: function () {
