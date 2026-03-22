@@ -702,7 +702,12 @@ sap.ui.define([
                     sorters: [new Sorter("CreatedTimestamp", false)],
                     success: function (oLogData) {
                         oView.setBusy(false);
-                        var aLogs = oLogData.results || [];
+                        var aAllLogs = oLogData.results || [];
+
+                        // Force WbsId filter natively because backend sometimes ignores the API filter
+                        var aLogs = aAllLogs.filter(function (log) {
+                            return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                        });
 
                         var oSignStatus = {
                             level1: { text: "[Chờ duyệt]", signed: false },
