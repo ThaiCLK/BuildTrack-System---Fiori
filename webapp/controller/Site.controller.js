@@ -34,7 +34,8 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({
                 siteCodeItems: [],
                 siteNameItems: [],
-                statusItems: []
+                statusItems: [],
+                addressItems: []
             }), "siteVh");
 
             var oRouter = this.getOwnerComponent().getRouter();
@@ -90,6 +91,7 @@ sap.ui.define([
                 oVhModel.setProperty("/siteCodeItems", []);
                 oVhModel.setProperty("/siteNameItems", []);
                 oVhModel.setProperty("/statusItems", []);
+                oVhModel.setProperty("/addressItems", []);
             }
 
             var oView = this.getView();
@@ -109,7 +111,7 @@ sap.ui.define([
         },
 
         _resetSiteFilterState: function () {
-            ["fbSiteCode", "fbSiteName", "fbSiteStatus"].forEach(function (sId) {
+            ["fbSiteCode", "fbSiteName", "fbSiteStatus", "fbSiteAddress", "fbSiteCreatedOn"].forEach(function (sId) {
                 var oControl = this.byId(sId);
                 if (oControl && oControl.setValue) {
                     oControl.setValue("");
@@ -137,14 +139,17 @@ sap.ui.define([
                 var mCodes = Object.create(null);
                 var mNames = Object.create(null);
                 var mStatuses = Object.create(null);
+                var mAddresses = Object.create(null);
 
                 (aRows || []).forEach(function (oRow) {
                     var sCode = (oRow.SiteCode || "").trim();
                     var sName = (oRow.SiteName || "").trim();
                     var sStatus = (oRow.Status || "").trim();
+                    var sAddress = (oRow.Address || "").trim();
                     if (sCode) { mCodes[sCode] = sName; }
                     if (sName) { mNames[sName] = sCode; }
                     if (sStatus) { mStatuses[sStatus] = true; }
+                    if (sAddress) { mAddresses[sAddress] = true; }
                 });
 
                 oVhModel.setProperty("/siteCodeItems", Object.keys(mCodes).sort().map(function (sKey) {
@@ -154,6 +159,9 @@ sap.ui.define([
                     return { key: sKey, text: sKey, additionalText: mNames[sKey] || "" };
                 }));
                 oVhModel.setProperty("/statusItems", Object.keys(mStatuses).sort().map(function (sKey) {
+                    return { key: sKey, text: sKey };
+                }));
+                oVhModel.setProperty("/addressItems", Object.keys(mAddresses).sort().map(function (sKey) {
                     return { key: sKey, text: sKey };
                 }));
             };
@@ -188,6 +196,7 @@ sap.ui.define([
                     oVhModel.setProperty("/siteCodeItems", []);
                     oVhModel.setProperty("/siteNameItems", []);
                     oVhModel.setProperty("/statusItems", []);
+                    oVhModel.setProperty("/addressItems", []);
                     if (fnDone) {
                         fnDone();
                     }
@@ -238,6 +247,15 @@ sap.ui.define([
                     showSecondary: false,
                     secondaryLabel: "",
                     patternPlaceholder: "*PLAN*"
+                },
+                {
+                    inputId: "fbSiteAddress",
+                    title: "Address",
+                    itemsPath: "/addressItems",
+                    primaryLabel: "Address",
+                    showSecondary: false,
+                    secondaryLabel: "",
+                    patternPlaceholder: "*Address*"
                 }
             ].forEach(function (mOptions) {
                 this._getOrCreateSiteValueHelpDialog(mOptions);
@@ -424,10 +442,24 @@ sap.ui.define([
             });
         },
 
+        onValueHelpSiteAddressRequest: function () {
+            this._openSiteValueHelpWithFreshData({
+                inputId: "fbSiteAddress",
+                title: "Address",
+                itemsPath: "/addressItems",
+                primaryLabel: "Address",
+                showSecondary: false,
+                secondaryLabel: "",
+                patternPlaceholder: "*Address*"
+            });
+        },
+
         onFilterSearch: function () {
             var sSiteCode = (this.byId("fbSiteCode").getValue() || "").trim();
             var sSiteName = (this.byId("fbSiteName").getValue() || "").trim();
             var sStatus = (this.byId("fbSiteStatus").getValue() || "").trim();
+            var sAddress = (this.byId("fbSiteAddress").getValue() || "").trim();
+            var oCreatedOn = this.byId("fbSiteCreatedOn").getDateValue();
 
             var aFilters = [];
             if (sSiteCode) {
@@ -438,6 +470,14 @@ sap.ui.define([
             }
             if (sStatus) {
                 aFilters.push(new Filter("Status", FilterOperator.EQ, sStatus));
+            }
+            if (sAddress) {
+                aFilters.push(new Filter("Address", FilterOperator.EQ, sAddress));
+            }
+            if (oCreatedOn) {
+                var oStart = new Date(oCreatedOn.getFullYear(), oCreatedOn.getMonth(), oCreatedOn.getDate(), 0, 0, 0, 0);
+                var oEnd = new Date(oCreatedOn.getFullYear(), oCreatedOn.getMonth(), oCreatedOn.getDate(), 23, 59, 59, 999);
+                aFilters.push(new Filter("CreatedOn", FilterOperator.BT, oStart, oEnd));
             }
 
             var oBinding = this.byId("siteTable").getBinding("items");
@@ -450,6 +490,8 @@ sap.ui.define([
             this.byId("fbSiteCode").setValue("");
             this.byId("fbSiteName").setValue("");
             this.byId("fbSiteStatus").setValue("");
+            this.byId("fbSiteAddress").setValue("");
+            this.byId("fbSiteCreatedOn").setValue("");
             this.onFilterSearch();
         },
 
@@ -506,18 +548,37 @@ sap.ui.define([
             var sName = oContext.getProperty("SiteName");
             var sPath = oContext.getPath();
             var oModel = this.getOwnerComponent().getModel();
+            var that = this;
 
             MessageBox.confirm("Are you sure you want to delete site \"" + sName + "\"?", {
                 title: "Confirm Delete",
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         oModel.remove(sPath, {
-                            success: function () { MessageToast.show("Site deleted successfully!"); },
+                            success: function () {
+                                MessageToast.show("Site deleted successfully!");
+                                that._refreshSiteAfterMutation();
+                            },
                             error: function () { MessageBox.error("Unable to delete site."); }
                         });
                     }
                 }
             });
+        },
+
+        _refreshSiteAfterMutation: function () {
+            this._sSiteVhProjectId = null;
+
+            var oBinding = this.getView().getElementBinding();
+            if (oBinding && oBinding.refresh) {
+                oBinding.attachEventOnce("dataReceived", function () {
+                    this._loadSiteValueHelps();
+                }.bind(this));
+                oBinding.refresh(true);
+                return;
+            }
+
+            this._loadSiteValueHelps();
         },
 
         _openSiteDialog: function (oContext) {
@@ -577,12 +638,20 @@ sap.ui.define([
                         }
                         if (bEdit) {
                             oModel.update(oContext.getPath(), oPayload, {
-                                success: function () { MessageToast.show("Site updated!"); oDialog.close(); },
+                                success: function () {
+                                    MessageToast.show("Site updated!");
+                                    that._refreshSiteAfterMutation();
+                                    oDialog.close();
+                                },
                                 error: function () { MessageBox.error("Error updating site!"); }
                             });
                         } else {
                             oModel.create("/SiteSet", oPayload, {
-                                success: function () { MessageToast.show("Site created successfully!"); oDialog.close(); },
+                                success: function () {
+                                    MessageToast.show("Site created successfully!");
+                                    that._refreshSiteAfterMutation();
+                                    oDialog.close();
+                                },
                                 error: function () { MessageBox.error("Error creating site!"); }
                             });
                         }
