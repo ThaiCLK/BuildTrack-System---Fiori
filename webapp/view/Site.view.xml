@@ -40,6 +40,23 @@
                                 valueHelpRequest="onValueHelpSiteStatusRequest"/>
                         </fb:control>
                     </fb:FilterGroupItem>
+                    <fb:FilterGroupItem name="Address" label="Address" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <Input id="fbSiteAddress"
+                                placeholder="Select Address"
+                                showValueHelp="true"
+                                valueHelpRequest="onValueHelpSiteAddressRequest"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
+                    <fb:FilterGroupItem name="CreatedOn" label="Created On" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <DatePicker
+                                id="fbSiteCreatedOn"
+                                width="100%"
+                                displayFormat="dd/MM/yyyy"
+                                valueFormat="yyyy-MM-dd"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
                 </fb:filterGroupItems>
             </fb:FilterBar>
 

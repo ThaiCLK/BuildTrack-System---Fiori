@@ -600,6 +600,7 @@ sap.ui.define([
                             success: function () {
                                 MessageToast.show("Project deleted successfully!");
                                 that._readProjects("");
+                                that._loadProjectValueHelps();
                             },
                             error: function () {
                                 MessageBox.error("Unable to delete project. Please try again.");
@@ -713,12 +714,22 @@ sap.ui.define([
                                 return;
                             }
                             oModel.update(sUpdatePath, oPayload, {
-                                success: function () { MessageToast.show("Project updated!"); that._readProjects(""); oDialog.close(); },
+                                success: function () {
+                                    MessageToast.show("Project updated!");
+                                    that._readProjects("");
+                                    that._loadProjectValueHelps();
+                                    oDialog.close();
+                                },
                                 error: function () { MessageBox.error("Error updating project!"); }
                             });
                         } else {
                             oModel.create("/ProjectSet", oPayload, {
-                                success: function () { MessageToast.show("Project created successfully!"); that._readProjects(""); oDialog.close(); },
+                                success: function () {
+                                    MessageToast.show("Project created successfully!");
+                                    that._readProjects("");
+                                    that._loadProjectValueHelps();
+                                    oDialog.close();
+                                },
                                 error: function () { MessageBox.error("Error creating project!"); }
                             });
                         }
