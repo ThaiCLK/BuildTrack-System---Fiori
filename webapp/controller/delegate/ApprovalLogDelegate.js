@@ -269,37 +269,38 @@ sap.ui.define([
                 return found;
             };
 
-            var formatLogInfo = function (oLog) {
+            var formatDate = function (vDate) {
+                if (!vDate) return "";
+                var d = (vDate instanceof Date) ? vDate : new Date(vDate);
+                if (isNaN(d.getTime())) return "";
+                return d.getDate().toString().padStart(2, '0') + '/' +
+                    (d.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                    d.getFullYear();
+            };
+
+            var formatLogInfo = function (oLog, bIncludeName) {
                 if (!oLog) return [];
+                var sDateString = formatDate(oLog.CreatedTimestamp);
+                
+                if (bIncludeName === false) {
+                    return [sDateString].filter(Boolean);
+                }
                 var sName = oLog.ActionBy || oLog.CreatedBy || "";
-                var dDate = oLog.CreatedTimestamp ? new Date(oLog.CreatedTimestamp) : null;
-                var sDateString = dDate ? (dDate.getDate().toString().padStart(2, '0') + '/' +
-                    (dDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
-                    dDate.getFullYear()) : "";
                 return [sName, sDateString].filter(Boolean);
             };
 
-            var iMaxVisibleLane = 5;
-            switch (sStatus) {
-                case "PLANNING": iMaxVisibleLane = 0; break;
-                case "PENDING_OPEN":
-                case "OPEN_REJECTED": iMaxVisibleLane = 1; break;
-                case "OPENED": iMaxVisibleLane = 2; break;
-                case "IN_PROGRESS": iMaxVisibleLane = 3; break;
-                case "PENDING_CLOSE":
-                case "CLOSE_REJECTED": iMaxVisibleLane = 4; break;
-                case "CLOSED": iMaxVisibleLane = 5; break;
-                default: iMaxVisibleLane = 0;
-            }
-
+            // Always show all lanes.
+            // laneState controls the lane header circle color explicitly (bound in XML via {pfModel>laneState})
+            // 'Initial' = default, 'Error' = fully red circle (override when rejected)
+            var sDefaultLaneState = "Initial";
             var aLanes = [
-                { id: "lane0", icon: "sap-icon://status-in-process", label: "Planning", position: 0 },
-                { id: "lane1", icon: "sap-icon://paper-plane", label: "Pending Open", position: 1 },
-                { id: "lane2", icon: "sap-icon://accept", label: "Opened", position: 2 },
-                { id: "lane3", icon: "sap-icon://machine", label: "In Progress", position: 3 },
-                { id: "lane4", icon: "sap-icon://paper-plane", label: "Pending Close", position: 4 },
-                { id: "lane5", icon: "sap-icon://locked", label: "Closed", position: 5 }
-            ].filter(function (l) { return l.position <= iMaxVisibleLane; });
+                { id: "lane0", icon: "sap-icon://status-in-process", label: "Planning",      position: 0, laneState: sDefaultLaneState },
+                { id: "lane1", icon: "sap-icon://paper-plane",        label: "Pending Open",  position: 1, laneState: sStatus === "OPEN_REJECTED"   ? "Error" : sDefaultLaneState },
+                { id: "lane2", icon: "sap-icon://accept",             label: "Opened",        position: 2, laneState: sDefaultLaneState },
+                { id: "lane3", icon: "sap-icon://machine",            label: "In Progress",   position: 3, laneState: sDefaultLaneState },
+                { id: "lane4", icon: "sap-icon://paper-plane",        label: "Pending Close", position: 4, laneState: sStatus === "CLOSE_REJECTED"  ? "Error" : sDefaultLaneState },
+                { id: "lane5", icon: "sap-icon://locked",             label: "Closed",        position: 5, laneState: sDefaultLaneState }
+            ];
 
             // Default Mapping
             var state0 = "Planned", state1 = "Planned", state2 = "Planned", state3 = "Planned", state4 = "Planned", state5 = "Planned";
@@ -308,141 +309,158 @@ sap.ui.define([
             // State evaluation
             switch (sStatus) {
                 case "PLANNING":
-                    state0 = "Positive"; text0 = "Active";
+                    state0 = "Positive"; text0 = "Published";
                     break;
                 case "PENDING_OPEN":
-                    state0 = "Positive"; text0 = "Completed";
+                    state0 = "Positive"; text0 = "Published";
                     state1 = "Neutral"; text1 = "In Review";
                     break;
                 case "OPEN_REJECTED":
-                    state0 = "Positive"; text0 = "Completed";
+                    state0 = "Positive"; text0 = "Published";
                     state1 = "Negative"; text1 = "Rejected";
                     break;
                 case "OPENED":
-                    state0 = "Positive"; text0 = "Completed";
+                    state0 = "Positive"; text0 = "Published";
                     state1 = "Positive"; text1 = "Approved";
-                    state2 = "Positive"; text2 = "Active";
+                    state2 = "Positive"; text2 = "Actived";
                     break;
                 case "IN_PROGRESS":
-                    state0 = "Positive"; text0 = "Completed";
+                    state0 = "Positive"; text0 = "Published";
                     state1 = "Positive"; text1 = "Approved";
-                    state2 = "Positive"; text2 = "Completed";
-                    state3 = "Positive"; text3 = "Active";
+                    state2 = "Positive"; text2 = "Actived";
+                    state3 = "Positive"; text3 = "Started";
                     break;
                 case "PENDING_CLOSE":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
-                    text0 = "Completed"; text1 = "Approved"; text2 = "Completed"; text3 = "Completed";
+                    text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started";
                     state4 = "Neutral"; text4 = "In Review";
                     break;
                 case "CLOSE_REJECTED":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
-                    text0 = "Completed"; text1 = "Approved"; text2 = "Completed"; text3 = "Completed";
+                    text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started";
                     state4 = "Negative"; text4 = "Rejected";
                     break;
                 case "CLOSED":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive"; state4 = "Positive"; state5 = "Positive";
-                    text0 = "Completed"; text1 = "Approved"; text2 = "Completed"; text3 = "Completed"; text4 = "Approved"; text5 = "Completed";
+                    text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started"; text4 = "Approved"; text5 = "Completed";
                     break;
                 default:
                     state0 = "Neutral"; text0 = "Unknown";
             }
 
-            var getInfoForLane = function (laneIdx) {
+            var getInfoForLane = function (laneIdx, bIncludeName) {
                 var oLog;
                 if (laneIdx === 2) { // Opened
                     oLog = findLatestLog("OPEN", "APPROVED");
                 } else if (laneIdx === 5) { // Closed
                     oLog = findLatestLog("CLOSE", "APPROVED");
                 }
-                return formatLogInfo(oLog);
+                return formatLogInfo(oLog, bIncludeName);
             };
 
-            var getLevelNodeInfo = function (sType, iLevel, overallState, overallText) {
-                var oLog = aGlobalLogs.find(function (l) {
+            var isApproveAction = function (act) {
+                return act.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0
+                    || act.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0
+                    || act === "0001" || act === "APPROVED" || act === "SUCCESS"
+                    || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT"
+                    || act.indexOf("CHẤP THUẬN") >= 0;
+            };
+            var isRejectAction = function (act) {
+                return act === "0002"
+                    || act === "REJECTED"
+                    || act === "ERROR"
+                    || act.indexOf("TỪ CHỐI") >= 0
+                    || act.indexOf("REJECT") >= 0
+                    || act.indexOf("ĐÃ TỪ CHỐI") >= 0;
+            };
+
+            var getLevelNodeInfo = function (sType, iLevel, overallState) {
+                // Find the most recent log for this approval type + level that is a decision
+                var oLog = null;
+                for (var i = 0; i < aGlobalLogs.length; i++) {
+                    var l = aGlobalLogs[i];
                     var act = (l.Action || "").toUpperCase().trim();
-                    var isApprove = act.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0 || act.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0 || act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") >= 0;
-                    var isReject = act === "0002" || act === "REJECTED" || act === "ERROR" || act === "TỪ CHỐI";
-                    return l.ApprovalType === sType && parseInt(l.ApprovalLevel) === iLevel && (isApprove || isReject);
-                });
+                    var lvlMatch = parseInt(l.ApprovalLevel) === iLevel || String(l.ApprovalLevel) === String(iLevel);
+                    if (l.ApprovalType === sType && lvlMatch && (isApproveAction(act) || isRejectAction(act))) {
+                        oLog = l;
+                        break; // logs sorted newest-first
+                    }
+                }
 
-                var st = overallState;
-                var txt = overallText;
-
-                if (st === "Planned") {
+                // If the overall phase hasn't started yet (Planned state) then show pending
+                if (overallState === "Planned") {
                     return { state: "Planned", text: "Pending", texts: [] };
                 }
 
                 if (oLog) {
-                    var act = (oLog.Action || "").toUpperCase().trim();
-                    var isApp = act.indexOf("PHÊ DUYỆT YÊU CẦU ĐÓNG WBS") >= 0 || act.indexOf("PHÊ DUYỆT YÊU CẦU MỞ WBS") >= 0 || act === "0001" || act === "APPROVED" || act === "SUCCESS" || act === "ĐÃ PHÊ DUYỆT" || act === "KÝ DUYÊT" || act.indexOf("CHẤP THUẬN") >= 0;
-                    if (isApp) {
-                        st = "Positive"; txt = "Approved";
+                    var act2 = (oLog.Action || "").toUpperCase().trim();
+                    // Show correct state per what this person actually did
+                    if (isApproveAction(act2)) {
+                        return { state: "Positive", text: "Approved", texts: formatLogInfo(oLog, true) };
                     } else {
-                        st = "Negative"; txt = "Rejected";
+                        return { state: "Negative", text: "Rejected", texts: formatLogInfo(oLog, true) };
                     }
-                    return { state: st, text: txt, texts: formatLogInfo(oLog) };
                 } else {
-                    if (st === "Positive") {
-                        return { state: "Positive", text: "Approved", texts: [] };
-                    } else if (st === "Negative") {
-                        return { state: "Neutral", text: "Pending", texts: [] };
-                    } else {
-                        return { state: "Neutral", text: "In Review", texts: [] };
-                    }
+                    // No log for this level — show neutral, no personal info
+                    return { state: "Neutral", text: "", texts: [] };
                 }
             };
 
+            // Custom texts for Planning node
+            var aPlanningTexts = [];
+            if (oCtx) {
+                var dCreated = oCtx.getProperty("CreatedTimestamp");
+                var dPlannedEnd = oCtx.getProperty("EndDate");
+                if (dCreated) aPlanningTexts.push("Created On: " + formatDate(dCreated));
+                if (dPlannedEnd) aPlanningTexts.push("Planned End: " + formatDate(dPlannedEnd));
+            }
+
             var aNodes = [
-                { id: "node0", lane: "lane0", title: "Kế hoạch", state: state0, stateText: text0, texts: [], children: iMaxVisibleLane >= 1 ? ["node1_1"] : [] }
+                { id: "node0", lane: "lane0", title: "Kế hoạch", state: state0, stateText: text0, texts: aPlanningTexts, children: ["node1_1"] }
             ];
 
-            if (iMaxVisibleLane >= 1) {
-                // Pending Open Nodes (3 Levels)
-                [1, 2, 3].forEach(function (lvl) {
-                    var info = getLevelNodeInfo("OPEN", lvl, state1, text1);
-                    var nextNodeId = lvl === 3 ? "node2" : "node1_" + (lvl + 1);
-                    if (lvl === 3 && iMaxVisibleLane < 2) nextNodeId = null;
-                    aNodes.push({
-                        id: "node1_" + lvl,
-                        lane: "lane1",
-                        title: "Trình duyệt Mở (Cấp " + lvl + ")",
-                        state: info.state,
-                        stateText: info.text,
-                        texts: info.texts,
-                        children: nextNodeId ? [nextNodeId] : []
-                    });
+            // Pending Open Nodes (3 Levels)
+            [1, 2, 3].forEach(function (lvl) {
+                var info = getLevelNodeInfo("OPEN", lvl, state1);
+                var nextNodeId = lvl === 3 ? "node2" : "node1_" + (lvl + 1);
+                aNodes.push({
+                    id: "node1_" + lvl,
+                    lane: "lane1",
+                    title: "Trình duyệt Mở (Cấp " + lvl + ")",
+                    state: info.state,
+                    stateText: info.text,
+                    texts: info.texts,
+                    children: [nextNodeId]
                 });
-            }
+            });
 
-            if (iMaxVisibleLane >= 2) {
-                aNodes.push({ id: "node2", lane: "lane2", title: "Đã Mở", state: state2, stateText: text2, texts: getInfoForLane(2), children: iMaxVisibleLane >= 3 ? ["node3"] : [] });
-            }
+            // Opened Node
+            aNodes.push({ id: "node2", lane: "lane2", title: "Đã Mở", state: state2, stateText: text2, texts: getInfoForLane(2, false), children: ["node3"] });
             
-            if (iMaxVisibleLane >= 3) {
-                aNodes.push({ id: "node3", lane: "lane3", title: "Đang Thi công", state: state3, stateText: text3, texts: [], children: iMaxVisibleLane >= 4 ? ["node4_1"] : [] });
+            // In Progress Node
+            var aInProgressTexts = [];
+            if (oCtx && oCtx.getProperty("StartActual")) {
+                aInProgressTexts = [formatDate(oCtx.getProperty("StartActual"))];
             }
+            aNodes.push({ id: "node3", lane: "lane3", title: "Đang Thi công", state: state3, stateText: text3, texts: aInProgressTexts, children: ["node4_1"] });
 
-            if (iMaxVisibleLane >= 4) {
-                // Pending Close Nodes (3 Levels)
-                [1, 2, 3].forEach(function (lvl) {
-                    var info = getLevelNodeInfo("CLOSE", lvl, state4, text4);
-                    var nextNodeId = lvl === 3 ? "node5" : "node4_" + (lvl + 1);
-                    if (lvl === 3 && iMaxVisibleLane < 5) nextNodeId = null;
-                    aNodes.push({
-                        id: "node4_" + lvl,
-                        lane: "lane4",
-                        title: "Nghiệm thu Đóng (Cấp " + lvl + ")",
-                        state: info.state,
-                        stateText: info.text,
-                        texts: info.texts,
-                        children: nextNodeId ? [nextNodeId] : []
-                    });
+            // Pending Close Nodes (3 Levels)
+            [1, 2, 3].forEach(function (lvl) {
+                var info = getLevelNodeInfo("CLOSE", lvl, state4);
+                var nextNodeId = lvl === 3 ? "node5" : "node4_" + (lvl + 1);
+                aNodes.push({
+                    id: "node4_" + lvl,
+                    lane: "lane4",
+                    title: "Nghiệm thu Đóng (Cấp " + lvl + ")",
+                    state: info.state,
+                    stateText: info.text,
+                    texts: info.texts,
+                    children: [nextNodeId]
                 });
-            }
+            });
 
-            if (iMaxVisibleLane >= 5) {
-                aNodes.push({ id: "node5", lane: "lane5", title: "Hoàn thành", state: state5, stateText: text5, texts: getInfoForLane(5), children: [] });
-            }
+            // Closed Node
+            aNodes.push({ id: "node5", lane: "lane5", title: "Hoàn thành", state: state5, stateText: text5, texts: getInfoForLane(5, false), children: [] });
 
             if (oPfModel) {
                 oPfModel.setData({
@@ -454,6 +472,31 @@ sap.ui.define([
                 var oProcessFlow = oView.byId("wbsProcessFlow");
                 if (oProcessFlow && typeof oProcessFlow.updateModel === "function") {
                     oProcessFlow.updateModel();
+                }
+
+                // Force lane circle to fully red when rejection occurs.
+                // ProcessFlowLaneHeader.state is an array of {state, value} objects (proportion of each node state).
+                // To make the circle 100% red, set all values to Negative.
+                if (sStatus === "OPEN_REJECTED" || sStatus === "CLOSE_REJECTED") {
+                    var sRejectedLaneId = sStatus === "OPEN_REJECTED" ? "lane1" : "lane4";
+                    var aFullyRedState = [
+                        { state: "Positive",  value: 0 },
+                        { state: "Negative",  value: 3 },   // 3 = all 3 approval levels
+                        { state: "Neutral",   value: 0 },
+                        { state: "Planned",   value: 0 },
+                        { state: "Critical",  value: 0 }
+                    ];
+                    setTimeout(function () {
+                        var oFlow = oView.byId("wbsProcessFlow");
+                        if (!oFlow) return;
+                        var aHeaders = oFlow.getAggregation("lanes") || [];
+                        aHeaders.forEach(function (oHeader) {
+                            if (oHeader.getLaneId && oHeader.getLaneId() === sRejectedLaneId) {
+                                oHeader.setState(aFullyRedState);
+                                oHeader.invalidate();
+                            }
+                        });
+                    }, 500);
                 }
             }
         },
