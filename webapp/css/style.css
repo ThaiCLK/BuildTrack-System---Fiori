@@ -767,6 +767,23 @@
     color: #27ae60 !important;
     font-weight: 700 !important;
 }
+
+/* DatePicker popup sizing fix (avoid full-browser value help dialog) */
+.sapMDatePickerPopup.sapMDialog,
+.sapMDateTimePopup.sapMDialog {
+    width: auto !important;
+    max-width: 28rem !important;
+    height: auto !important;
+    max-height: 34rem !important;
+}
+
+.sapMDatePickerPopup .sapMDialogSection,
+.sapMDateTimePopup .sapMDialogSection,
+.sapMDatePickerPopup .sapMDialogScrollCont,
+.sapMDateTimePopup .sapMDialogScrollCont {
+    height: auto !important;
+    max-height: 30rem !important;
+}
 /* Completed connectors (active steps) */
 .lineCompleted,
 .lineActive {

@@ -52,6 +52,7 @@
         "sap.ui.core": {},
         "sap.ui.table": {},
         "sap.ui.layout": {},
+        "sap.ui.comp": {},
         "sap.f": {},
         "sap.suite.ui.commons": {}
       }

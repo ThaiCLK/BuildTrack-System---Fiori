@@ -2,12 +2,64 @@
     controllerName="z.bts.buildtrack551.controller.Site"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
-    xmlns:f="sap.f">
+    xmlns:f="sap.f"
+    xmlns:fb="sap.ui.comp.filterbar">
     <Page 
         title="Site List — Project: {ProjectName}" 
         showNavButton="true" 
         navButtonPress="onNavBack">
         <content>
+            <fb:FilterBar id="siteFilterBar"
+                useToolbar="false"
+                showGoOnFB="true"
+                showClearOnFB="true"
+                search="onFilterSearch"
+                clear="onFilterClear">
+                <fb:filterGroupItems>
+                    <fb:FilterGroupItem name="SiteCode" label="Site Code" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <Input id="fbSiteCode"
+                                placeholder="Select Site Code"
+                                showValueHelp="true"
+                                valueHelpRequest="onValueHelpSiteCodeRequest"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
+                    <fb:FilterGroupItem name="SiteName" label="Site Name" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <Input id="fbSiteName"
+                                placeholder="Select Site Name"
+                                showValueHelp="true"
+                                valueHelpRequest="onValueHelpSiteNameRequest"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
+                    <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <Input id="fbSiteStatus"
+                                placeholder="Select Status"
+                                showValueHelp="true"
+                                valueHelpRequest="onValueHelpSiteStatusRequest"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
+                    <fb:FilterGroupItem name="Address" label="Address" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <Input id="fbSiteAddress"
+                                placeholder="Select Address"
+                                showValueHelp="true"
+                                valueHelpRequest="onValueHelpSiteAddressRequest"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
+                    <fb:FilterGroupItem name="CreatedOn" label="Created On" groupName="Basic" visibleInFilterBar="true">
+                        <fb:control>
+                            <DatePicker
+                                id="fbSiteCreatedOn"
+                                width="100%"
+                                displayFormat="dd/MM/yyyy"
+                                valueFormat="yyyy-MM-dd"/>
+                        </fb:control>
+                    </fb:FilterGroupItem>
+                </fb:filterGroupItems>
+            </fb:FilterBar>
+
             <Table 
                 id="siteTable"
                 items="{ToSites}"
@@ -16,12 +68,6 @@
                     <OverflowToolbar>
                         <Title text="Site List" level="H3"/>
                         <ToolbarSpacer/>
-                        <SearchField
-                            id="searchSite"
-                            width="22rem"
-                            placeholder="Search by name or code…"
-                            liveChange=".onSearch"
-                            search=".onSearch"/>
                         <Button 
                             id="btnAddSite"
                             text="Add Site"

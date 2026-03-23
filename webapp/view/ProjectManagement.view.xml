@@ -2,17 +2,71 @@
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m"
     xmlns:f="sap.f"
-    xmlns:core="sap.ui.core">
+    xmlns:core="sap.ui.core"
+    xmlns:fb="sap.ui.comp.filterbar">
 
     <Page id="pageProjectList" showNavButton="true" navButtonPress=".onNavBack"
           showHeader="false">
         <content>
-            <Table id="projectTable"
-                inset="false"
-                growing="true"
-                growingThreshold="20"
-                alternateRowColors="true"
-                items="{ path: '/ProjectSet' }">
+            <VBox width="100%">
+                <fb:FilterBar id="projectFilterBar"
+                    useToolbar="false"
+                    showGoOnFB="true"
+                    search="onFilterSearch"
+                    clear="onFilterClear"
+                    showClearOnFB="true">
+                    <fb:filterGroupItems>
+                        <fb:FilterGroupItem name="ProjectCode" label="Project Code" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="fbProjectCode"
+                                    placeholder="Select Project Code"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpProjectCodeRequest"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="ProjectName" label="Project Name" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="fbProjectName"
+                                    placeholder="Select Project Name"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpProjectNameRequest"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="fbStatus"
+                                    placeholder="Select Status"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpStatusRequest"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="ProjectType" label="Project Type" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input id="fbType"
+                                    placeholder="Select Type"
+                                    showValueHelp="true"
+                                    valueHelpRequest="onValueHelpTypeRequest"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="StartDate" label="Start Date" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="EndDate" label="End Date" groupName="Basic" visibleInFilterBar="true">
+                            <fb:control>
+                                <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                    </fb:filterGroupItems>
+                </fb:FilterBar>
+
+                <Table id="projectTable"
+                    inset="false"
+                    growing="true"
+                    growingThreshold="20"
+                    alternateRowColors="true"
+                    items="{ path: 'pm>/projects' }">
 
                 <headerToolbar>
                     <OverflowToolbar id="otbSubheader" style="Clear">
@@ -21,12 +75,6 @@
                                 tooltip="Back to Dashboard"/>
                         <Title id="tableHeader" text="Project List" level="H2"/>
                         <ToolbarSpacer id="toolbarSpacer"/>
-                        <SearchField
-                            id="searchProject"
-                            width="22rem"
-                            placeholder="Search by name or code…"
-                            liveChange=".onSearch"
-                            search=".onSearch"/>
                         <Button
                             id="btnCreateProject"
                             text="Create Project"
@@ -68,24 +116,24 @@
                         <cells>
                             <!-- Project Code: bold identifier -->
                             <ObjectIdentifier id="objProjectCode"
-                                title="{ProjectCode}"
+                                title="{pm>ProjectCode}"
                                 titleActive="false"/>
 
                             <!-- Project Name -->
                             <ObjectIdentifier id="objProjectName"
-                                title="{ProjectName}"
+                                title="{pm>ProjectName}"
                                 titleActive="false"/>
 
                             <!-- Type badge — icon & colour via formatter (avoids XML whitespace issues) -->
                             <ObjectStatus id="objProjectType"
-                                text="{ProjectType}"
-                                icon="{ path: 'ProjectType', formatter: '.formatTypeIcon' }"
-                                state="{ path: 'ProjectType', formatter: '.formatTypeState' }"
+                                text="{pm>ProjectType}"
+                                icon="{ path: 'pm>ProjectType', formatter: '.formatTypeIcon' }"
+                                state="{ path: 'pm>ProjectType', formatter: '.formatTypeState' }"
                                 inverted="true"/>
 
                             <!-- Start Date -->
                             <Text id="txtStartDate" text="{
-                                path: 'StartDate',
+                                path: 'pm>StartDate',
                                 type: 'sap.ui.model.type.Date',
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
                             }"/>
@@ -93,7 +141,7 @@
                             <!-- End Date — highlight overdue in red -->
                             <ObjectStatus id="objEndDate"
                                 text="{
-                                    path: 'EndDate',
+                                    path: 'pm>EndDate',
                                     type: 'sap.ui.model.type.Date',
                                     formatOptions: { pattern: 'dd/MM/yyyy' }
                                 }"
@@ -101,14 +149,14 @@
 
                             <!-- Status badge with semantic colours -->
                             <ObjectStatus id="objStatus"
-                                text="{path: 'Status', formatter: '.formatStatusText'}"
-                                icon="{= ${Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
-                                       ${Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
-                                       ${Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
+                                text="{path: 'pm>Status', formatter: '.formatStatusText'}"
+                                icon="{= ${pm>Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
+                                    ${pm>Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
+                                    ${pm>Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
                                                                     'sap-icon://status-inactive' }"
-                                state="{= ${Status} === 'IN_PROGRESS' ? 'Success'     :
-                                        ${Status} === 'PLANNING' ? 'Warning'     :
-                                        ${Status} === 'CLOSED'   ? 'Error'       :
+                                state="{= ${pm>Status} === 'IN_PROGRESS' ? 'Success'     :
+                                     ${pm>Status} === 'PLANNING' ? 'Warning'     :
+                                     ${pm>Status} === 'CLOSED'   ? 'Error'       :
                                                                     'None' }"
                                 inverted="true"/>
 
@@ -134,7 +182,8 @@
                         description="Create a new project or adjust your search."/>
                 </noData>
 
-            </Table>
+                </Table>
+            </VBox>
         </content>
     </Page>
 </mvc:View>
