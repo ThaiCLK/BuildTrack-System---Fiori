@@ -168,30 +168,16 @@ sap.ui.define([
             var oVhModel = this.getView().getModel("vh");
             var aAllItems = (oVhModel && oVhModel.getProperty(mOptions.itemsPath)) || [];
 
-            var fnWildcardMatch = function (sValue, sPattern) {
-                if (!sPattern) {
-                    return true;
-                }
-                var sEscaped = sPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-                var oRegex = new RegExp("^" + sEscaped + "$", "i");
-                return oRegex.test(sValue || "");
-            };
-
             var oTableModel = new JSONModel(aAllItems);
             var fnApplyPatternFilter = function (sPatternRaw) {
-                var sPattern = (sPatternRaw || "").trim();
-                if (!sPattern) {
+                var sNeedle = (sPatternRaw || "").trim().replace(/\*/g, "").toLowerCase();
+                if (!sNeedle) {
                     oTableModel.setData(aAllItems);
                     return;
                 }
-                var bHasWildcard = sPattern.indexOf("*") !== -1;
                 var aFiltered = aAllItems.filter(function (oItem) {
                     var sKey = (oItem.key || "").toString();
                     var sText = (oItem.text || "").toString();
-                    if (bHasWildcard) {
-                        return fnWildcardMatch(sKey, sPattern) || fnWildcardMatch(sText, sPattern);
-                    }
-                    var sNeedle = sPattern.toLowerCase();
                     return sKey.toLowerCase().indexOf(sNeedle) !== -1 || sText.toLowerCase().indexOf(sNeedle) !== -1;
                 });
                 oTableModel.setData(aFiltered);
@@ -227,7 +213,7 @@ sap.ui.define([
 
             if (mOptions.enablePatternFilter) {
                 var oPatternInput = new Input({
-                    placeholder: "PRJ* hoặc *PRJ*"
+                    placeholder: "Nhập từ khóa"
                 });
 
                 var oInnerFilterBar = new FilterBar({
@@ -241,8 +227,8 @@ sap.ui.define([
 
                 oInnerFilterBar.addFilterGroupItem(new FilterGroupItem({
                     groupName: "Basic",
-                    name: "Pattern",
-                    label: "Pattern",
+                    name: "Contains",
+                    label: "Contains",
                     visibleInFilterBar: true,
                     control: oPatternInput
                 }));
@@ -352,12 +338,6 @@ sap.ui.define([
             var mField = this._mProjectField;
             var aExpr = [];
 
-            if (mInput.projectCode) {
-                aExpr.push(mField.code + " eq '" + this._escapeODataString(mInput.projectCode) + "'");
-            }
-            if (mInput.projectName) {
-                aExpr.push(mField.name + " eq '" + this._escapeODataString(mInput.projectName) + "'");
-            }
             if (mInput.status) {
                 aExpr.push(mField.status + " eq '" + this._escapeODataString(mInput.status) + "'");
             }
@@ -412,8 +392,8 @@ sap.ui.define([
             return (aRows || []).filter(function (oRow) {
                 var sRowName = (oRow.ProjectName || "").toLowerCase();
                 var sRowCode = (oRow.ProjectCode || "").toLowerCase();
-                var bCode = !sProjectCode || sRowCode === sProjectCode;
-                var bName = !sProjectName || sRowName === sProjectName;
+                var bCode = !sProjectCode || sRowCode.indexOf(sProjectCode) !== -1;
+                var bName = !sProjectName || sRowName.indexOf(sProjectName) !== -1;
                 var bStatus = !sStatus || (oRow.Status || "") === sStatus;
                 var bType = !sType || (oRow.ProjectType || "") === sType;
                 var bStart = !sStart || this._dateOnlyKey(oRow.StartDate) === sStart;

@@ -228,7 +228,7 @@ sap.ui.define([
                     primaryLabel: "Site Code",
                     showSecondary: true,
                     secondaryLabel: "Site Name",
-                    patternPlaceholder: "SITE* hoặc *SITE*"
+                    patternPlaceholder: "Nhập từ khóa"
                 },
                 {
                     inputId: "fbSiteName",
@@ -237,7 +237,7 @@ sap.ui.define([
                     primaryLabel: "Site Name",
                     showSecondary: true,
                     secondaryLabel: "Site Code",
-                    patternPlaceholder: "*Name*"
+                    patternPlaceholder: "Nhập từ khóa"
                 },
                 {
                     inputId: "fbSiteStatus",
@@ -246,7 +246,7 @@ sap.ui.define([
                     primaryLabel: "Status",
                     showSecondary: false,
                     secondaryLabel: "",
-                    patternPlaceholder: "*PLAN*"
+                    patternPlaceholder: "Nhập từ khóa"
                 },
                 {
                     inputId: "fbSiteAddress",
@@ -255,7 +255,7 @@ sap.ui.define([
                     primaryLabel: "Address",
                     showSecondary: false,
                     secondaryLabel: "",
-                    patternPlaceholder: "*Address*"
+                    patternPlaceholder: "Nhập từ khóa"
                 }
             ].forEach(function (mOptions) {
                 this._getOrCreateSiteValueHelpDialog(mOptions);
@@ -278,12 +278,6 @@ sap.ui.define([
             var oTableModel = new JSONModel([]);
             var oPatternInput = new Input({ placeholder: mOptions.patternPlaceholder || "*text*" });
 
-            var fnWildcardMatch = function (sValue, sPattern) {
-                if (!sPattern) { return true; }
-                var sEscaped = sPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-                return new RegExp("^" + sEscaped + "$", "i").test(sValue || "");
-            };
-
             var oCacheEntry = {
                 options: mOptions,
                 tableModel: oTableModel,
@@ -291,19 +285,14 @@ sap.ui.define([
             };
 
             var fnApplyPatternFilter = function (sPatternRaw) {
-                var sPattern = (sPatternRaw || "").trim();
-                if (!sPattern) {
+                var sNeedle = (sPatternRaw || "").trim().replace(/\*/g, "").toLowerCase();
+                if (!sNeedle) {
                     oTableModel.setData(oCacheEntry.allItems);
                     return;
                 }
-                var bHasWildcard = sPattern.indexOf("*") !== -1;
-                var sNeedle = sPattern.toLowerCase();
                 var aFiltered = oCacheEntry.allItems.filter(function (oItem) {
                     var sValue = (oItem.key || "").toString();
                     var sText = (oItem.text || "").toString();
-                    if (bHasWildcard) {
-                        return fnWildcardMatch(sValue, sPattern) || fnWildcardMatch(sText, sPattern);
-                    }
                     return sValue.toLowerCase().indexOf(sNeedle) !== -1 || sText.toLowerCase().indexOf(sNeedle) !== -1;
                 });
                 oTableModel.setData(aFiltered);
@@ -338,8 +327,8 @@ sap.ui.define([
             });
             oInnerFilterBar.addFilterGroupItem(new FilterGroupItem({
                 groupName: "Basic",
-                name: "Pattern",
-                label: "Pattern",
+                name: "Contains",
+                label: "Contains",
                 visibleInFilterBar: true,
                 control: oPatternInput
             }));
@@ -414,7 +403,7 @@ sap.ui.define([
                 primaryLabel: "Site Code",
                 showSecondary: true,
                 secondaryLabel: "Site Name",
-                patternPlaceholder: "SITE* hoặc *SITE*"
+                patternPlaceholder: "Nhập từ khóa"
             });
         },
 
@@ -426,7 +415,7 @@ sap.ui.define([
                 primaryLabel: "Site Name",
                 showSecondary: true,
                 secondaryLabel: "Site Code",
-                patternPlaceholder: "*Name*"
+                patternPlaceholder: "Nhập từ khóa"
             });
         },
 
@@ -438,7 +427,7 @@ sap.ui.define([
                 primaryLabel: "Status",
                 showSecondary: false,
                 secondaryLabel: "",
-                patternPlaceholder: "*PLAN*"
+                patternPlaceholder: "Nhập từ khóa"
             });
         },
 
@@ -450,7 +439,7 @@ sap.ui.define([
                 primaryLabel: "Address",
                 showSecondary: false,
                 secondaryLabel: "",
-                patternPlaceholder: "*Address*"
+                patternPlaceholder: "Nhập từ khóa"
             });
         },
 
@@ -463,10 +452,10 @@ sap.ui.define([
 
             var aFilters = [];
             if (sSiteCode) {
-                aFilters.push(new Filter("SiteCode", FilterOperator.EQ, sSiteCode));
+                aFilters.push(new Filter("SiteCode", FilterOperator.Contains, sSiteCode));
             }
             if (sSiteName) {
-                aFilters.push(new Filter("SiteName", FilterOperator.EQ, sSiteName));
+                aFilters.push(new Filter("SiteName", FilterOperator.Contains, sSiteName));
             }
             if (sStatus) {
                 aFilters.push(new Filter("Status", FilterOperator.EQ, sStatus));
@@ -505,12 +494,13 @@ sap.ui.define([
                 // but wait, $expand does not support $filter directly on the expanded collection in V2 unless done via an association.
                 // However, UI5 local filtering works on the expanded array.
                 if (sQuery && sQuery.length > 0) {
-                    var sUpperQuery = sQuery.toUpperCase();
-                    if (sUpperQuery.indexOf("-") !== -1 || sUpperQuery.indexOf("PRJ") !== -1 || sUpperQuery.indexOf("SITE") !== -1) {
-                        aFilters.push(new Filter("SiteCode", FilterOperator.EQ, sQuery));
-                    } else {
-                        aFilters.push(new Filter("SiteName", FilterOperator.EQ, sQuery));
-                    }
+                    aFilters.push(new Filter({
+                        filters: [
+                            new Filter("SiteCode", FilterOperator.Contains, sQuery),
+                            new Filter("SiteName", FilterOperator.Contains, sQuery)
+                        ],
+                        and: false
+                    }));
                 }
                 var oTable = this.byId("siteTable");
                 var oBinding = oTable.getBinding("items");
