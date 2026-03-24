@@ -125,6 +125,10 @@ sap.ui.define([
             }
         },
 
+        _normalizeCaseInsensitiveText: function (vText) {
+            return (vText == null ? "" : String(vText)).trim().toLocaleLowerCase();
+        },
+
         _loadSiteValueHelps: function (fnDone) {
             var oModel = this.getOwnerComponent().getModel();
             var oVhModel = this.getView().getModel("siteVh");
@@ -450,12 +454,25 @@ sap.ui.define([
             var sAddress = (this.byId("fbSiteAddress").getValue() || "").trim();
             var oCreatedOn = this.byId("fbSiteCreatedOn").getDateValue();
 
+            var sSiteCodeNeedle = this._normalizeCaseInsensitiveText(sSiteCode);
+            var sSiteNameNeedle = this._normalizeCaseInsensitiveText(sSiteName);
+
             var aFilters = [];
             if (sSiteCode) {
-                aFilters.push(new Filter("SiteCode", FilterOperator.Contains, sSiteCode));
+                aFilters.push(new Filter({
+                    path: "SiteCode",
+                    test: function (vValue) {
+                        return this._normalizeCaseInsensitiveText(vValue).indexOf(sSiteCodeNeedle) !== -1;
+                    }.bind(this)
+                }));
             }
             if (sSiteName) {
-                aFilters.push(new Filter("SiteName", FilterOperator.Contains, sSiteName));
+                aFilters.push(new Filter({
+                    path: "SiteName",
+                    test: function (vValue) {
+                        return this._normalizeCaseInsensitiveText(vValue).indexOf(sSiteNameNeedle) !== -1;
+                    }.bind(this)
+                }));
             }
             if (sStatus) {
                 aFilters.push(new Filter("Status", FilterOperator.EQ, sStatus));
