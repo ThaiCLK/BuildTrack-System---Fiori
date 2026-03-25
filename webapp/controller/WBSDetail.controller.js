@@ -19,6 +19,149 @@ sap.ui.define([
         /* =========================================================== */
         /* LIFECYCLE                                                    */
         /* =========================================================== */
+        onNavBack: function () {
+            var oHistory = History.getInstance();
+            var sPreviousHash = oHistory.getPreviousHash();
+
+            if (sPreviousHash !== undefined) {
+                window.history.go(-1);
+            } else {
+                var oRouter = this.getOwnerComponent().getRouter();
+                oRouter.navTo("RouteMain", {}, true);
+            }
+        },
+
+        /* =========================================================== */
+        /* INLINE EDIT MODE - WBS DETAIL INFO                            */
+        /* =========================================================== */
+        onEditWbs: function () {
+            this.getView().getModel("viewData").setProperty("/editMode", true);
+        },
+
+        onCancelWbs: function () {
+            this.getView().getModel("viewData").setProperty("/editMode", false);
+            // Revert changes for OData model
+            var oModel = this.getOwnerComponent().getModel();
+            if (oModel.hasPendingChanges()) {
+                oModel.resetChanges();
+            }
+            // Revert location model changes by reloading
+            this._loadLocation(this._sWbsId);
+        },
+
+        onSaveWbs: function () {
+            var oModel = this.getOwnerComponent().getModel();
+            var oLocationModel = this.getView().getModel("locationModel");
+            var that = this;
+
+            var bHasLocationData = !!oLocationModel.getProperty("/LocationName");
+            var sLocationId = oLocationModel.getProperty("/LocationId");
+            
+            var oPayloadLocation = {
+                LocationName: oLocationModel.getProperty("/LocationName") || "",
+                LocationCode: oLocationModel.getProperty("/LocationCode") || "",
+                LocationType: oLocationModel.getProperty("/LocationType") || "",
+                PosStart: oLocationModel.getProperty("/PosStart") ? String(oLocationModel.getProperty("/PosStart")) : "0.00",
+                PosEnd: oLocationModel.getProperty("/PosEnd") ? String(oLocationModel.getProperty("/PosEnd")) : "0.00",
+                PosTop: oLocationModel.getProperty("/PosTop") ? String(oLocationModel.getProperty("/PosTop")) : "0.00",
+                PosBot: oLocationModel.getProperty("/PosBot") ? String(oLocationModel.getProperty("/PosBot")) : "0.00",
+                WbsId: this._sWbsId
+            };
+
+            // Format coordinates to decimals
+            oPayloadLocation.PosStart = that._formatDecimal(oPayloadLocation.PosStart);
+            oPayloadLocation.PosEnd = that._formatDecimal(oPayloadLocation.PosEnd);
+            oPayloadLocation.PosTop = that._formatDecimal(oPayloadLocation.PosTop);
+            oPayloadLocation.PosBot = that._formatDecimal(oPayloadLocation.PosBot);
+
+            var fnSaveLocation = function () {
+                if (!bHasLocationData) return Promise.resolve();
+                
+                return new Promise(function (resolve, reject) {
+                    if (sLocationId) {
+                        // Update existing
+                        oModel.update("/LocationSet(guid'" + sLocationId + "')", oPayloadLocation, {
+                            success: resolve,
+                            error: reject
+                        });
+                    } else {
+                        // Create new
+                        oPayloadLocation.LocationId = "00000000-0000-0000-0000-000000000000";
+                        oModel.create("/LocationSet", oPayloadLocation, {
+                            success: resolve,
+                            error: reject
+                        });
+                    }
+                });
+            };
+
+            var bIsEditMode = this.getView().getModel("viewData").getProperty("/editMode");
+            
+            var fnSaveWbs = function () {
+                if (!bIsEditMode) return Promise.resolve();
+                return new Promise(function(resolve, reject) {
+                    var sPath = "/WBSSet(guid'" + that._sWbsId + "')";
+                    
+                    var oStartDatePicker = that.byId("inWbsStartDate");
+                    var oEndDatePicker = that.byId("inWbsEndDate");
+                    
+                    var toUTC = function (d) {
+                        return d ? new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) : null;
+                    };
+
+                    var dStart = oStartDatePicker ? oStartDatePicker.getDateValue() : null;
+                    var dEnd = oEndDatePicker ? oEndDatePicker.getDateValue() : null;
+
+                    var oPayloadWbs = {
+                        WbsName: that.byId("inWbsName").getValue(),
+                        WbsCode: that.byId("inWbsCode").getValue(),
+                        Quantity: String(that.byId("inWbsQuantity").getValue() || "0"),
+                        UnitCode: oModel.getProperty(sPath + "/UnitCode") || "M",
+                        Status: that.byId("inWbsStatus").getSelectedKey(),
+                        StartDate: dStart ? toUTC(dStart) : oModel.getProperty(sPath + "/StartDate"),
+                        EndDate: dEnd ? toUTC(dEnd) : oModel.getProperty(sPath + "/EndDate"),
+                        StartActual: oModel.getProperty(sPath + "/StartActual"),
+                        EndActual: oModel.getProperty(sPath + "/EndActual"),
+                        SiteId: oModel.getProperty(sPath + "/SiteId"),
+                        ParentId: oModel.getProperty(sPath + "/ParentId")
+                    };
+                    oModel.update(sPath, oPayloadWbs, {
+                        success: resolve,
+                        error: reject
+                    });
+                });
+            };
+
+            // Trigger Saves sequentially
+            if (bIsEditMode) {
+                fnSaveWbs().then(function() {
+                    return fnSaveLocation();
+                }).then(function() {
+                    MessageToast.show("Update successful");
+                    that.getView().getModel("viewData").setProperty("/editMode", false);
+                    that._loadLocation(that._sWbsId);
+                    if (oModel.hasPendingChanges()) {
+                        oModel.resetChanges(); // Clear internal flags
+                    }
+                    // Force refresh to update display text mappings seamlessly
+                    oModel.refresh(true);
+                }).catch(function(oError) {
+                    MessageBox.error("Update failed. Please check the data.");
+                    that.getView().getModel("viewData").setProperty("/editMode", false);
+                    if (oModel.hasPendingChanges()) {
+                        oModel.resetChanges();
+                    }
+                });
+            } else {
+                that.getView().getModel("viewData").setProperty("/editMode", false);
+            }
+        },
+
+        _formatDecimal: function (sValue) {
+            if (!sValue) return "0.00";
+            var fParsed = parseFloat(sValue);
+            return isNaN(fParsed) ? "0.00" : fParsed.toFixed(2);
+        },
         onInit: function () {
             // Route matching
             var oRouter = this.getOwnerComponent().getRouter();
@@ -53,7 +196,8 @@ sap.ui.define([
                     level1: { text: "[Chờ duyệt]", signed: false },
                     level2: { text: "[Chờ duyệt]", signed: false },
                     level3: { text: "[Chờ duyệt]", signed: false }
-                }
+                },
+                editMode: false
             });
             this.getView().setModel(oViewData, "viewData");
 
@@ -276,7 +420,13 @@ sap.ui.define([
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                 success: function (oData) {
                     if (oData.results && oData.results.length > 0) {
-                        oLocationModel.setData(oData.results[0]);
+                        // Client-side fallback to handle backend not processing $filter correctly
+                        var aMatches = oData.results.filter(function(loc) { return loc.WbsId === sWbsId; });
+                        if (aMatches.length > 0) {
+                            oLocationModel.setData(aMatches[0]);
+                        } else {
+                            oLocationModel.setData({});
+                        }
                     }
                 },
                 error: function () {
@@ -749,8 +899,8 @@ sap.ui.define([
                             }
 
                             // Identify Submit actions (cycle start). Do NOT use iLevel === 0 alone to avoid terminating on blank system logs
-                            var bIsSubmit = sAction === "0000" || sAction === "SUBMITTED" || sAction.indexOf("GỬI YÊU CẦU PHÊ DUYỆT") !== -1 || sAction === "TẠO WBS";
-                            if (bIsSubmit) {
+                            var bIsSubmit = sAction === "0000" || sAction === "SUBMITTED" || sAction === "TẠO WBS";
+                            if (bIsSubmit || (sAction.indexOf("GỬI") !== -1 && sAction.indexOf("YÊU CẦU") !== -1)) {
                                 bCycleEnded = true;
                                 return;
                             }
@@ -774,6 +924,8 @@ sap.ui.define([
                                 var sSigner = log.ActionBy || log.CreatedBy || "Đã ký";
                                 var sPath = "/UserRoleSet('" + sSigner + "')";
                                 var sUserName = oView.getModel().getProperty(sPath + "/UserName");
+                                var sSignatureUrl = oView.getModel().getProperty(sPath + "/SignatureUrl");
+
                                 if (sUserName) {
                                     sSigner = sUserName;
                                 } else {
@@ -782,25 +934,25 @@ sap.ui.define([
                                         oView.getModel().read("/UserRoleSet('" + userId + "')", {
                                             success: function (oUserData) {
                                                 var currentStatus = oViewData.getProperty("/signStatus");
-                                                if (levelToUpdate === 1) currentStatus.level1.text = oUserData.UserName;
-                                                if (levelToUpdate === 2) currentStatus.level2.text = oUserData.UserName;
-                                                if (levelToUpdate === 3) currentStatus.level3.text = oUserData.UserName;
+                                                if (levelToUpdate === 1) { currentStatus.level1.text = oUserData.UserName; currentStatus.level1.signatureUrl = oUserData.SignatureUrl; }
+                                                if (levelToUpdate === 2) { currentStatus.level2.text = oUserData.UserName; currentStatus.level2.signatureUrl = oUserData.SignatureUrl; }
+                                                if (levelToUpdate === 3) { currentStatus.level3.text = oUserData.UserName; currentStatus.level3.signatureUrl = oUserData.SignatureUrl; }
                                                 oViewData.setProperty("/signStatus", currentStatus);
                                             }
                                         });
                                     })(sSigner, iLevel);
                                 }
 
-                                if (iLevel === 1 && !oSignStatus.level1.signed) oSignStatus.level1 = { text: sSigner, signed: true };
-                                if (iLevel === 2 && !oSignStatus.level2.signed) oSignStatus.level2 = { text: sSigner, signed: true };
-                                if (iLevel === 3 && !oSignStatus.level3.signed) oSignStatus.level3 = { text: sSigner, signed: true };
+                                if (iLevel === 1 && !oSignStatus.level1.signed) oSignStatus.level1 = { text: sSigner, signatureUrl: sSignatureUrl, signed: true };
+                                if (iLevel === 2 && !oSignStatus.level2.signed) oSignStatus.level2 = { text: sSigner, signatureUrl: sSignatureUrl, signed: true };
+                                if (iLevel === 3 && !oSignStatus.level3.signed) oSignStatus.level3 = { text: sSigner, signatureUrl: sSignatureUrl, signed: true };
                             }
                             // Capture the level for current user if log matches current WorkItemId
                             if (bActionable && log.WorkItemId === oResult.WORKITEM_ID) {
                                 iUserLevel = log.ApprovalLevel;
                             }
                             // IF THIS LOG IS THE START OF A CYCLE, STOP LOOKING AT OLDER LOGS
-                            if (sAction === "GỬI YÊU CẦU PHÊ DUYỆT ĐÓNG WBS" || sAction === "GỬI YÊU CẦU PHÊ DUYỆT MỞ WBS" || sAction === "0000" || sAction === "SUBMITTED") {
+                            if ((sAction.indexOf("GỬI") !== -1 && sAction.indexOf("YÊU CẦU") !== -1) || sAction === "0000" || sAction === "SUBMITTED" || sAction === "TẠO WBS") {
                                 bCycleEnded = true;
                             }
                         });

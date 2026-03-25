@@ -10,6 +10,13 @@
             intro="{SiteCode}"
             icon="sap-icon://building"
             iconActive="false">
+            <headerContainer>
+                <!-- Workaround for inline editing the title of ObjectHeader -->
+                <VBox visible="{viewData>/editMode}">
+                    <Label text="Site Name" />
+                    <Input value="{SiteName}" />
+                </VBox>
+            </headerContainer>
             <statuses>
                 <ObjectStatus
                     text="{path: 'Status', formatter: '.formatStatusText'}"
@@ -21,27 +28,56 @@
         </ObjectHeader>
 
         <f:SimpleForm 
-            editable="false" 
+            editable="{viewData>/editMode}" 
             layout="ResponsiveGridLayout" 
-            title="Overview Information"
             labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12" 
             adjustLabelSpan="false" 
             emptySpanXL="4" emptySpanL="4" emptySpanM="4" emptySpanS="0" 
             columnsXL="1" columnsL="1" columnsM="1" 
             singleContainerFullSize="false" 
             class="sapUiSmallMarginTop">
+            <f:toolbar>
+                <Toolbar>
+                    <Title text="Overview Information" />
+                    <ToolbarSpacer />
+                    <Button id="btnEditSite" icon="sap-icon://edit" text="Edit" press=".onEditSite" visible="{= !${viewData>/editMode} }" />
+                    <Button id="btnSaveSite" icon="sap-icon://save" text="Save" type="Emphasized" press=".onSaveSite" visible="{viewData>/editMode}" />
+                    <Button id="btnCancelSite" icon="sap-icon://sys-cancel" text="Cancel" press=".onCancelSite" visible="{viewData>/editMode}" />
+                </Toolbar>
+            </f:toolbar>
             <f:content>
+                <Label text="Site Name" />
+                <VBox width="100%">
+                    <Input id="inSiteName" value="{SiteName}" visible="{viewData>/editMode}" />
+                    <Text text="{SiteName}" visible="{= !${viewData>/editMode} }" />
+                </VBox>
+
                 <Label text="Site Code" />
-                <Text text="{SiteCode}" />
+                <VBox width="100%">
+                    <Input id="inSiteCode" value="{SiteCode}" visible="{viewData>/editMode}" />
+                    <Text text="{SiteCode}" visible="{= !${viewData>/editMode} }" />
+                </VBox>
 
                 <Label text="Address" />
-                <Text text="{Address}" />
+                <VBox width="100%">
+                    <Input id="inSiteAddress" value="{Address}" visible="{viewData>/editMode}" />
+                    <Text text="{Address}" visible="{= !${viewData>/editMode} }" />
+                </VBox>
 
                 <Label text="Status" />
-                <ObjectStatus 
-                    class="sapUiNoMargin"
-                    text="{path: 'Status', formatter: '.formatStatusText'}" 
-                    state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }" />
+                <VBox width="100%">
+                    <Select id="inSiteStatus" selectedKey="{Status}" visible="{viewData>/editMode}" width="100%">
+                        <core:Item key="PLANNING" text="Planning" />
+                        <core:Item key="READY" text="Ready" />
+                        <core:Item key="IN_PROGRESS" text="In Progress" />
+                        <core:Item key="COMPLETED" text="Completed" />
+                    </Select>
+                    <ObjectStatus 
+                        class="sapUiNoMargin"
+                        visible="{= !${viewData>/editMode} }"
+                        text="{path: 'Status', formatter: '.formatStatusText'}" 
+                        state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }" />
+                </VBox>
             </f:content>
         </f:SimpleForm>
     </VBox>

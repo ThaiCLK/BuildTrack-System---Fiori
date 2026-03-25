@@ -34,7 +34,8 @@ sap.ui.define([
                 WBS: [],
                 pendingWBS: [],
                 pendingOpenWBS: [],
-                pendingCloseWBS: []
+                pendingCloseWBS: [],
+                editMode: false
             }), "viewData");
             this.getView().setModel(new JSONModel(), "viewConfig");
             // Init Delegates & Models for Acceptance Report
@@ -87,6 +88,56 @@ sap.ui.define([
 
         onNavToDashboard: function () {
             this.getOwnerComponent().getRouter().navTo("Dashboard");
+        },
+
+        /* =========================================================== */
+        /* INLINE EDIT MODE - SITE GENERAL INFO                        */
+        /* =========================================================== */
+        onEditSite: function () {
+            this.getView().getModel("viewData").setProperty("/editMode", true);
+        },
+
+        onCancelSite: function () {
+            this.getView().getModel("viewData").setProperty("/editMode", false);
+            // Revert unsaved UI field changes synced into the local shadow context of Two-Way Model
+            var oModel = this.getOwnerComponent().getModel();
+            if (oModel.hasPendingChanges()) {
+                oModel.resetChanges();
+            }
+        },
+
+        onSaveSite: function () {
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+            var sPath = "/SiteSet(guid'" + this._sCurrentSiteId + "')";
+            var bIsEditMode = this.getView().getModel("viewData").getProperty("/editMode");
+
+            if (!bIsEditMode) {
+                return;
+            }
+
+            var oPayload = {
+                SiteCode: this.byId("inSiteCode").getValue(),
+                Address: this.byId("inSiteAddress").getValue(),
+                Status: this.byId("inSiteStatus").getSelectedKey(),
+                SiteName: this.byId("inSiteName").getValue(),
+                Client: oModel.getProperty(sPath + "/Client"),
+                ProjectId: oModel.getProperty(sPath + "/ProjectId")
+            };
+
+            oModel.update(sPath, oPayload, {
+                success: function () {
+                    MessageToast.show("Site information updated successfully");
+                    that.getView().getModel("viewData").setProperty("/editMode", false);
+                    if (oModel.hasPendingChanges()) { oModel.resetChanges(); }
+                    oModel.refresh(true);
+                },
+                error: function () {
+                    MessageBox.error("Error saving site information");
+                    that.getView().getModel("viewData").setProperty("/editMode", false);
+                    if (oModel.hasPendingChanges()) { oModel.resetChanges(); }
+                }
+            });
         },
 
         onNavBack: function () {
@@ -221,7 +272,7 @@ sap.ui.define([
                                 if (bActionable) {
                                     console.log("WBS " + oItem.WbsCode + " is ACTIONABLE for current user. WI_ID: " + (oResult.WORKITEM_ID || "N/A"));
                                     oItem.WorkItemId = oResult.WORKITEM_ID; // Store for PostDecision
-                                    
+
                                     // Identify current user's approval level for this item
                                     var currentLevel = 0;
                                     var aLogs = (oItem.ToApprovalLog && oItem.ToApprovalLog.results) ? oItem.ToApprovalLog.results : [];
@@ -241,14 +292,14 @@ sap.ui.define([
                                 iProcessed++;
                                 if (iProcessed === aGlobalPending.length) {
                                     // Split into Open and Close
-                                    var aOpen = aUserActionableItems.filter(function(w) { return w.Status.indexOf("OPEN") !== -1; });
-                                    var aClose = aUserActionableItems.filter(function(w) { return w.Status.indexOf("CLOSE") !== -1; });
-                                    
+                                    var aOpen = aUserActionableItems.filter(function (w) { return w.Status.indexOf("OPEN") !== -1; });
+                                    var aClose = aUserActionableItems.filter(function (w) { return w.Status.indexOf("CLOSE") !== -1; });
+
                                     var oViewData = that.getView().getModel("viewData");
                                     oViewData.setProperty("/pendingOpenWBS", aOpen);
                                     oViewData.setProperty("/pendingCloseWBS", aClose);
                                     oViewData.setProperty("/pendingWBS", aUserActionableItems); // Fallback
-                                    
+
                                     console.log("Update Pending Lists. Open: " + aOpen.length + ", Close: " + aClose.length);
                                 }
                             },
@@ -291,6 +342,14 @@ sap.ui.define([
                 var oCtx = oTable.getContextByIndex(aIndices[0]);
                 var sParentId = oCtx ? oCtx.getProperty("WbsId") : null;
                 var sParentName = oCtx ? oCtx.getProperty("WbsName") : "";
+
+                // Prevent creating grandchildren (i.e. if the selected row is already a child)
+                var sSelectedRowParentId = oCtx ? oCtx.getProperty("ParentId") : null;
+                if (sSelectedRowParentId && sSelectedRowParentId !== "00000000-0000-0000-0000-000000000000") {
+                    sap.m.MessageBox.warning("Không thể tạo thêm đầu việc cho hạng mục này.");
+                    return;
+                }
+
                 this._openWbsDialog(null, sParentId, sParentName);
             } else {
                 // No row selected → create as root WBS (null / GUID zero parent)
@@ -745,10 +804,76 @@ sap.ui.define([
                 ]
             });
 
+            // --- LOCATION TAB ---
+            var oLocName = new Input({ placeholder: "Vị trí / Phân đoạn (VD: Km0+000 - Km1+000)" });
+            var oLocCode = new Input({ placeholder: "Mã Vị trí (Tùy chọn)" });
+            var oLocType = new Input({ placeholder: "Phân loại (VD: Section)" });
+            var oLocStart = new Input({ type: "Number", placeholder: "0.000" });
+            var oLocEnd = new Input({ type: "Number", placeholder: "0.000" });
+            var oLocTop = new Input({ type: "Number", placeholder: "0.000" });
+            var oLocBot = new Input({ type: "Number", placeholder: "0.000" });
+            
+            var sEditLocationId = null;
+            if (bEdit) {
+                var sEditWbsId = oContext.getProperty("WbsId");
+                oModel.read("/LocationSet", {
+                    filters: [new sap.ui.model.Filter("WbsId", sap.ui.model.FilterOperator.EQ, sEditWbsId)],
+                    success: function(oData) {
+                        if (oData && oData.results && oData.results.length > 0) {
+                            // Client-side fallback just in case backend ignores filters
+                            var aMatches = oData.results.filter(function(loc){ return loc.WbsId === sEditWbsId; });
+                            if (aMatches.length > 0) {
+                                var oFirstLoc = aMatches[0];
+                                sEditLocationId = oFirstLoc.LocationId;
+                                oLocName.setValue(oFirstLoc.LocationName);
+                                oLocCode.setValue(oFirstLoc.LocationCode);
+                                oLocType.setValue(oFirstLoc.LocationType);
+                                if (oFirstLoc.PosStart) oLocStart.setValue(parseFloat(oFirstLoc.PosStart));
+                                if (oFirstLoc.PosEnd) oLocEnd.setValue(parseFloat(oFirstLoc.PosEnd));
+                                if (oFirstLoc.PosTop) oLocTop.setValue(parseFloat(oFirstLoc.PosTop));
+                                if (oFirstLoc.PosBot) oLocBot.setValue(parseFloat(oFirstLoc.PosBot));
+                            }
+                        }
+                    },
+                    error: function(e) { console.error("Error fetching location data", e); }
+                });
+            }
+
+            var oLocForm = new SimpleForm({
+                editable: true,
+                layout: "ResponsiveGridLayout",
+                labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
+                columnsL: 1, columnsM: 1,
+                content: [
+                    new Label({ text: "Tên Vị trí" }), oLocName,
+                    new Label({ text: "Mã Vị trí" }), oLocCode,
+                    new Label({ text: "Phân loại" }), oLocType,
+                    new Label({ text: "Lý trình (Bắt đầu)" }), oLocStart,
+                    new Label({ text: "Lý trình (Kết thúc)" }), oLocEnd,
+                    new Label({ text: "Cao độ Đỉnh (Top)" }), oLocTop,
+                    new Label({ text: "Cao độ Đáy (Bottom)" }), oLocBot
+                ]
+            });
+
+            var oIconTabBar = new sap.m.IconTabBar({
+                items: [
+                    new sap.m.IconTabFilter({
+                        text: "WBS Detail",
+                        icon: "sap-icon://form",
+                        content: [oForm]
+                    }),
+                    new sap.m.IconTabFilter({
+                        text: "Location",
+                        icon: "sap-icon://map",
+                        content: [oLocForm]
+                    })
+                ]
+            });
+
             var oDialog = new Dialog({
                 title: sDialogTitle,
-                contentWidth: "450px",
-                content: [oForm],
+                contentWidth: "500px",
+                content: [oIconTabBar],
                 beginButton: new Button({
                     text: bEdit ? "Save Changes" : "Create WBS",
                     type: "Emphasized",
@@ -757,13 +882,11 @@ sap.ui.define([
                         var sName = oInputName.getValue().trim();
                         var dStart = oPickerStart.getDateValue();
                         var dEnd = oPickerEnd.getDateValue();
-                        var sQuantity = oInputQty.getValue() || "0";
                         if (!sWbsCode || !sName || !dStart || !dEnd) {
-                            MessageToast.show("Please enter all required fields!");
+                            MessageToast.show("Please enter all required WBS fields!");
                             return;
                         }
-                        // Fix timezone shift: getDateValue() returns local midnight (UTC+7).
-                        // Converting to UTC midnight avoids the date being stored 1 day earlier.
+                        
                         var toUTC = function (d) {
                             return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
                         };
@@ -774,29 +897,74 @@ sap.ui.define([
                             EndDate: toUTC(dEnd),
                             Quantity: oInputQty.getValue() || "0",
                             UnitCode: oSelectUnit.getSelectedKey(),
-                            Status: "PLANNING"  // Default for new WBS; overridden on Edit
+                            Status: "PLANNING"
                         };
+
+                        var fnSaveLocation = function(sTargetWbsId, fnDone) {
+                            var sLName = oLocName.getValue().trim();
+                            if (!sLName && !oLocCode.getValue().trim()) {
+                                fnDone(); // No location data entered
+                                return;
+                            }
+                            
+                            var formatDecimal = function(val) {
+                                var f = parseFloat(val);
+                                return isNaN(f) ? "0.00" : f.toFixed(2);
+                            };
+                            
+                            var oLocPayload = {
+                                WbsId: sTargetWbsId,
+                                LocationName: sLName,
+                                LocationCode: oLocCode.getValue().trim(),
+                                LocationType: oLocType.getValue().trim(),
+                                PosStart: formatDecimal(oLocStart.getValue()),
+                                PosEnd: formatDecimal(oLocEnd.getValue()),
+                                PosTop: formatDecimal(oLocTop.getValue()),
+                                PosBot: formatDecimal(oLocBot.getValue())
+                            };
+                            if (bEdit && sEditLocationId) {
+                                oModel.update("/LocationSet(guid'" + sEditLocationId + "')", oLocPayload, {
+                                    success: function() { fnDone(); }, error: function() { fnDone(); }
+                                });
+                            } else {
+                                oModel.create("/LocationSet", oLocPayload, {
+                                    success: function() { fnDone(); }, error: function() { fnDone(); }
+                                });
+                            }
+                        };
+
                         if (bEdit) {
-                            // Key = WbsId of the row being edited (read from context, not from a form input)
                             var sEditWbsId = oContext.getProperty("WbsId");
                             oPayload.Status = oSelectStatus.getSelectedKey() || oContext.getProperty("Status") || "PLANNING";
                             oModel.update("/WBSSet(guid'" + sEditWbsId + "')", oPayload, {
                                 success: function () {
-                                    MessageToast.show("WBS updated!");
-                                    oDialog.close();
-                                    // refresh(true) clears OData V2 client cache so the next
-                                    // read() fetches fresh data instead of a stale cached response
-                                    oModel.refresh(true);
-                                    that._loadWbsData();
+                                    fnSaveLocation(sEditWbsId, function() {
+                                        MessageToast.show("WBS updated!");
+                                        oDialog.close();
+                                        oModel.refresh(true);
+                                        that._loadWbsData();
+                                    });
                                 },
                                 error: function () { MessageBox.error("Error updating WBS!"); }
                             });
                         } else {
-                            // Backend generates WbsId (GUID) — FE must supply SiteId + optional ParentId
                             oPayload.SiteId = that._sCurrentSiteId;
                             oPayload.ParentId = sParentId || null;
                             oModel.create("/WBSSet", oPayload, {
-                                success: function () { MessageToast.show("WBS created successfully!"); oDialog.close(); that._loadWbsData(); },
+                                success: function (oData) { 
+                                    var sNewWbsId = oData.WbsId || (oData.d && oData.d.WbsId);
+                                    if (sNewWbsId) {
+                                        fnSaveLocation(sNewWbsId, function() {
+                                            MessageToast.show("WBS created successfully!"); 
+                                            oDialog.close(); 
+                                            that._loadWbsData();
+                                        });
+                                    } else {
+                                        MessageToast.show("WBS created but could not link Location."); 
+                                        oDialog.close(); 
+                                        that._loadWbsData();
+                                    }
+                                },
                                 error: function () { MessageBox.error("Error creating WBS!"); }
                             });
                         }

@@ -261,10 +261,11 @@ sap.ui.define([
 
             if (!aGlobalLogs) aGlobalLogs = [];
 
-            // Helper to find latest log matching conditions
+            // Helper to find latest log matching conditions in the CURRENT cycle
             var findLatestLog = function (sType, sAction) {
-                var found = aGlobalLogs.find(function (l) {
-                    return l.ApprovalType === sType && l.Action === sAction;
+                var aActiveLogs = getActiveLogsForType(sType);
+                var found = aActiveLogs.find(function (l) {
+                    return l.Action === sAction;
                 });
                 return found;
             };
@@ -374,14 +375,41 @@ sap.ui.define([
                     || act.indexOf("ĐÃ TỪ CHỐI") >= 0;
             };
 
+            // Helper to get only logs from the CURRENT cycle
+            var getActiveLogsForType = function (sType) {
+                var aTypeLogs = aGlobalLogs.filter(function(l) { return l.ApprovalType === sType; });
+                
+                // Ensure logs are sorted descending (newest first)
+                aTypeLogs.sort(function (a, b) {
+                    var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                    var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                    return tB - tA;
+                });
+
+                var iSubmitIndex = -1;
+                for (var i = 0; i < aTypeLogs.length; i++) {
+                    var act = (aTypeLogs[i].Action || "").toUpperCase().trim();
+                    var bIsSubmit = act === "0000" || act === "SUBMITTED" || act === "TẠO WBS";
+                    if (bIsSubmit || (act.indexOf("GỬI") !== -1 && act.indexOf("YÊU CẦU") !== -1)) {
+                        iSubmitIndex = i;
+                        break;
+                    }
+                }
+                if (iSubmitIndex >= 0) {
+                    return aTypeLogs.slice(0, iSubmitIndex + 1);
+                }
+                return aTypeLogs;
+            };
+
             var getLevelNodeInfo = function (sType, iLevel, overallState) {
-                // Find the most recent log for this approval type + level that is a decision
+                var aActiveLogs = getActiveLogsForType(sType);
+                // Find the most recent log for this approval type + level that is a decision in the ACTIVE cycle
                 var oLog = null;
-                for (var i = 0; i < aGlobalLogs.length; i++) {
-                    var l = aGlobalLogs[i];
+                for (var i = 0; i < aActiveLogs.length; i++) {
+                    var l = aActiveLogs[i];
                     var act = (l.Action || "").toUpperCase().trim();
                     var lvlMatch = parseInt(l.ApprovalLevel) === iLevel || String(l.ApprovalLevel) === String(iLevel);
-                    if (l.ApprovalType === sType && lvlMatch && (isApproveAction(act) || isRejectAction(act))) {
+                    if (lvlMatch && (isApproveAction(act) || isRejectAction(act))) {
                         oLog = l;
                         break; // logs sorted newest-first
                     }

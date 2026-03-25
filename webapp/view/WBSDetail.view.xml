@@ -11,31 +11,51 @@
                     <IconTabFilter icon="sap-icon://hint" text="Thông tin" key="infoTab">
                         
                         <form:SimpleForm 
-                            editable="false"
+                            editable="{viewData>/editMode}"
                             layout="ResponsiveGridLayout"
-                            title="Work Item Details"
                             labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
                             adjustLabelSpan="false"
                             emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
                             columnsXL="2" columnsL="2" columnsM="1"
                             singleContainerFullSize="false">
+                            <form:toolbar>
+                                <Toolbar>
+                                    <Title text="Work Item Details" />
+                                    <ToolbarSpacer />
+                                    <Button id="btnEditWbs" icon="sap-icon://edit" text="Edit" press=".onEditWbs" visible="{= !${viewData>/editMode} }" />
+                                    <Button id="btnSaveWbs" icon="sap-icon://save" text="Save" type="Emphasized" press=".onSaveWbs" visible="{viewData>/editMode}" />
+                                    <Button id="btnCancelWbs" icon="sap-icon://sys-cancel" text="Cancel" press=".onCancelWbs" visible="{viewData>/editMode}" />
+                                </Toolbar>
+                            </form:toolbar>
                             <form:content>
                                 
                                 <core:Title text="Identification" />
                                 
                                 <Label text="WBS Name" design="Bold" />
-                                <Text text="{WbsName}" />
+                                <VBox width="100%">
+                                    <Input id="inWbsName" value="{WbsName}" visible="{viewData>/editMode}" />
+                                    <Text text="{WbsName}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <Label text="WBS Code" />
-                                <Text text="{WbsCode}" />
+                                <VBox width="100%">
+                                    <Input id="inWbsCode" value="{WbsCode}" visible="{viewData>/editMode}" />
+                                    <Text text="{WbsCode}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <core:Title text="Schedule (Planned vs Actual)" />
 
                                 <Label text="Planned Start" />
-                                <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <VBox width="100%">
+                                    <DatePicker id="inWbsStartDate" value="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
+                                    <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <Label text="Planned End" />
-                                <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <VBox width="100%">
+                                    <DatePicker id="inWbsEndDate" value="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
+                                    <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <Label text="Actual Start" />
                                 <Text text="{path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
@@ -46,31 +66,42 @@
                                 <core:Title text="Metrics &amp; Status" />
 
                                 <Label text="Quantity" />
-                                <ObjectNumber
-                                    number="{
-                                        path: 'Quantity',
-                                        type: 'sap.ui.model.type.Float',
-                                        formatOptions: {
-                                            minFractionDigits: 0,
-                                            maxFractionDigits: 0,
-                                            groupingEnabled: true
-                                        }
-                                    }"
-                                    unit="{UnitCode}"
-                                    state="None" />
+                                <VBox width="100%">
+                                    <Input id="inWbsQuantity" value="{Quantity}" description="{UnitCode}" visible="{viewData>/editMode}" type="Number"/>
+                                    <ObjectNumber
+                                        visible="{= !${viewData>/editMode} }"
+                                        number="{
+                                            path: 'Quantity',
+                                            type: 'sap.ui.model.type.Float',
+                                            formatOptions: { minFractionDigits: 0, maxFractionDigits: 0, groupingEnabled: true }
+                                        }"
+                                        unit="{UnitCode}"
+                                        state="None" />
+                                </VBox>
 
                                 <Label text="Status" />
-                                <ObjectStatus 
-                                    text="{path: 'Status', formatter: '.formatWbsStatusText'}"
-                                    state="{path: 'Status', formatter: '.formatWbsStatusState'}"
-                                    icon="{path: 'Status', formatter: '.formatWbsStatusIcon'}" />
+                                <VBox width="100%">
+                                    <Select id="inWbsStatus" selectedKey="{Status}" visible="{viewData>/editMode}" width="100%">
+                                        <core:Item key="PLANNING" text="Planning" />
+                                        <core:Item key="PENDING_OPEN" text="Pending Open" />
+                                        <core:Item key="OPENED" text="Opened" />
+                                        <core:Item key="IN_PROGRESS" text="In Progress" />
+                                        <core:Item key="PENDING_CLOSE" text="Pending Close" />
+                                        <core:Item key="CLOSED" text="Closed" />
+                                    </Select>
+                                    <ObjectStatus 
+                                        visible="{= !${viewData>/editMode} }"
+                                        text="{path: 'Status', formatter: '.formatWbsStatusText'}"
+                                        state="{path: 'Status', formatter: '.formatWbsStatusState'}"
+                                        icon="{path: 'Status', formatter: '.formatWbsStatusIcon'}" />
+                                </VBox>
 
                             </form:content>
                         </form:SimpleForm>
 
                         <!-- Location Info -->
                         <form:SimpleForm
-                            editable="false"
+                            editable="{viewData>/editMode}"
                             layout="ResponsiveGridLayout"
                             title="Work Location"
                             labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
@@ -79,28 +110,52 @@
                             columnsXL="2" columnsL="2" columnsM="1"
                             singleContainerFullSize="false"
                             class="sapUiSmallMarginTop"
-                            visible="{= !!${locationModel>/LocationName} }">
+                            visible="{= !!${locationModel>/LocationName} || ${viewData>/editMode} }">
                             <form:content>
                                 <core:Title text="Location" />
 
                                 <Label text="Location Name" design="Bold" />
-                                <Text text="{locationModel>/LocationName}" />
+                                <VBox width="100%">
+                                    <Input value="{locationModel>/LocationName}" visible="{viewData>/editMode}" />
+                                    <Text text="{locationModel>/LocationName}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <Label text="Location Code" />
-                                <Text text="{locationModel>/LocationCode}" />
+                                <VBox width="100%">
+                                    <Input value="{locationModel>/LocationCode}" visible="{viewData>/editMode}" />
+                                    <Text text="{locationModel>/LocationCode}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <Label text="Location Type" />
-                                <ObjectStatus
-                                    text="{locationModel>/LocationType}"
-                                    state="{= ${locationModel>/LocationType} === 'FLOOR' ? 'Information' : ${locationModel>/LocationType} === 'ZONE' ? 'Success' : ${locationModel>/LocationType} === 'SHAFT' ? 'Warning' : 'None' }"/>
+                                <VBox width="100%">
+                                    <Input value="{locationModel>/LocationType}" visible="{viewData>/editMode}" />
+                                    <ObjectStatus
+                                        visible="{= !${viewData>/editMode} }"
+                                        text="{locationModel>/LocationType}"
+                                        state="{= ${locationModel>/LocationType} === 'FLOOR' ? 'Information' : ${locationModel>/LocationType} === 'ZONE' ? 'Success' : ${locationModel>/LocationType} === 'SHAFT' ? 'Warning' : 'None' }"/>
+                                </VBox>
 
                                 <core:Title text="Position (m)" />
 
                                 <Label text="Horizontal Range" />
-                                <Text text="{locationModel>/PosStart} → {locationModel>/PosEnd} {locationModel>/UnitCode}" />
+                                <VBox width="100%">
+                                    <HBox visible="{viewData>/editMode}">
+                                        <Input value="{locationModel>/PosStart}" width="45%" type="Number" />
+                                        <Text text=" — " class="sapUiTinyMarginBeginEnd sapUiTinyMarginTop" />
+                                        <Input value="{locationModel>/PosEnd}" width="45%" type="Number" />
+                                    </HBox>
+                                    <Text text="{locationModel>/PosStart} → {locationModel>/PosEnd} {locationModel>/UnitCode}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
 
                                 <Label text="Vertical Range" />
-                                <Text text="{locationModel>/PosBot} → {locationModel>/PosTop} {locationModel>/UnitCode}" />
+                                <VBox width="100%">
+                                    <HBox visible="{viewData>/editMode}">
+                                        <Input value="{locationModel>/PosBot}" width="45%" type="Number" />
+                                        <Text text=" — " class="sapUiTinyMarginBeginEnd sapUiTinyMarginTop" />
+                                        <Input value="{locationModel>/PosTop}" width="45%" type="Number" />
+                                    </HBox>
+                                    <Text text="{locationModel>/PosBot} → {locationModel>/PosTop} {locationModel>/UnitCode}" visible="{= !${viewData>/editMode} }" />
+                                </VBox>
                             </form:content>
                         </form:SimpleForm>
 

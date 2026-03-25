@@ -105,7 +105,11 @@
                         <VBox alignItems="Center">
                             <Label text="KỸ SƯ PHỤ TRÁCH" class="signatureLabel" />
                             <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
-                            <VBox height="90px" justifyContent="Center" alignItems="Center">
+                            <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
+                                <Image src="{viewData>/signStatus/level1/signatureUrl}" 
+                                       height="60px" 
+                                       visible="{= ${viewData>/signStatus/level1/signed} &amp;&amp; !!${viewData>/signStatus/level1/signatureUrl} }" 
+                                       class="sapUiTinyMarginBottom" />
                                 <Text text="{viewData>/signStatus/level1/text}" 
                                       class="{= ${viewData>/signStatus/level1/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level1/signed}" />
@@ -120,7 +124,11 @@
                         <VBox alignItems="Center">
                             <Label text="TƯ VẤN GIÁM SÁT" class="signatureLabel" />
                             <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
-                            <VBox height="90px" justifyContent="Center" alignItems="Center">
+                            <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
+                                <Image src="{viewData>/signStatus/level2/signatureUrl}" 
+                                       height="60px" 
+                                       visible="{= ${viewData>/signStatus/level2/signed} &amp;&amp; !!${viewData>/signStatus/level2/signatureUrl} }" 
+                                       class="sapUiTinyMarginBottom" />
                                 <Text text="{viewData>/signStatus/level2/text}" 
                                       class="{= ${viewData>/signStatus/level2/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level2/signed}" />
@@ -135,7 +143,11 @@
                         <VBox alignItems="Center">
                             <Label text="ĐẠI DIỆN CHỦ ĐẦU TƯ" class="signatureLabel" />
                             <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
-                            <VBox height="90px" justifyContent="Center" alignItems="Center">
+                            <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
+                                <Image src="{viewData>/signStatus/level3/signatureUrl}" 
+                                       height="60px" 
+                                       visible="{= ${viewData>/signStatus/level3/signed} &amp;&amp; !!${viewData>/signStatus/level3/signatureUrl} }" 
+                                       class="sapUiTinyMarginBottom" />
                                 <Text text="{viewData>/signStatus/level3/text}" 
                                       class="{= ${viewData>/signStatus/level3/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level3/signed}" />

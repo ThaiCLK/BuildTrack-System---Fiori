@@ -167,6 +167,7 @@
                 <Property Name="UserId"    Type="Edm.String" MaxLength="12"  Nullable="false" sap:label="User ID" />
                 <Property Name="Email"     Type="Edm.String" MaxLength="255" sap:label="Email" />
                 <Property Name="AvatarUrl" Type="Edm.String" MaxLength="255" sap:label="Avatar URL" />
+                <Property Name="SignatureUrl" Type="Edm.String" MaxLength="255" sap:label="Signature URL" />
                 <Property Name="UserName"  Type="Edm.String" MaxLength="100" sap:label="User Name" />
                 <Property Name="Role"      Type="Edm.String" MaxLength="50"  sap:label="Role" />
                 <Property Name="AuthLevel" Type="Edm.Int32"                  sap:label="Auth Level" />
