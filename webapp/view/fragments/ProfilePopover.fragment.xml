@@ -1,5 +1,5 @@
 <core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
-    <ResponsivePopover title="User Profile" placement="Bottom" showHeader="true" contentWidth="300px" verticalScrolling="false">
+    <ResponsivePopover title="{i18n>userProfileTitle}" placement="Bottom" showHeader="true" contentWidth="300px" verticalScrolling="false">
         <content>
             <VBox class="sapUiMediumMargin">
                 <HBox alignItems="Center" class="sapUiTinyMarginBottom">
@@ -8,23 +8,23 @@
                         <Title text="{userModel>/userName}" level="H3"/>
                     </VBox>
                 </HBox>
-                <Title text="Role Details" level="H5" class="sapUiSmallMarginTop"/>
+                <Title text="{i18n>roleDetails}" level="H5" class="sapUiSmallMarginTop"/>
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginTop">
-                    <Text text="Role:"/>
+                    <Text text="{i18n>roleLabel}"/>
                     <Text text="{userModel>/role}" class="sapUiTinyMarginStart"/>
                 </HBox>
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginTop">
-                    <Text text="Email:"/>
+                    <Text text="{i18n>emailLabel}"/>
                     <Text text="{userModel>/email}" class="sapUiTinyMarginStart"/>
                 </HBox>
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginTop">
-                    <Text text="Auth Level:"/>
+                    <Text text="{i18n>authLevelLabel}"/>
                     <Text text="{userModel>/authLevel}" class="sapUiTinyMarginStart"/>
                 </HBox>
             </VBox>
         </content>
         <endButton>
-            <Button text="Close" press=".onCloseProfile"/>
+            <Button text="{i18n>close}" press=".onCloseProfile"/>
         </endButton>
     </ResponsivePopover>
 </core:FragmentDefinition>

@@ -1,4 +1,4 @@
-sap.ui.define([
+﻿sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/m/MessageBox",
@@ -401,7 +401,6 @@ sap.ui.define([
                         }
                     },
                     error: function (oErr) {
-                        console.warn("CheckDecision (isActionable) skipped parsing: " + sWbsId);
                         // Do not show a generic errorText toast here because it blocks UI visibility for normal operation
                     }
                 });
@@ -1036,7 +1035,6 @@ sap.ui.define([
                     },
                     error: function (oError) {
                         oView.setBusy(false);
-                        console.error("Failed to fetch logs in WBS Detail:", oError);
                         // Open the dialog anyway but with minimal context so it doesn't break
                         if (!that._pAcceptanceDialog) {
                             that._pAcceptanceDialog = sap.ui.core.Fragment.load({
@@ -1076,7 +1074,6 @@ sap.ui.define([
                         fnFetchLogsAndOpenDialog(oResult);
                     },
                     error: function (oErr) {
-                        console.warn("CheckDecision failed in WBS Detail, ignoring and opening dialog.", oErr);
                         fnFetchLogsAndOpenDialog(null);
                     }
                 });

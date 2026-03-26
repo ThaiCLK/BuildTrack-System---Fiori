@@ -31,7 +31,12 @@ server:
     - name: fiori-tools-proxy
       afterMiddleware: compression
       configuration:
-        ignoreCertErrors: true # Bỏ qua lỗi SSL certificate của SAP server
+        ignoreCertErrors: true
+        ui5:
+          path:
+            - /resources
+            - /test-resources
+          url: https://ui5.sap.com
         backend:
           - path: /sap
             url: https://s35.gb.ucc.cit.tum.de

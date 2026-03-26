@@ -5,7 +5,7 @@
 
     <Dialog
         id="importPreviewDialog"
-        title="Import Preview"
+        title="{i18n>importPreviewTitle}"
         contentWidth="700px"
         draggable="true"
         resizable="true">
@@ -15,10 +15,10 @@
                 <!-- Summary bar -->
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
                     <Label
-                        text="{= ${importPreviewModel>/logs}.length + ' log(s) found in file'}"
+                        text="{parts: [ {path: 'i18n>logsFoundInFile'}, {path: 'importPreviewModel>/logs/length'} ], type: 'sap.ui.model.type.MessageFormat'}"
                         design="Bold"/>
                     <Label
-                        text="Tick the logs you want to import"
+                        text="{i18n>tickLogsToImport}"
                         class="sapUiTinyMarginBegin"/>
                 </HBox>
 
@@ -29,39 +29,39 @@
                     items="{importPreviewModel>/logs}"
                     growing="true"
                     growingThreshold="20"
-                    noDataText="No logs found in file.">
+                    noDataText="{i18n>noLogsFound}">
                     <headerToolbar>
                         <OverflowToolbar>
-                            <Title text="Logs to Import" level="H5"/>
+                            <Title text="{i18n>logsToImport}" level="H5"/>
                             <ToolbarSpacer/>
                             <Button
-                                text="Select All"
+                                text="{i18n>selectAll}"
                                 type="Transparent"
                                 press=".onImportPreviewSelectAll"/>
                             <Button
-                                text="Deselect All"
+                                text="{i18n>deselectAll}"
                                 type="Transparent"
                                 press=".onImportPreviewDeselectAll"/>
                         </OverflowToolbar>
                     </headerToolbar>
                     <columns>
                         <Column width="5rem">
-                            <Text text="Log Num"/>
+                            <Text text="{i18n>logNum}"/>
                         </Column>
                         <Column width="8rem">
-                            <Text text="Date"/>
+                            <Text text="{i18n>date}"/>
                         </Column>
                         <Column width="7rem" hAlign="End">
-                            <Text text="Qty Done"/>
+                            <Text text="{i18n>qtyDone}"/>
                         </Column>
                         <Column width="7rem">
-                            <Text text="Weather AM"/>
+                            <Text text="{i18n>weatherAM}"/>
                         </Column>
                         <Column width="7rem">
-                            <Text text="Weather PM"/>
+                            <Text text="{i18n>weatherPM}"/>
                         </Column>
                         <Column width="5rem" hAlign="End">
-                            <Text text="Resources"/>
+                            <Text text="{i18n>resources}"/>
                         </Column>
                     </columns>
                     <items>
@@ -90,14 +90,14 @@
 
         <beginButton>
             <Button
-                text="Import Selected"
+                text="{i18n>importSelected}"
                 type="Emphasized"
                 icon="sap-icon://upload"
                 press=".onConfirmImport"/>
         </beginButton>
         <endButton>
             <Button
-                text="Cancel"
+                text="{i18n>cancel}"
                 type="Default"
                 press=".onCancelImport"/>
         </endButton>

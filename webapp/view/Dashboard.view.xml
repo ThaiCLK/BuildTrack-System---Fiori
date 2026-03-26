@@ -86,8 +86,8 @@
                                     </VBox>
                                 </HBox>
                                 <HBox class="dashboardCardFooterWeather" justifyContent="SpaceBetween">
-                                    <Text text="💧 {dashboard>/weatherHumidity}%" class="dashboardWeatherDetail"/>
-                                    <Text text="💨 {dashboard>/weatherWind} km/h" class="dashboardWeatherDetail"/>
+                                    <Text text="{parts: [{path: 'i18n>humidityValue'}, {path: 'dashboard>/weatherHumidity'}], formatter: '.formatMessage'}" class="dashboardWeatherDetail"/>
+                                    <Text text="{parts: [{path: 'i18n>windValue'}, {path: 'dashboard>/weatherWind'}], formatter: '.formatMessage'}" class="dashboardWeatherDetail"/>
                                 </HBox>
                             </Panel>
                         </HBox>
@@ -116,7 +116,7 @@
                         <core:Item key="{dashboard>ProjectId}" text="{dashboard>ProjectName}"/>
                     </ComboBox>
                     <ToolbarSpacer/>
-                    <Button text="Reset" icon="sap-icon://refresh" press="onResetFilter" type="Transparent"/>
+                    <Button text="{i18n>reset}" icon="sap-icon://refresh" press="onResetFilter" type="Transparent"/>
                 </OverflowToolbar>
 
                 <!-- Chart Grid Row 1: Donut + Stacked Bar -->

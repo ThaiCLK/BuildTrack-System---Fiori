@@ -15,6 +15,17 @@
             height: 100%;
         }
     </style>
+    <!-- XLSX library for Daily Log Excel import/export -->
+    <!-- Temporarily disable AMD define so XLSX sets window.XLSX instead of registering an AMD module -->
+    <script>
+        var __savedDefine = window.define;
+        window.define = undefined;
+    </script>
+    <script src="./libs/xlsx.full.min.js"></script>
+    <script>
+        // Restore define after XLSX is loaded into window.XLSX
+        window.define = __savedDefine;
+    </script>
     <script id="sap-ui-bootstrap" src="resources/sap-ui-core.js" data-sap-ui-theme="sap_horizon"
         data-sap-ui-resourceroots='{
         "z.bts.buildtrack551": "./"

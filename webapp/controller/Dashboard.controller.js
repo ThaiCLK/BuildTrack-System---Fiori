@@ -1,10 +1,11 @@
-sap.ui.define([
+﻿sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageToast",
     "sap/ui/model/Filter",
-    "sap/ui/model/FilterOperator"
-], function (Controller, JSONModel, MessageToast, Filter, FilterOperator) {
+    "sap/ui/model/FilterOperator",
+    "sap/base/strings/formatMessage"
+], function (Controller, JSONModel, MessageToast, Filter, FilterOperator, formatMessage) {
     "use strict";
 
     // ── SAP Fiori chart color palette ──────────────────────────────────────
@@ -158,14 +159,14 @@ sap.ui.define([
                     // Populate WBS Unit Filter
                     var aUnits = [];
                     var oUnitMap = {};
-                    that._allWbs.forEach(function(w) {
+                    that._allWbs.forEach(function (w) {
                         var u = w.UnitCode;
                         if (u && u.trim() !== "" && !oUnitMap[u]) {
                             oUnitMap[u] = true;
                             aUnits.push({ Unit: u, DisplayText: u });
                         }
                     });
-                    aUnits.sort(function(a,b) { return a.Unit.localeCompare(b.Unit); });
+                    aUnits.sort(function (a, b) { return a.Unit.localeCompare(b.Unit); });
                     aUnits.unshift({ Unit: "ALL", DisplayText: that.getView().getModel("i18n").getResourceBundle().getText("dashboardAllUnits") });
                     oDash.setProperty("/wbsUnitList", aUnits);
 
@@ -210,7 +211,7 @@ sap.ui.define([
                     w.TotalQuantityDone = sumDone;
                 }.bind(this));
             }
-            
+
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             var formatStatus = function (s) {
@@ -406,8 +407,8 @@ sap.ui.define([
             var oProgress = that.byId("chartWbsProgress");
             if (oProgress) {
                 oProgress.setVizProperties({
-                    plotArea: { 
-                        colorPalette: ["#19A979", "#E0E0E0"], 
+                    plotArea: {
+                        colorPalette: ["#19A979", "#E0E0E0"],
                         dataLabel: { visible: false }
                     },
                     title: { visible: false },
@@ -521,6 +522,13 @@ sap.ui.define([
 
         onFeatureUnderdevelopment: function () {
             MessageToast.show("Feature under development", { duration: 3000, width: "20em", at: "center bottom" });
+        },
+
+        // ── Formatters ────────────────────────────────────────────────────
+        formatMessage: function (sPattern) {
+            if (!sPattern) { return ""; }
+            var aArgs = Array.prototype.slice.call(arguments, 1);
+            return formatMessage(sPattern, aArgs);
         }
     });
 });

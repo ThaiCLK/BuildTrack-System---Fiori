@@ -1,4 +1,4 @@
-sap.ui.define([
+﻿sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/ui/model/json/JSONModel",
@@ -213,7 +213,7 @@ sap.ui.define([
 
             if (mOptions.enablePatternFilter) {
                 var oPatternInput = new Input({
-                    placeholder: "Nhập từ khóa"
+                    placeholder: this.getView().getModel("i18n").getResourceBundle().getText("enterKeyword")
                 });
 
                 var oInnerFilterBar = new FilterBar({
@@ -228,7 +228,7 @@ sap.ui.define([
                 oInnerFilterBar.addFilterGroupItem(new FilterGroupItem({
                     groupName: "Basic",
                     name: "Contains",
-                    label: "Contains",
+                    label: this.getView().getModel("i18n").getResourceBundle().getText("contains"),
                     visibleInFilterBar: true,
                     control: oPatternInput
                 }));
@@ -271,46 +271,50 @@ sap.ui.define([
         },
 
         onValueHelpProjectCodeRequest: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             this._openSimpleValueHelpDialog({
                 inputId: "fbProjectCode",
-                title: "Project Code",
+                title: oBundle.getText("projectCode"),
                 itemsPath: "/projectCodeItems",
-                primaryLabel: "Project Code",
+                primaryLabel: oBundle.getText("projectCode"),
                 enablePatternFilter: true,
                 showSecondary: true,
-                secondaryLabel: "Project Name"
+                secondaryLabel: oBundle.getText("projectName")
             });
         },
 
         onValueHelpProjectNameRequest: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             this._openSimpleValueHelpDialog({
                 inputId: "fbProjectName",
-                title: "Project Name",
+                title: oBundle.getText("projectName"),
                 itemsPath: "/projectNameItems",
-                primaryLabel: "Project Name",
+                primaryLabel: oBundle.getText("projectName"),
                 enablePatternFilter: true,
                 showSecondary: true,
-                secondaryLabel: "Project Code"
+                secondaryLabel: oBundle.getText("projectCode")
             });
         },
 
         onValueHelpStatusRequest: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             this._openSimpleValueHelpDialog({
                 inputId: "fbStatus",
-                title: "Status",
+                title: oBundle.getText("status"),
                 itemsPath: "/statusItems",
-                primaryLabel: "Status",
+                primaryLabel: oBundle.getText("status"),
                 showSecondary: false,
                 secondaryLabel: ""
             });
         },
 
         onValueHelpTypeRequest: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             this._openSimpleValueHelpDialog({
                 inputId: "fbType",
-                title: "Project Type",
+                title: oBundle.getText("projectType"),
                 itemsPath: "/typeItems",
-                primaryLabel: "Project Type",
+                primaryLabel: oBundle.getText("projectType"),
                 showSecondary: false,
                 secondaryLabel: ""
             });
@@ -544,8 +548,9 @@ sap.ui.define([
             var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
             var sProjectId = oContext.getProperty("ProjectId");
             var sProjectName = oContext.getProperty("ProjectName");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             this.getOwnerComponent().getRouter().navTo("Site", { project_id: sProjectId });
-            MessageToast.show("Opening: " + sProjectName);
+            MessageToast.show(oBundle.getText("openingProject", [sProjectName]));
         },
 
         // ── CREATE ────────────────────────────────────────────────────────────
@@ -567,23 +572,24 @@ sap.ui.define([
             var sPath = this._getProjectEntityPath(oContext);
             var oModel = this.getOwnerComponent().getModel();
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!sPath) {
-                MessageBox.error("Cannot determine Project path for delete.");
+                MessageBox.error(oBundle.getText("projectPathError"));
                 return;
             }
 
-            MessageBox.confirm("Are you sure you want to delete project \"" + sName + "\"?", {
-                title: "Confirm Delete",
+            MessageBox.confirm(oBundle.getText("deleteProjectConfirm", [sName]), {
+                title: oBundle.getText("confirmDelete"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         oModel.remove(sPath, {
                             success: function () {
-                                MessageToast.show("Project deleted successfully!");
+                                MessageToast.show(oBundle.getText("projectDeletedSuccess"));
                                 that._readProjects("");
                                 that._loadProjectValueHelps();
                             },
                             error: function () {
-                                MessageBox.error("Unable to delete project. Please try again.");
+                                MessageBox.error(oBundle.getText("deleteProjectError"));
                             }
                         });
                     }
@@ -597,24 +603,25 @@ sap.ui.define([
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
 
+            var oBundle = this.getOwnerComponent().getModel("i18n").getResourceBundle();
             var oInputCode = new Input({
-                placeholder: "e.g. PRJ-001",
+                placeholder: oBundle.getText("projectCodePlaceholder"),
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValue(oSource.getValue().toUpperCase());
                 }
             });
-            var oInputName = new Input({ placeholder: "Project name" });
+            var oInputName = new Input({ placeholder: oBundle.getText("projectNamePlaceholder") });
             // ComboBox allows selecting a preset type OR typing a custom value for "Other"
             var oComboType = new ComboBox({
                 width: "100%",
-                placeholder: "Select or type a type",
+                placeholder: oBundle.getText("projectTypePlaceholder"),
                 items: [
-                    new Item({ key: "ROAD", text: "Road" }),
-                    new Item({ key: "BRIDGE", text: "Bridge" }),
-                    new Item({ key: "BUILDING", text: "Building" }),
-                    new Item({ key: "TUNNEL", text: "Tunnel" }),
-                    new Item({ key: "OTHER", text: "Other" })
+                    new Item({ key: "ROAD", text: oBundle.getText("typeRoad") }),
+                    new Item({ key: "BRIDGE", text: oBundle.getText("typeBridge") }),
+                    new Item({ key: "BUILDING", text: oBundle.getText("typeBuilding") }),
+                    new Item({ key: "TUNNEL", text: oBundle.getText("typeTunnel") }),
+                    new Item({ key: "OTHER", text: oBundle.getText("typeOther") })
                 ]
             });
             var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
@@ -623,9 +630,9 @@ sap.ui.define([
                 width: "100%",
                 enabled: false, // Status can never be edited manually (always disabled)
                 items: [
-                    new Item({ key: "PLANNING", text: "Planning" }),
-                    new Item({ key: "IN_PROGRESS", text: "In Progress" }),
-                    new Item({ key: "CLOSED", text: "Closed" })
+                    new Item({ key: "PLANNING", text: oBundle.getText("planning") }),
+                    new Item({ key: "IN_PROGRESS", text: oBundle.getText("inProgress") }),
+                    new Item({ key: "CLOSED", text: oBundle.getText("closed") })
                 ]
             });
             // Default to PLANNING for new projects
@@ -650,11 +657,11 @@ sap.ui.define([
             }
 
             var aFormContent = [
-                new Label({ text: "Project Code", required: true }), oInputCode,
-                new Label({ text: "Project Name", required: true }), oInputName,
-                new Label({ text: "Project Type" }), oComboType,
-                new Label({ text: "Start Date" }), oPickerStart,
-                new Label({ text: "Est. End Date" }), oPickerEnd
+                new Label({ text: oBundle.getText("projectCode"), required: true }), oInputCode,
+                new Label({ text: oBundle.getText("projectName"), required: true }), oInputName,
+                new Label({ text: oBundle.getText("projectType") }), oComboType,
+                new Label({ text: oBundle.getText("startDate") }), oPickerStart,
+                new Label({ text: oBundle.getText("estEndDate") }), oPickerEnd
             ];
 
             var oForm = new SimpleForm({
@@ -666,17 +673,17 @@ sap.ui.define([
             });
 
             var oDialog = new Dialog({
-                title: bEdit ? "Edit Project" : "Create New Project",
+                title: bEdit ? oBundle.getText("editProjectTitle") : oBundle.getText("createProjectTitle"),
                 contentWidth: "450px",
                 content: [oForm],
                 beginButton: new Button({
-                    text: bEdit ? "Save Changes" : "Create",
+                    text: bEdit ? oBundle.getText("saveChanges") : oBundle.getText("create"),
                     type: "Emphasized",
                     press: function () {
                         var sCode = oInputCode.getValue().trim();
                         var sName = oInputName.getValue().trim();
                         if (!sCode || !sName) {
-                            MessageToast.show("Please enter Project Code and Name!");
+                            MessageToast.show(oBundle.getText("enterProjectCodeNameError"));
                             return;
                         }
                         var oPayload = {
@@ -690,33 +697,33 @@ sap.ui.define([
                         if (bEdit) {
                             var sUpdatePath = that._getProjectEntityPath(oContext);
                             if (!sUpdatePath) {
-                                MessageBox.error("Cannot determine Project path for update.");
+                                MessageBox.error(oBundle.getText("projectPathError"));
                                 return;
                             }
                             oModel.update(sUpdatePath, oPayload, {
                                 success: function () {
-                                    MessageToast.show("Project updated!");
+                                    MessageToast.show(oBundle.getText("projectUpdatedSuccess"));
                                     that._readProjects("");
                                     that._loadProjectValueHelps();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error("Error updating project!"); }
+                                error: function () { MessageBox.error(oBundle.getText("errorUpdatingProject")); }
                             });
                         } else {
                             oModel.create("/ProjectSet", oPayload, {
                                 success: function () {
-                                    MessageToast.show("Project created successfully!");
+                                    MessageToast.show(oBundle.getText("projectCreatedSuccess"));
                                     that._readProjects("");
                                     that._loadProjectValueHelps();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error("Error creating project!"); }
+                                error: function () { MessageBox.error(oBundle.getText("errorCreatingProject")); }
                             });
                         }
                     }
                 }),
                 endButton: new Button({
-                    text: "Cancel",
+                    text: oBundle.getText("cancel"),
                     press: function () { oDialog.close(); }
                 }),
                 afterClose: function () { oDialog.destroy(); }

@@ -4,7 +4,7 @@
     xmlns:f="sap.ui.layout.form"
     xmlns:l="sap.ui.layout">
     <Dialog 
-        title="Biên bản nghiệm thu khối lượng" 
+        title="{i18n>acceptanceReportTitle}" 
         contentWidth="750px"
         horizontalScrolling="false"
         verticalScrolling="false">
@@ -12,67 +12,67 @@
             <VBox class="paperA4Dialog">
                 <!-- Header -->
                 <VBox class="acceptanceHeader">
-                    <Label text="CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" class="signatureLabel" />
-                    <Label text="Độc lập - Tự do - Hạnh phúc" class="signatureLabel" />
+                    <Label text="{i18n>vietnamOfficialName}" class="signatureLabel" />
+                    <Label text="{i18n>vietnamMotto}" class="signatureLabel" />
                     <VBox class="acceptanceHeaderLine" />
                     
-                    <Title text="BIÊN BẢN NGHIỆM THU KHỐI LƯỢNG" class="acceptanceTitle sapUiMediumMarginTop" />
-                    <Text text="Số: NT-{WbsCode}" class="infoTableValue" />
-                    <Text text="(Giai đoạn: {path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}} - {path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}})" 
+                    <Title text="{i18n>acceptanceReportHeader}" class="acceptanceTitle sapUiMediumMarginTop" />
+                    <Text text="{parts: [{path: 'i18n>reportNo'}, {path: 'WbsCode'}], type: 'sap.ui.model.type.MessageFormat'}" class="infoTableValue" />
+                    <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}, {path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}], type: 'sap.ui.model.type.MessageFormat'}" 
                             visible="{= ${StartActual} !== null || ${EndActual} !== null }"
                             class="signatureSubLabel sapUiTinyMarginTop"/>
-                    <Text text="(Giai đoạn: {path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}} - {path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}})" 
+                    <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}, {path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}], type: 'sap.ui.model.type.MessageFormat'}" 
                             visible="{= ${StartActual} === null &amp;&amp; ${EndActual} === null }"
                             class="signatureSubLabel sapUiTinyMarginTop"/>
                 </VBox>
 
                 <!-- Section I: Thông tin chung -->
                 <VBox class="sapUiMediumMarginTop">
-                    <Label text="I. THÔNG TIN CHUNG" class="signatureLabel sapUiSmallMarginBottom" />
+                    <Label text="{i18n>sectionIGeneralInfo}" class="signatureLabel sapUiSmallMarginBottom" />
                     <VBox class="sapUiSmallMarginBegin">
                         <HBox class="infoTableRow">
-                            <Label text="Dự án / Gói thầu:" class="infoTableLabel" />
+                            <Label text="{i18n>projectPackageLabel}" class="infoTableLabel" />
                             <Text text="{projectModel>/ProjectName}" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow">
-                            <Label text="Hạng mục (WBS):" class="infoTableLabel" />
+                            <Label text="{i18n>wbsItemLabel}" class="infoTableLabel" />
                             <Text text="{WbsName} (Mã: {WbsCode})" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow">
-                            <Label text="Phân khu:" class="infoTableLabel" />
+                            <Label text="{i18n>siteLabel}" class="infoTableLabel" />
                             <Text text="{projectModel>/SiteName}" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow">
-                            <Label text="Vị trí:" class="infoTableLabel" />
+                            <Label text="{i18n>locationLabel}" class="infoTableLabel" />
                             <Text text="{locationModel>/LocationName}" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow">
-                            <Label text="Nhà thầu:" class="infoTableLabel" />
-                            <Text text="Công ty Thầu Xây dựng (Mặc định)" class="infoTableValue" />
+                            <Label text="{i18n>contractorLabel}" class="infoTableLabel" />
+                            <Text text="{i18n>defaultContractor}" class="infoTableValue" />
                         </HBox>
                     </VBox>
                 </VBox>
 
                 <!-- Section II: Nội dung nghiệm thu -->
                 <VBox class="sapUiMediumMarginTop">
-                    <Label text="II. NỘI DUNG NGHIỆM THU" class="signatureLabel sapUiSmallMarginBottom" />
+                    <Label text="{i18n>sectionIIAcceptanceContent}" class="signatureLabel sapUiSmallMarginBottom" />
                     
                     <Table class="acceptanceTable" showNoData="false">
                         <columns>
                             <Column hAlign="Begin">
-                                <Text text="Nội dung công việc" />
+                                <Text text="{i18n>workContent}" />
                             </Column>
                             <Column width="10%" hAlign="Center">
-                                <Text text="ĐVT" />
+                                <Text text="{i18n>unitShort}" />
                             </Column>
                             <Column width="15%" hAlign="End">
-                                <Text text="Kế hoạch" />
+                                <Text text="{i18n>planned}" />
                             </Column>
                             <Column width="15%" hAlign="End">
-                                <Text text="Thực tế" />
+                                <Text text="{i18n>actual}" />
                             </Column>
                             <Column width="15%" hAlign="Center">
-                                <Text text="Đánh giá" />
+                                <Text text="{i18n>evaluation}" />
                             </Column>
                         </columns>
                         <items>
@@ -83,7 +83,7 @@
                                     <Text text="{path: 'Quantity', formatter: '.formatTotalQty'}" />
                                     <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" />
                                     <ObjectStatus 
-                                        text="{= ${workSummaryModel>/TotalQtyDone} >= ${Quantity} ? 'Đạt' : 'Chưa Đạt' }"
+                                        text="{= ${workSummaryModel>/TotalQtyDone} >= ${Quantity} ? ${i18n>achieved} : ${i18n>notAchieved} }"
                                         state="{= ${workSummaryModel>/TotalQtyDone} >= ${Quantity} ? 'Success' : 'Error' }" />
                                 </cells>
                             </ColumnListItem>
@@ -93,8 +93,8 @@
 
                 <!-- Section III: Kết luận -->
                 <VBox class="sapUiMediumMarginTop">
-                    <Label text="III. KẾT LUẬN" class="signatureLabel sapUiTinyMarginBottom" />
-                    <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên theo ghi nhận tại thời điểm hiện tại. Đạt yêu cầu kỹ thuật để triển khai công việc tiếp theo." 
+                    <Label text="{i18n>sectionIIIConclusion}" class="signatureLabel sapUiTinyMarginBottom" />
+                    <Text text="{i18n>acceptanceConclusionText}" 
                             class="acceptanceConclusion" />
                 </VBox>
 
@@ -103,8 +103,8 @@
                     <l:content>
                         <!-- Kỹ sư phụ trách -->
                         <VBox alignItems="Center">
-                            <Label text="KỸ SƯ PHỤ TRÁCH" class="signatureLabel" />
-                            <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
+                            <Label text="{i18n>engineerRole}" class="signatureLabel" />
+                            <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
                             <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level1/signatureUrl}" 
                                        height="60px" 
@@ -113,7 +113,7 @@
                                 <Text text="{viewData>/signStatus/level1/text}" 
                                       class="{= ${viewData>/signStatus/level1/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level1/signed}" />
-                                <Button text="Ký duyệt"
+                                <Button text="{i18n>signApprove}"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
                                         visible="{viewData>/canApproveLevel1}" />
@@ -122,8 +122,8 @@
 
                         <!-- Tư vấn giám sát -->
                         <VBox alignItems="Center">
-                            <Label text="TƯ VẤN GIÁM SÁT" class="signatureLabel" />
-                            <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
+                            <Label text="{i18n>supervisorRole}" class="signatureLabel" />
+                            <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
                             <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level2/signatureUrl}" 
                                        height="60px" 
@@ -132,7 +132,7 @@
                                 <Text text="{viewData>/signStatus/level2/text}" 
                                       class="{= ${viewData>/signStatus/level2/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level2/signed}" />
-                                <Button text="Ký duyệt"
+                                <Button text="{i18n>signApprove}"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
                                         visible="{viewData>/canApproveLevel2}" />
@@ -141,8 +141,8 @@
 
                         <!-- Đại diện chủ đầu tư -->
                         <VBox alignItems="Center">
-                            <Label text="ĐẠI DIỆN CHỦ ĐẦU TƯ" class="signatureLabel" />
-                            <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
+                            <Label text="{i18n>investorRole}" class="signatureLabel" />
+                            <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
                             <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level3/signatureUrl}" 
                                        height="60px" 
@@ -151,7 +151,7 @@
                                 <Text text="{viewData>/signStatus/level3/text}" 
                                       class="{= ${viewData>/signStatus/level3/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level3/signed}" />
-                                <Button text="Ký duyệt"
+                                <Button text="{i18n>signApprove}"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
                                         visible="{viewData>/canApproveLevel3}" />
@@ -162,9 +162,9 @@
             </VBox>
         </content>
         <buttons>
-             <Button text="Gửi duyệt Đóng" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS') }" />
-             <Button text="Từ chối" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
-             <Button text="Đóng" press=".onCloseAcceptanceDialog" />
+             <Button text="{i18n>submitForCloseApproval}" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS') }" />
+             <Button text="{i18n>reject}" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
+             <Button text="{i18n>close}" press=".onCloseAcceptanceDialog" />
         </buttons>
     </Dialog>
 </core:FragmentDefinition>

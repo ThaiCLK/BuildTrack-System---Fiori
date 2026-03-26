@@ -9,27 +9,49 @@ sap.ui.define([
          */
         _loadXlsxLibrary: function () {
             return new Promise(function (resolve, reject) {
+                // Already loaded
                 if (window.XLSX) {
                     resolve(window.XLSX);
                     return;
                 }
-                // Try downloading via getScript
-                var sUrl = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-                sap.ui.require(["sap/ui/thirdparty/jquery"], function (jQuery) {
-                    jQuery.getScript(sUrl)
-                        .done(function () {
-                            if (window.XLSX) {
-                                resolve(window.XLSX);
-                            } else {
-                                reject(new Error("Thư viện XLSX chưa được tải thành công!"));
-                            }
-                        })
-                        .fail(function () {
-                            reject(new Error("Không thể tải thư viện XLSX từ CDN!"));
-                        });
-                });
+
+                // Determine base path for local xlsx file
+                var sBase = window.location.pathname.replace(/\/[^/]*$/, "");
+                // Support both /test/flp.html and /index.html contexts
+                if (sBase.indexOf("/test") !== -1) {
+                    sBase = sBase.replace("/test", "");
+                }
+                var sUrl = sBase + "/libs/xlsx.full.min.js";
+
+                fetch(sUrl)
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("HTTP " + response.status + " when loading " + sUrl);
+                        }
+                        return response.text();
+                    })
+                    .then(function (sCode) {
+                        // Execute XLSX with AMD temporarily disabled so it sets window.XLSX
+                        var savedDefine = window.define;
+                        window.define = undefined;
+                        try {
+                            // eslint-disable-next-line no-new-func
+                            new Function(sCode)();
+                        } finally {
+                            window.define = savedDefine;
+                        }
+                        if (window.XLSX) {
+                            resolve(window.XLSX);
+                        } else {
+                            reject(new Error("XLSX library loaded but window.XLSX is still undefined"));
+                        }
+                    })
+                    .catch(function (err) {
+                        reject(new Error("Không thể tải thư viện XLSX: " + err.message));
+                    });
             });
         },
+
 
         /**
          * Export Excel with dynamic data or a blank template if no data is provided.

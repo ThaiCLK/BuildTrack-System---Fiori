@@ -1,4 +1,4 @@
-sap.ui.define([
+﻿sap.ui.define([
   "sap/ui/core/mvc/Controller",
   "sap/ui/core/Fragment"
 ], (BaseController, Fragment) => {
@@ -40,7 +40,9 @@ sap.ui.define([
           
           if (oConfiguration.getLanguage() !== sKey) {
               oConfiguration.setLanguage(sKey);
-              sap.m.MessageToast.show("Language changed to " + (sKey === "vi" ? "Tiếng Việt" : "English"));
+              var oBundle = this.getView().getModel("i18n").getResourceBundle();
+              var sMsg = oBundle.getText("languageChanged", [sKey === "vi" ? oBundle.getText("vietnamese") : oBundle.getText("english")]);
+              sap.m.MessageToast.show(sMsg);
           }
       }
   });

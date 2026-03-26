@@ -13,7 +13,7 @@ sap.ui.define([
         init: function (oController) {
             // Local UI-state model — no mock data
             var oUIModel = new JSONModel({
-                selectedLog: null,
+                selectedLog: null,  
                 resourceUseList: [],
                 ui: {
                     isSelected: false,
@@ -276,7 +276,9 @@ sap.ui.define([
             }
 
             var aLogs = aSelectedItems.map(function (oItem) {
-                var oObj = oItem.getBindingContext().getObject();
+                var oCtx = oItem.getBindingContext("dailyLogModel");
+                if (!oCtx) { return null; }
+                var oObj = oCtx.getObject();
                 return {
                     LogId: oObj.LogId,
                     LogDate: oObj.LogDate,
@@ -287,7 +289,7 @@ sap.ui.define([
                     SafeNote: oObj.SafeNote,
                     ContractorNote: oObj.ContractorNote
                 };
-            });
+            }).filter(Boolean);
 
             var oModel = this.getOwnerComponent().getModel();
             var aAllResources = [];
