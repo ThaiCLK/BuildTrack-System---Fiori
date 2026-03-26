@@ -43,6 +43,11 @@ sap.ui.define([
         },
 
         // ── FORMATTERS ──────────────────────────────────────────────────────
+        formatSiteListTitle: function (sProjectName) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            return oBundle.getText("siteListTitle", [sProjectName || ""]);
+        },
+
         formatStatusIcon: function (sStatus) {
             var m = {
                 "PLANNING": "sap-icon://status-in-process",
@@ -68,13 +73,14 @@ sap.ui.define([
         },
 
         formatStatusText: function (sStatus) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var mLabels = {
-                "PLANNING": "Planning",
-                "SUBMITTED": "Submitted",
-                "REJECTED": "Rejected",
-                "READY": "Ready",
-                "IN_PROGRESS": "In Progress",
-                "COMPLETED": "Completed"
+                "PLANNING": oBundle.getText("planningStatus"),
+                "SUBMITTED": oBundle.getText("submittedStatus"),
+                "REJECTED": oBundle.getText("rejectedStatus"),
+                "READY": oBundle.getText("readyStatus"),
+                "IN_PROGRESS": oBundle.getText("inProgressStatus"),
+                "COMPLETED": oBundle.getText("completedStatus")
             };
             return mLabels[(sStatus || "").toUpperCase()] || sStatus;
         },
@@ -556,17 +562,18 @@ sap.ui.define([
             var sPath = oContext.getPath();
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
-            MessageBox.confirm("Are you sure you want to delete site \"" + sName + "\"?", {
-                title: "Confirm Delete",
+            MessageBox.confirm(oBundle.getText("deleteSiteConfirm", [sName]), {
+                title: oBundle.getText("confirmDelete"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         oModel.remove(sPath, {
                             success: function () {
-                                MessageToast.show("Site deleted successfully!");
+                                MessageToast.show(oBundle.getText("siteDeletedSuccess"));
                                 that._refreshSiteAfterMutation();
                             },
-                            error: function () { MessageBox.error("Unable to delete site."); }
+                            error: function () { MessageBox.error(oBundle.getText("siteDeleteError")); }
                         });
                     }
                 }
@@ -592,6 +599,7 @@ sap.ui.define([
             var that = this;
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             var oInputCode = new Input({
                 placeholder: "e.g. SITE-001",
@@ -600,8 +608,8 @@ sap.ui.define([
                     oSource.setValue(oSource.getValue().toUpperCase());
                 }
             });
-            var oInputName = new Input({ placeholder: "Site name" });
-            var oInputAddress = new Input({ placeholder: "Address" });
+            var oInputName = new Input({ placeholder: oBundle.getText("siteName") });
+            var oInputAddress = new Input({ placeholder: oBundle.getText("address") });
             if (bEdit) {
                 oInputCode.setValue(oContext.getProperty("SiteCode"));
                 oInputName.setValue(oContext.getProperty("SiteName"));
@@ -614,24 +622,24 @@ sap.ui.define([
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
                 content: [
-                    new Label({ text: "Site Code", required: true }), oInputCode,
-                    new Label({ text: "Site Name", required: true }), oInputName,
-                    new Label({ text: "Address" }), oInputAddress
+                    new Label({ text: oBundle.getText("siteCode"), required: true }), oInputCode,
+                    new Label({ text: oBundle.getText("siteName"), required: true }), oInputName,
+                    new Label({ text: oBundle.getText("address") }), oInputAddress
                 ]
             });
 
             var oDialog = new Dialog({
-                title: bEdit ? "Edit Site" : "Add New Site",
+                title: bEdit ? oBundle.getText("editSite") : oBundle.getText("addNewSite"),
                 contentWidth: "450px",
                 content: [oForm],
                 beginButton: new Button({
-                    text: bEdit ? "Save Changes" : "Create",
+                    text: bEdit ? oBundle.getText("saveChanges") : oBundle.getText("create"),
                     type: "Emphasized",
                     press: function () {
                         var sCode = oInputCode.getValue().trim();
                         var sName = oInputName.getValue().trim();
                         if (!sCode || !sName) {
-                            MessageToast.show("Please enter Site Code and Name!");
+                            MessageToast.show(oBundle.getText("enterSiteCodeNameError"));
                             return;
                         }
                         var oPayload = {
@@ -646,26 +654,26 @@ sap.ui.define([
                         if (bEdit) {
                             oModel.update(oContext.getPath(), oPayload, {
                                 success: function () {
-                                    MessageToast.show("Site updated!");
+                                    MessageToast.show(oBundle.getText("siteUpdatedSuccess"));
                                     that._refreshSiteAfterMutation();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error("Error updating site!"); }
+                                error: function () { MessageBox.error(oBundle.getText("siteUpdateError")); }
                             });
                         } else {
                             oModel.create("/SiteSet", oPayload, {
                                 success: function () {
-                                    MessageToast.show("Site created successfully!");
+                                    MessageToast.show(oBundle.getText("siteCreatedSuccess"));
                                     that._refreshSiteAfterMutation();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error("Error creating site!"); }
+                                error: function () { MessageBox.error(oBundle.getText("siteCreateError")); }
                             });
                         }
                     }
                 }),
                 endButton: new Button({
-                    text: "Cancel",
+                    text: oBundle.getText("cancel"),
                     press: function () { oDialog.close(); }
                 }),
                 afterClose: function () { oDialog.destroy(); }

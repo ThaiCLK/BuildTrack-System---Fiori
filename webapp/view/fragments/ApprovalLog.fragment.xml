@@ -10,7 +10,7 @@
         
         <VBox height="100%" fitContainer="true" class="approvalLogMasterPanel">
             <Toolbar design="Transparent">
-                <Title text="Nhật ký phê duyệt" level="H5" />
+                <Title text="{i18n>approvalLogTitle}" level="H5" />
                 <ToolbarSpacer />
 
                 <Button icon="sap-icon://sort" type="Transparent" />
@@ -19,7 +19,7 @@
                 <List id="idApprovalLogList" 
                     mode="None" 
                     items="{logListModel>/}"
-                    noDataText="Chưa có nhật ký phê duyệt cho hạng mục này">
+                    noDataText="{i18n>noApprovalLogsFound}">
                     <StandardListItem
                         title="{logListModel>Action} - {logListModel>WorkItemId}"
                         description="{logListModel>ActionBy}"

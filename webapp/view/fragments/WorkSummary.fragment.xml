@@ -15,12 +15,12 @@
             <Panel class="sapUiSmallMarginBottom">
                 <headerToolbar>
                     <Toolbar>
-                        <Title text="Work Summary" level="H4" />
+                        <Title text="{i18n>workSummaryTitle}" level="H4" />
                         <ToolbarSpacer />
                         <!-- Mở WBS -->
                         <Button
                             id="btnSubmitOpenWorkSummary"
-                            text="Gửi duyệt Mở"
+                            text="{i18n>submitOpen}"
                             icon="sap-icon://sys-enter-2"
                             type="Accept"
                             press=".onPressSubmitOpenWorkSummary"
@@ -28,7 +28,7 @@
                         />
                         <Button
                             id="btnApproveOpenWorkSummary"
-                            text="Ký duyệt Mở"
+                            text="{i18n>approveOpen}"
                             icon="sap-icon://signature"
                             type="Emphasized"
                             press=".onApproveOpenWorkSummary"
@@ -36,7 +36,7 @@
                         />
                         <Button
                             id="btnRejectOpenWorkSummary"
-                            text="Từ chối Mở"
+                            text="{i18n>rejectOpen}"
                             icon="sap-icon://decline"
                             type="Reject"
                             press=".onRejectOpenWorkSummary"
@@ -45,7 +45,7 @@
                         <!-- Đóng WBS -->
                         <Button
                             id="btnSubmitCloseWorkSummary"
-                            text="Gửi duyệt Đóng"
+                            text="{i18n>submitClose}"
                             icon="sap-icon://sys-enter-2"
                             type="Accept"
                             press=".onPressSubmitCloseWorkSummary"
@@ -53,7 +53,7 @@
                         />
                         <Button
                             id="btnApproveCloseWorkSummary"
-                            text="Xem biên bản nghiệm thu"
+                            text="{i18n>viewAcceptanceReport}"
                             icon="sap-icon://display"
                             type="Emphasized"
                             press=".onPressSignAcceptanceReport"
@@ -63,16 +63,16 @@
                 </headerToolbar>
                 <f:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
                     <f:content>
-                        <Label text="Work Item Title" design="Bold"/>
+                        <Label text="{i18n>workItemTitle}" design="Bold"/>
                         <VBox>
                             <Text text="{WbsName}" class="sapUiTinyMarginBottom" />
-                            <Text text="Code: {WbsCode}" />
+                            <Text text="{i18n>wbsCode}: {WbsCode}" />
                         </VBox>
                         
-                        <Label text="Project" design="Bold"/>
+                        <Label text="{i18n>site}" design="Bold"/>
                         <Text text="{ProjectName}" />
 
-                        <Label text="Completed (Cumulative)" design="Bold"/>
+                        <Label text="{i18n>completedCumulative}" design="Bold"/>
                                 <ObjectNumber 
                                     number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" 
                                     unit="{UnitCode}" 
@@ -82,7 +82,7 @@
             </Panel>
 
             <!-- ── Section II: Progress Evaluation (Leaf Nodes Only) ──────────────────────────────── -->
-            <Panel headerText="II. Progress Evaluation (Target vs Actual)" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isChildNode'}">
+            <Panel headerText="{i18n>progressEvaluation}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                 <VBox width="100%">
                         <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom" width="100%">
                             <Label text="{parts: ['Quantity', 'UnitCode'], formatter: '.formatCompletionRateTitle'}" design="Bold"/>
@@ -102,11 +102,11 @@
                     <l:Grid defaultSpan="L6 M6 S12" class="sapUiMediumMarginTop">
                         <l:content>
                             <VBox>
-                                <Label text="Target (Planned)" class="sapUiTinyMarginBottom"/>
+                                <Label text="{i18n>targetPlanned}" class="sapUiTinyMarginBottom"/>
                                 <ObjectNumber number="{path: 'Quantity', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="None" />
                             </VBox>
                             <VBox>
-                                <Label text="Actual (Total Done)" class="sapUiTinyMarginBottom"/>
+                                <Label text="{i18n>actualTotalDone}" class="sapUiTinyMarginBottom"/>
                                 <ObjectNumber number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="Success" />
                             </VBox>
                         </l:content>
@@ -115,26 +115,26 @@
             </Panel>
 
             <!-- ── Section III: Children Summary Table (Parent Nodes Only) ────────────────────────── -->
-            <Panel headerText="Detailed Progress Table (Sub-WBS)" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
+            <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
                 <Table items="{workSummaryModel>/Children}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
                     <columns>
                         <Column width="4.5rem">
-                            <Text text="WBS Code" />
+                            <Text text="{i18n>wbsCode}" />
                         </Column>
                         <Column width="12rem">
-                            <Text text="Work Item Name" />
+                            <Text text="{i18n>itemName}" />
                         </Column>
                         <Column hAlign="End" width="6.5rem">
-                            <Text text="Planned" />
+                            <Text text="{i18n>targetPlanned}" />
                         </Column>
                         <Column hAlign="End" width="6.5rem">
-                            <Text text="Actual" />
+                            <Text text="{i18n>actualTotalDone}" />
                         </Column>
                         <Column width="8rem">
-                            <Text text="Status" />
+                            <Text text="{i18n>status}" />
                         </Column>
                         <Column hAlign="Begin" width="18rem">
-                            <Text text="Progress" />
+                            <Text text="{i18n>workProgress}" />
                         </Column>
                     </columns>
                     <items>

@@ -24,28 +24,28 @@
 
             <!-- Toolbar: title + add button -->
             <OverflowToolbar design="Solid">
-                <Title text="Nhật ký thi công" level="H3"/>
+                <Title text="{i18n>dailyLogTabTitle}" level="H3"/>
                 <ToolbarSpacer/>
                 <!-- Excel actions grouped in a dropdown MenuButton -->
                 <MenuButton
-                    text="Excel"
+                    text="{i18n>excelActions}"
                     icon="sap-icon://excel-attachment"
                     type="Default"
-                    tooltip="Excel actions: Template / Import / Export"
+                    tooltip="{i18n>excelActions}"
                     menuPosition="BeginBottom">
                     <menu>
                         <Menu>
                             <items>
                                 <MenuItem
-                                    text="Download Template"
+                                    text="{i18n>downloadTemplate}"
                                     icon="sap-icon://document-text"
                                     press=".onDownloadTemplate"/>
                                 <MenuItem
-                                    text="Import"
+                                    text="{i18n>importExcel}"
                                     icon="sap-icon://upload"
                                     press=".onImportExcel"/>
                                 <MenuItem
-                                    text="Export"
+                                    text="{i18n>exportExcel}"
                                     icon="sap-icon://download"
                                     press=".onExportExcel"/>
                             </items>
@@ -53,13 +53,13 @@
                     </menu>
                 </MenuButton>
                 <Button
-                    text="Delete Selected"
+                    text="{i18n>deleteSelected}"
                     icon="sap-icon://delete"
                     type="Reject"
                     press=".onDeleteMultipleLogs"
                     visible="{= ${dailyLogModel>/ui/selectedLogsCount} > 0 }"/>
                 <Button
-                    text="Add Log"
+                    text="{i18n>addLog}"
                     icon="sap-icon://add"
                     type="Emphasized"
                     press=".onAddLog"/>
@@ -73,21 +73,21 @@
                 growing="true"
                 growingThreshold="20"
                 sticky="ColumnHeaders"
-                noDataText="No log entries found. Click 'Add Log' to create one.">
+                noDataText="{i18n>noLogsFound}">
                 <columns>
-                    <Column><Text text="Log Date"/></Column>
-                    <Column hAlign="End" width="120px"><Text text="Qty Done"/></Column>
+                    <Column><Text text="{i18n>logDate}"/></Column>
+                    <Column hAlign="End" width="120px"><Text text="{i18n>qtyDone}"/></Column>
                 </columns>
                 <items>
                     <ColumnListItem type="Active" press=".onLogRowPress">
                         <cells>
                             <Text text="{
-                                path: 'LogDate',
+                                path: 'dailyLogModel>LogDate',
                                 type: 'sap.ui.model.type.Date',
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
                             }"/>
                             <ObjectNumber
-                                number="{path: 'QuantityDone', formatter: '.formatTotalQty'}"
+                                number="{path: 'dailyLogModel>QuantityDone', formatter: '.formatTotalQty'}"
                                 unit="{UnitCode}"
                                 state="None"/>
                         </cells>
@@ -103,16 +103,16 @@
 
             <!-- ── Top toolbar: title + edit/delete buttons ── -->
             <OverflowToolbar design="Solid">
-                <Title text="Chi tiết nhật ký" level="H3"/>
+                <Title text="{i18n>dailyLogDetailTitle}" level="H3"/>
                 <ToolbarSpacer/>
                 <Button
-                    text="Edit"
+                    text="{i18n>actions}"
                     icon="sap-icon://edit"
                     press=".onToggleEditMode"
                     visible="{dailyLogModel>/ui/isSelected}"
                     enabled="{= !${dailyLogModel>/ui/editMode} }"/>
                 <Button
-                    text="Delete"
+                    text="{i18n>deleteSite}"
                     icon="sap-icon://delete"
                     type="Reject"
                     press=".onDeleteLog"
@@ -127,7 +127,7 @@
                 alignItems="Center"
                 height="300px">
                 <core:Icon src="sap-icon://document" size="3rem" color="#bbb"/>
-                <Text text="Select a log entry to view details" class="sapUiSmallMarginTop"/>
+                <Text text="{i18n>selectLogToViewDetail}" class="sapUiSmallMarginTop"/>
             </VBox>
 
             <!-- ════════════════════════════════════════════════════ -->
@@ -142,7 +142,7 @@
                 <!-- │  BLOCK 1: REPORT HEADER                        │ -->
                 <!-- └────────────────────────────────────────────────┘ -->
                 <VBox class="sapUiSmallMargin">
-                    <Panel headerText="General Information" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
+                    <Panel headerText="{i18n>generalInfo}" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
                         <f:SimpleForm
                             editable="true"
                             layout="ResponsiveGridLayout"
@@ -151,7 +151,7 @@
                             columnsXL="2" columnsL="2" columnsM="1"
                             singleContainerFullSize="false">
                             <f:content>
-                                <Label text="Report Date" required="true"/>
+                                <Label text="{i18n>reportDate}" required="true"/>
                                 <DatePicker
                                     value="{
                                         path: 'dailyLogModel>/selectedLog/LogDate',
@@ -162,7 +162,7 @@
                                     displayFormat="dd/MM/yyyy"
                                     valueFormat="dd/MM/yyyy"/>
 
-                                <Label text="Quantity Done"/>
+                                <Label text="{i18n>reportQtyDone}"/>
                                 <HBox alignItems="Center">
                                     <Input
                                         value="{dailyLogModel>/selectedLog/QuantityDone}"
@@ -173,7 +173,7 @@
                                         value="{dailyLogModel>/selectedLog/UnitCode}"
                                         editable="{dailyLogModel>/ui/editMode}"
                                         width="80px"
-                                        placeholder="Unit"
+                                        placeholder="{i18n>unit}"
                                         class="sapUiTinyMarginBegin"/>
                                 </HBox>
                             </f:content>
@@ -183,7 +183,7 @@
                     <!-- ┌────────────────────────────────────────────────┐ -->
                     <!-- │  BLOCK 2: WEATHER                              │ -->
                     <!-- └────────────────────────────────────────────────┘ -->
-                    <Panel headerText="Weather" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
+                    <Panel headerText="{i18n>weather}" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
                         <f:SimpleForm
                             editable="true"
                             layout="ResponsiveGridLayout"
@@ -193,30 +193,30 @@
                             singleContainerFullSize="false">
                             <f:content>
                                 <!-- Weather Morning -->
-                                <Label text="Morning" required="true"/>
+                                <Label text="{i18n>morning}" required="true"/>
                                 <Select
                                     selectedKey="{dailyLogModel>/selectedLog/WeatherAm}"
                                     enabled="{dailyLogModel>/ui/editMode}"
                                     width="100%">
                                     <items>
-                                        <core:Item key="SUNNY"  text="Sunny "/>
-                                        <core:Item key="CLOUDY" text="Cloudy "/>
-                                        <core:Item key="RAINY"  text="Rainy "/>
-                                        <core:Item key="STORM"  text="Storm "/>
+                                        <core:Item key="SUNNY"  text="{i18n>sunny}"/>
+                                        <core:Item key="CLOUDY" text="{i18n>cloudy}"/>
+                                        <core:Item key="RAINY"  text="{i18n>rainy}"/>
+                                        <core:Item key="STORM"  text="{i18n>storm}"/>
                                     </items>
                                 </Select>
 
                                 <!-- Weather Afternoon -->
-                                <Label text="Afternoon" required="true"/>
+                                <Label text="{i18n>afternoon}" required="true"/>
                                 <Select
                                     selectedKey="{dailyLogModel>/selectedLog/WeatherPm}"
                                     enabled="{dailyLogModel>/ui/editMode}"
                                     width="100%">
                                     <items>
-                                        <core:Item key="SUNNY"  text="Sunny "/>
-                                        <core:Item key="CLOUDY" text="Cloudy "/>
-                                        <core:Item key="RAINY"  text="Rainy "/>
-                                        <core:Item key="STORM"  text="Storm "/>
+                                        <core:Item key="SUNNY"  text="{i18n>sunny}"/>
+                                        <core:Item key="CLOUDY" text="{i18n>cloudy}"/>
+                                        <core:Item key="RAINY"  text="{i18n>rainy}"/>
+                                        <core:Item key="STORM"  text="{i18n>storm}"/>
                                     </items>
                                 </Select>
                             </f:content>
@@ -226,12 +226,12 @@
                     <!-- ┌────────────────────────────────────────────────┐ -->
                     <!-- │  BLOCK 3: RESOURCE USAGE (Vật tư / Thiết bị)  │ -->
                     <!-- └────────────────────────────────────────────────┘ -->
-                    <Panel headerText="Resource Usage" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
+                    <Panel headerText="{i18n>resourceUsage}" class="sapUiTinyMarginBottom" width="auto" expandable="true" expanded="true">
                         <!-- Toolbar: resource table add button -->
                         <OverflowToolbar design="Transparent">
                             <ToolbarSpacer/>
                             <Button
-                                text="Add Resource"
+                                text="{i18n>addResource}"
                                 icon="sap-icon://add"
                                 type="Ghost"
                                 visible="{dailyLogModel>/ui/editMode}"
@@ -245,14 +245,14 @@
                             mode="{= ${dailyLogModel>/ui/editMode} ? 'Delete' : 'None' }"
                             delete=".onDeleteResourceUse"
                             width="100%"
-                            noDataText="No resources added."
+                            noDataText="{i18n>noResourcesAdded}"
                             sticky="ColumnHeaders">
                             <columns>
-                                <Column width="20%"><Text text="Code"/></Column>
-                                <Column width="30%"><Text text="Resource"/></Column>
-                                <Column width="15%"><Text text="Type"/></Column>
-                                <Column width="20%" hAlign="Center"><Text text="Quantity"/></Column>
-                                <Column width="15%"><Text text="Unit"/></Column>
+                                <Column width="20%"><Text text="{i18n>resourceCode}"/></Column>
+                                <Column width="30%"><Text text="{i18n>resourceName}"/></Column>
+                                <Column width="15%"><Text text="{i18n>type}"/></Column>
+                                <Column width="20%" hAlign="Center"><Text text="{i18n>resourceQty}"/></Column>
+                                <Column width="15%"><Text text="{i18n>resourceUnit}"/></Column>
                             </columns>
                             <items>
                                 <ColumnListItem>
@@ -303,7 +303,7 @@
                     <!-- ┌────────────────────────────────────────────────┐ -->
                     <!-- │  BLOCK 4: NOTES                                │ -->
                     <!-- └────────────────────────────────────────────────┘ -->
-                    <Panel headerText="Notes" width="auto" expandable="true" expanded="true">
+                    <Panel headerText="{i18n>notes}" width="auto" expandable="true" expanded="true">
                         <f:SimpleForm
                             editable="true"
                             layout="ResponsiveGridLayout"
@@ -312,7 +312,7 @@
                             columnsXL="1" columnsL="1" columnsM="1"
                             singleContainerFullSize="false">
                             <f:content>
-                                <Label text="General Note"/>
+                                <Label text="{i18n>generalNote}"/>
                                 <TextArea
                                     value="{dailyLogModel>/selectedLog/GeneralNote}"
                                     growing="true"
@@ -320,9 +320,9 @@
                                     rows="2"
                                     width="100%"
                                     editable="{dailyLogModel>/ui/editMode}"
-                                    placeholder="Enter general notes for this work day..."/>
+                                    placeholder="{i18n>generalNotePlaceholder}"/>
 
-                                <Label text="Safety Note"/>
+                                <Label text="{i18n>safetyNote}"/>
                                 <TextArea
                                     value="{dailyLogModel>/selectedLog/SafeNote}"
                                     growing="true"
@@ -330,9 +330,9 @@
                                     rows="2"
                                     width="100%"
                                     editable="{dailyLogModel>/ui/editMode}"
-                                    placeholder="Enter safety and environment notes..."/>
+                                    placeholder="{i18n>safetyNotePlaceholder}"/>
 
-                                <Label text="Contractor Note"/>
+                                <Label text="{i18n>contractorNote}"/>
                                 <TextArea
                                     value="{dailyLogModel>/selectedLog/ContractorNote}"
                                     growing="true"
@@ -340,7 +340,7 @@
                                     rows="2"
                                     width="100%"
                                     editable="{dailyLogModel>/ui/editMode}"
-                                    placeholder="Enter contractor representative notes..."/>
+                                    placeholder="{i18n>contractorNotePlaceholder}"/>
                             </f:content>
                         </f:SimpleForm>
                     </Panel>
@@ -356,14 +356,14 @@
                 <ToolbarSpacer/>
                 <!-- Save Log -->
                 <Button
-                    text="Save"
+                    text="{i18n>save}"
                     icon="sap-icon://save"
                     type="Emphasized"
                     enabled="{dailyLogModel>/ui/editMode}"
                     press=".onSaveLog"/>
                 <!-- Cancel: discard changes -->
                 <Button
-                    text="Cancel"
+                    text="{i18n>cancel}"
                     type="Transparent"
                     press=".onCancelEdit"/>
             </OverflowToolbar>

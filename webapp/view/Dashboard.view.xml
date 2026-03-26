@@ -20,7 +20,7 @@
 
                     <!-- LEFT COLUMN — Project Overview -->
                     <VBox class="dashboardColumn">
-                        <Title id="secProject" text="Project Overview" level="H4"
+                        <Title id="secProject" text="{i18n>dashboardProjectOverview}" level="H4"
                             class="dashboardSectionTitle"/>
 
                         <HBox class="dashboardCardRow">
@@ -30,13 +30,13 @@
                                 <HBox alignItems="Center" class="dashboardCardHeader">
                                     <core:Icon src="sap-icon://project-definition-triangle" class="dashboardCardIcon iconBlue"/>
                                     <VBox class="sapUiTinyMarginBegin">
-                                        <Title text="My Projects" level="H5"/>
+                                        <Title text="{i18n>dashboardMyProjects}" level="H5"/>
                                     </VBox>
                                 </HBox>
                                 <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
                                     <VBox alignItems="Center">
                                         <Text text="{dashboard>/planningProjects}" class="dashboardBigNumber"/>
-                                        <Text text="Planning Projects" class="dashboardSubLabel"/>
+                                        <Text text="{i18n>dashboardPlanningProjects}" class="dashboardSubLabel"/>
                                     </VBox>
                                 </HBox>
                             </Panel>
@@ -47,13 +47,13 @@
                                 <HBox alignItems="Center" class="dashboardCardHeader">
                                     <core:Icon src="sap-icon://building" class="dashboardCardIcon iconGreen"/>
                                     <VBox class="sapUiTinyMarginBegin">
-                                        <Title text="Project Sites" level="H5"/>
+                                        <Title text="{i18n>dashboardProjectSites}" level="H5"/>
                                     </VBox>
                                 </HBox>
                                 <HBox alignItems="Center" justifyContent="Start" class="dashboardCardBody">
                                     <VBox alignItems="Center">
                                         <Text text="{dashboard>/planningSites}" class="dashboardBigNumber"/>
-                                        <Text text="Planning Sites" class="dashboardSubLabel"/>
+                                        <Text text="{i18n>dashboardPlanningSites}" class="dashboardSubLabel"/>
                                     </VBox>
                                 </HBox>
                             </Panel>
@@ -62,7 +62,7 @@
 
                     <!-- RIGHT COLUMN — Daily Operations -->
                     <VBox class="dashboardColumn">
-                        <Title id="secOps" text="Daily Operations" level="H4"
+                        <Title id="secOps" text="{i18n>dashboardDailyOperations}" level="H4"
                             class="dashboardSectionTitle"/>
 
                         <HBox class="dashboardCardRow">
@@ -72,7 +72,7 @@
                                 <HBox alignItems="Center" class="dashboardCardHeader">
                                     <core:Icon src="sap-icon://weather-proofing" class="dashboardCardIcon iconOrange"/>
                                     <VBox class="sapUiTinyMarginBegin">
-                                        <Title text="Weather Today" level="H5"/>
+                                        <Title text="{i18n>dashboardWeatherToday}" level="H5"/>
                                     </VBox>
                                 </HBox>
                                 <HBox justifyContent="SpaceAround" alignItems="Center" class="dashboardCardBody">
@@ -100,16 +100,16 @@
                 <!-- ════════════════════════════════════════════════════════
                      SECTION 3 · ANALYTICS (SAP VizFrame Charts)
                 ════════════════════════════════════════════════════════ -->
-                <Title id="secAnalytics" text="Analytics" level="H4"
+                <Title id="secAnalytics" text="{i18n>dashboardAnalytics}" level="H4"
                     class="dashboardSectionTitle"/>
 
                 <!-- Filter Bar -->
                 <OverflowToolbar class="dashboardFilterBar" style="border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.07);margin-bottom:0.75rem;padding:0.4rem 1rem;">
                     <core:Icon src="sap-icon://filter" style="color:#5899DA;margin-right:0.5rem;font-size:1rem;"/>
-                    <Label text="Project:" class="sapUiSmallMarginEnd" style="font-weight:600;color:#2c3e50;"/>
+                    <Label text="{i18n>dashboardProjectLabel}" class="sapUiSmallMarginEnd" style="font-weight:600;color:#2c3e50;"/>
                     <ComboBox id="cbProject"
                         width="220px"
-                        placeholder="All Projects"
+                        placeholder="{i18n>dashboardAllProjects}"
                         items="{dashboard>/projects}"
                         change=".onFilterChange"
                         selectionChange=".onFilterChange">
@@ -128,8 +128,8 @@
                         <HBox alignItems="Center" class="dashboardCardHeader">
                             <core:Icon src="sap-icon://pie-chart" class="dashboardCardIcon iconBlue"/>
                             <VBox class="sapUiTinyMarginBegin">
-                                <Title text="WBS Status Distribution" level="H5"/>
-                                <Text text="Breakdown by lifecycle stage" class="dashboardSubLabel"/>
+                                <Title text="{i18n>dashboardWbsStatusDist}" level="H5"/>
+                                <Text text="{i18n>dashboardWbsStatusDesc}" class="dashboardSubLabel"/>
                             </VBox>
                         </HBox>
                         <viz:VizFrame id="chartWbsStatus"
@@ -160,8 +160,8 @@
                         <HBox alignItems="Center" class="dashboardCardHeader">
                             <core:Icon src="sap-icon://bar-chart" class="dashboardCardIcon iconGreen"/>
                             <VBox class="sapUiTinyMarginBegin">
-                                <Title text="WBS Count per Site" level="H5"/>
-                                <Text text="Grouped by status per construction site" class="dashboardSubLabel"/>
+                                <Title text="{i18n>dashboardWbsPerSite}" level="H5"/>
+                                <Text text="{i18n>dashboardWbsPerSiteDesc}" class="dashboardSubLabel"/>
                             </VBox>
                         </HBox>
                         <viz:VizFrame id="chartWbsPerSite"
@@ -199,8 +199,8 @@
                         <HBox alignItems="Center" class="dashboardCardHeader">
                             <core:Icon src="sap-icon://line-chart" class="dashboardCardIcon iconOrange"/>
                             <VBox class="sapUiTinyMarginBegin">
-                                <Title text="Daily Output — Last 14 Days" level="H5"/>
-                                <Text text="Total quantity done per day (all WBS)" class="dashboardSubLabel"/>
+                                <Title text="{i18n>dashboardDailyOutput}" level="H5"/>
+                                <Text text="{i18n>dashboardDailyOutputDesc}" class="dashboardSubLabel"/>
                             </VBox>
                         </HBox>
                         <viz:VizFrame id="chartDailyOutput"
@@ -232,8 +232,8 @@
                             <HBox alignItems="Center">
                                 <core:Icon src="sap-icon://activities" class="dashboardCardIcon iconTeal"/>
                                 <VBox class="sapUiTinyMarginBegin">
-                                    <Title text="Top WBS Completion" level="H5"/>
-                                    <Text text="Done vs. Remaining quantity" class="dashboardSubLabel"/>
+                                    <Title text="{i18n>dashboardTopWbsCompletion}" level="H5"/>
+                                    <Text text="{i18n>dashboardTopWbsCompletionDesc}" class="dashboardSubLabel"/>
                                 </VBox>
                             </HBox>
                             <ComboBox id="cbWbsUnit"

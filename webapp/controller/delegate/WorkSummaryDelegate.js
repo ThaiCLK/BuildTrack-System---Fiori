@@ -167,9 +167,10 @@ sap.ui.define([
         },
 
         formatCompletionRateTitle: function (sTarget, sUnit) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var fTarget = Math.round(parseFloat(sTarget) || 0);
             var sU = sUnit ? " " + sUnit : "";
-            return "Completion Rate (Target: " + fTarget + sU + ")";
+            return oBundle.getText("completionRateTitle", [fTarget, sU]);
         },
 
         formatProgress: function (sActual, sTarget) {
@@ -288,9 +289,17 @@ sap.ui.define([
         },
 
         formatStepLabel: function (iStep, sStatus) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             // UI5 parts might pass objects or strings, ensure iStep is numeric
             var iStepNum = parseInt(iStep);
-            var aLabels = ["Planning", "Pending Open", "Opened", "In Progress", "Pending Close", "Closed"];
+            var aLabels = [
+                oBundle.getText("planningStepLabel"),
+                oBundle.getText("pendingOpenStepLabel"),
+                oBundle.getText("openedStepLabel"),
+                oBundle.getText("inProgressStepLabel"),
+                oBundle.getText("pendingCloseStepLabel"),
+                oBundle.getText("closedStepLabel")
+            ];
             return aLabels[iStepNum - 1] || "";
         },
 
@@ -307,6 +316,8 @@ sap.ui.define([
             var fTotalDone = parseFloat(oWSModel.getProperty("/TotalQtyDone")) || 0;
             var sWbsId = this._sWbsId;
 
+            var oBundle = oView.getModel("i18n").getResourceBundle();
+
             var fnCallAction = function () {
                 var oModel = this.getOwnerComponent().getModel();
                 var oWbsCtx = this.getView().getBindingContext();
@@ -314,7 +325,7 @@ sap.ui.define([
 
                 // Strict status guard for Closing flow
                 if (sStatus !== "IN_PROGRESS") {
-                    sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' mới có thể gửi phê duyệt đóng.");
+                    sap.m.MessageBox.error(oBundle.getText("submitCloseStatusError"));
                     return;
                 }
 
@@ -329,11 +340,11 @@ sap.ui.define([
                     success: function (oData, response) {
                         oView.setBusy(false);
                         if (oData && oData.SUCCESS === false) {
-                            sap.m.MessageBox.error(oData.MESSAGE || "Failed to submit for approval.");
+                            sap.m.MessageBox.error(oData.MESSAGE || oBundle.getText("submitForApprovalError"));
                             return;
                         }
 
-                        sap.m.MessageBox.success(oData.MESSAGE || "Gửi duyệt thành công.", {
+                        sap.m.MessageBox.success(oData.MESSAGE || oBundle.getText("submitForApprovalSuccess"), {
                             onClose: function () {
                                 if (typeof this.onCloseAcceptanceDialog === "function") {
                                     this.onCloseAcceptanceDialog();
@@ -346,7 +357,7 @@ sap.ui.define([
                     }.bind(this),
                     error: function (oError) {
                         oView.setBusy(false);
-                        var sMsg = "Failed to submit for approval.";
+                        var sMsg = oBundle.getText("submitForApprovalError");
                         try {
                             var oErr = JSON.parse(oError.responseText);
                             sMsg = oErr.error.message.value || sMsg;
@@ -358,9 +369,9 @@ sap.ui.define([
 
             if (fTotalDone < fTargetQty) {
                 sap.m.MessageBox.confirm(
-                    "Số liệu công việc thực tế chưa đạt được bằng so với kế hoạch. Bạn có chắc chắn muốn submit không?",
+                    oBundle.getText("submitCloseConfirmQty"),
                     {
-                        title: "Confirm Submission",
+                        title: oBundle.getText("confirmSubmission"),
                         onClose: function (sAction) {
                             if (sAction === sap.m.MessageBox.Action.OK) {
                                 fnCallAction();

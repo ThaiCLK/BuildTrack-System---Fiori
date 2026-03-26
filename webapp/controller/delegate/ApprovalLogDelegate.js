@@ -75,13 +75,14 @@ sap.ui.define([
                 }
                 // Update sign status
                 var oSignStatus = oViewData.getProperty("/signStatus");
-                var signerName = "[Ký]"; // fallback
+                var oBundle = oController.getView().getModel("i18n").getResourceBundle();
+                var signerName = oBundle.getText("signedPlaceholder");
 
                 var oComponent = oController.getOwnerComponent();
                 if (oComponent) {
                     var oUserModel = oComponent.getModel("userModel");
                     if (oUserModel) {
-                        signerName = oUserModel.getProperty("/userName") || oUserModel.getProperty("/userId") || "[Ký]";
+                        signerName = oUserModel.getProperty("/userName") || oUserModel.getProperty("/userId") || oBundle.getText("signedPlaceholder");
                     }
                 }
 
@@ -272,6 +273,7 @@ sap.ui.define([
             };
 
             var formatLogInfo = function (oLog, bIncludeName) {
+                var oBundle = oView.getModel("i18n").getResourceBundle();
                 if (!oLog) return [];
                 var sDateString = formatDate(oLog.CreatedTimestamp);
                 
@@ -286,13 +288,14 @@ sap.ui.define([
             // laneState controls the lane header circle color explicitly (bound in XML via {pfModel>laneState})
             // 'Initial' = default, 'Error' = fully red circle (override when rejected)
             var sDefaultLaneState = "Initial";
+            var oBundle = oView.getModel("i18n").getResourceBundle();
             var aLanes = [
-                { id: "lane0", icon: "sap-icon://status-in-process", label: "Planning",      position: 0, laneState: sDefaultLaneState },
-                { id: "lane1", icon: "sap-icon://paper-plane",        label: "Pending Open",  position: 1, laneState: sDefaultLaneState },
-                { id: "lane2", icon: "sap-icon://accept",             label: "Opened",        position: 2, laneState: sDefaultLaneState },
-                { id: "lane3", icon: "sap-icon://machine",            label: "In Progress",   position: 3, laneState: sDefaultLaneState },
-                { id: "lane4", icon: "sap-icon://paper-plane",        label: "Pending Close", position: 4, laneState: sDefaultLaneState },
-                { id: "lane5", icon: "sap-icon://locked",             label: "Closed",        position: 5, laneState: sDefaultLaneState }
+                { id: "lane0", icon: "sap-icon://status-in-process", label: oBundle.getText("planningStepLabel"),      position: 0, laneState: sDefaultLaneState },
+                { id: "lane1", icon: "sap-icon://paper-plane",        label: oBundle.getText("pendingOpenStepLabel"),  position: 1, laneState: sDefaultLaneState },
+                { id: "lane2", icon: "sap-icon://accept",             label: oBundle.getText("openedStepLabel"),        position: 2, laneState: sDefaultLaneState },
+                { id: "lane3", icon: "sap-icon://machine",            label: oBundle.getText("inProgressStepLabel"),   position: 3, laneState: sDefaultLaneState },
+                { id: "lane4", icon: "sap-icon://paper-plane",        label: oBundle.getText("pendingCloseStepLabel"), position: 4, laneState: sDefaultLaneState },
+                { id: "lane5", icon: "sap-icon://locked",             label: oBundle.getText("closedStepLabel"),        position: 5, laneState: sDefaultLaneState }
             ];
 
             // Default Mapping
@@ -302,31 +305,31 @@ sap.ui.define([
             // State evaluation
             switch (sStatus) {
                 case "PLANNING":
-                    state0 = "Positive"; text0 = "Published";
+                    state0 = "Positive"; text0 = oBundle.getText("nodePublished");
                     break;
                 case "PENDING_OPEN":
-                    state0 = "Positive"; text0 = "Published";
-                    state1 = "Neutral"; text1 = "In Review";
+                    state0 = "Positive"; text0 = oBundle.getText("nodePublished");
+                    state1 = "Neutral"; text1 = oBundle.getText("nodeInReview");
                     break;
                 case "OPENED":
-                    state0 = "Positive"; text0 = "Published";
-                    state1 = "Positive"; text1 = "Approved";
-                    state2 = "Positive"; text2 = "Actived";
+                    state0 = "Positive"; text0 = oBundle.getText("nodePublished");
+                    state1 = "Positive"; text1 = oBundle.getText("nodePublished");
+                    state2 = "Positive"; text2 = oBundle.getText("nodeActived");
                     break;
                 case "IN_PROGRESS":
-                    state0 = "Positive"; text0 = "Published";
-                    state1 = "Positive"; text1 = "Approved";
-                    state2 = "Positive"; text2 = "Actived";
-                    state3 = "Positive"; text3 = "Started";
+                    state0 = "Positive"; text0 = oBundle.getText("nodePublished");
+                    state1 = "Positive"; text1 = oBundle.getText("nodePublished");
+                    state2 = "Positive"; text2 = oBundle.getText("nodeActived");
+                    state3 = "Positive"; text3 = oBundle.getText("nodeStarted");
                     break;
                 case "PENDING_CLOSE":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
-                    text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started";
-                    state4 = "Neutral"; text4 = "In Review";
+                    text0 = oBundle.getText("nodePublished"); text1 = oBundle.getText("nodePublished"); text2 = oBundle.getText("nodeActived"); text3 = oBundle.getText("nodeStarted");
+                    state4 = "Neutral"; text4 = oBundle.getText("nodeInReview");
                     break;
                 case "CLOSED":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive"; state4 = "Positive"; state5 = "Positive";
-                    text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started"; text4 = "Approved"; text5 = "Completed";
+                    text0 = oBundle.getText("nodePublished"); text1 = oBundle.getText("nodePublished"); text2 = oBundle.getText("nodeActived"); text3 = oBundle.getText("nodeStarted"); text4 = oBundle.getText("nodePublished"); text5 = oBundle.getText("nodeCompleted");
                     break;
                 default:
                     state0 = "Neutral"; text0 = "Unknown";
@@ -400,16 +403,16 @@ sap.ui.define([
 
                 // If the overall phase hasn't started yet (Planned state) then show pending
                 if (overallState === "Planned") {
-                    return { state: "Planned", text: "Pending", texts: [] };
+                    return { state: "Planned", text: oBundle.getText("actionStatusPending"), texts: [] };
                 }
 
                 if (oLog) {
                     var act2 = (oLog.Action || "").toUpperCase().trim();
                     // Show correct state per what this person actually did
                     if (isApproveAction(act2)) {
-                        return { state: "Positive", text: "Approved", texts: formatLogInfo(oLog, true) };
+                        return { state: "Positive", text: oBundle.getText("actionStatusApproved"), texts: formatLogInfo(oLog, true) };
                     } else {
-                        return { state: "Negative", text: "Rejected", texts: formatLogInfo(oLog, true) };
+                        return { state: "Negative", text: oBundle.getText("actionStatusRejected"), texts: formatLogInfo(oLog, true) };
                     }
                 } else {
                     // No log for this level — show neutral, no personal info
@@ -422,12 +425,12 @@ sap.ui.define([
             if (oCtx) {
                 var dCreated = oCtx.getProperty("CreatedTimestamp");
                 var dPlannedEnd = oCtx.getProperty("EndDate");
-                if (dCreated) aPlanningTexts.push("Created On: " + formatDate(dCreated));
-                if (dPlannedEnd) aPlanningTexts.push("Planned End: " + formatDate(dPlannedEnd));
+                if (dCreated) aPlanningTexts.push(oBundle.getText("nodeCreatedOn", [formatDate(dCreated)]));
+                if (dPlannedEnd) aPlanningTexts.push(oBundle.getText("nodePlannedEnd", [formatDate(dPlannedEnd)]));
             }
 
             var aNodes = [
-                { id: "node0", lane: "lane0", title: "Kế hoạch", state: state0, stateText: text0, texts: aPlanningTexts, children: ["node1_1"] }
+                { id: "node0", lane: "lane0", title: oBundle.getText("nodePlanning"), state: state0, stateText: text0, texts: aPlanningTexts, children: ["node1_1"] }
             ];
 
             // Pending Open Nodes (3 Levels)
@@ -437,7 +440,7 @@ sap.ui.define([
                 aNodes.push({
                     id: "node1_" + lvl,
                     lane: "lane1",
-                    title: "Trình duyệt Mở (Cấp " + lvl + ")",
+                    title: oBundle.getText("nodeApprovedLevel", [lvl]),
                     state: info.state,
                     stateText: info.text,
                     texts: info.texts,
@@ -446,14 +449,14 @@ sap.ui.define([
             });
 
             // Opened Node
-            aNodes.push({ id: "node2", lane: "lane2", title: "Đã Mở", state: state2, stateText: text2, texts: getInfoForLane(2, false), children: ["node3"] });
+            aNodes.push({ id: "node2", lane: "lane2", title: oBundle.getText("nodeOpened"), state: state2, stateText: text2, texts: getInfoForLane(2, false), children: ["node3"] });
             
             // In Progress Node
             var aInProgressTexts = [];
             if (oCtx && oCtx.getProperty("StartActual")) {
                 aInProgressTexts = [formatDate(oCtx.getProperty("StartActual"))];
             }
-            aNodes.push({ id: "node3", lane: "lane3", title: "Đang Thi công", state: state3, stateText: text3, texts: aInProgressTexts, children: ["node4_1"] });
+            aNodes.push({ id: "node3", lane: "lane3", title: oBundle.getText("nodeInProgress"), state: state3, stateText: text3, texts: aInProgressTexts, children: ["node4_1"] });
 
             // Pending Close Nodes (3 Levels)
             [1, 2, 3].forEach(function (lvl) {
@@ -462,7 +465,7 @@ sap.ui.define([
                 aNodes.push({
                     id: "node4_" + lvl,
                     lane: "lane4",
-                    title: "Nghiệm thu Đóng (Cấp " + lvl + ")",
+                    title: oBundle.getText("nodePendingCloseLevel", [lvl]),
                     state: info.state,
                     stateText: info.text,
                     texts: info.texts,
@@ -471,7 +474,7 @@ sap.ui.define([
             });
 
             // Closed Node
-            aNodes.push({ id: "node5", lane: "lane5", title: "Hoàn thành", state: state5, stateText: text5, texts: getInfoForLane(5, false), children: [] });
+            aNodes.push({ id: "node5", lane: "lane5", title: oBundle.getText("nodeCompleted"), state: state5, stateText: text5, texts: getInfoForLane(5, false), children: [] });
 
             if (oPfModel) {
                 oPfModel.setData({
@@ -492,10 +495,11 @@ sap.ui.define([
         /* =========================================================== */
 
         formatApprovalActionText: function (sAction) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             switch (sAction) {
-                case "SUBMITTED": return "Chờ phê duyệt";
-                case "APPROVED": return "Đã phê duyệt";
-                case "REJECTED": return "Từ chối";
+                case "SUBMITTED": return oBundle.getText("actionStatusPending");
+                case "APPROVED": return oBundle.getText("actionStatusApproved");
+                case "REJECTED": return oBundle.getText("actionStatusRejected");
                 default: return sAction || "";
             }
         },

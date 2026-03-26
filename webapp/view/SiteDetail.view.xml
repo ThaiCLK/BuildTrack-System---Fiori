@@ -3,19 +3,19 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:core="sap.ui.core">
-    <Page title="Site Detail: {SiteName}" showNavButton="true" navButtonPress="onNavBack">
+    <Page title="{parts: [{path: 'SiteName'}], formatter: '.formatSiteDetailTitle'}" showNavButton="true" navButtonPress="onNavBack">
         <content>
             <IconTabBar id="idIconTabBar" class="sapUiResponsiveContentPadding">
                 <items>
-                    <IconTabFilter icon="sap-icon://hint" text="Thông tin">
+                    <IconTabFilter icon="sap-icon://hint" text="{i18n>siteInfoTab}">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.SiteGeneralInfo" type="XML" />
                     </IconTabFilter>
                     
-                    <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="WBS &amp; Tiến độ">
+                    <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="{i18n>siteWbsTab}">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBS" type="XML" />
                     </IconTabFilter>
 
-                    <IconTabFilter icon="sap-icon://complete" text="Chờ phê duyệt" visible="{= ${userModel>/userId} !== 'LEARN-549' }">
+                    <IconTabFilter icon="sap-icon://complete" text="{i18n>sitePendingApprovalTab}" visible="{= ${userModel>/userId} !== 'LEARN-549' }">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBSPendingApproval" type="XML" />
                     </IconTabFilter>
                 </items>

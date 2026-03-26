@@ -5,7 +5,7 @@
     xmlns:f="sap.f"
     xmlns:fb="sap.ui.comp.filterbar">
     <Page 
-        title="Site List — Project: {ProjectName}" 
+        title="{parts: [{path: 'ProjectName'}], formatter: '.formatSiteListTitle'}" 
         showNavButton="true" 
         navButtonPress="onNavBack">
         <content>
@@ -16,39 +16,39 @@
                 search="onFilterSearch"
                 clear="onFilterClear">
                 <fb:filterGroupItems>
-                    <fb:FilterGroupItem name="SiteCode" label="Site Code" groupName="Basic" visibleInFilterBar="true">
+                    <fb:FilterGroupItem name="SiteCode" label="{i18n>siteCode}" groupName="Basic" visibleInFilterBar="true">
                         <fb:control>
                             <Input id="fbSiteCode"
-                                placeholder="Select Site Code"
+                                placeholder="{i18n>selectSiteCode}"
                                 showValueHelp="true"
                                 valueHelpRequest="onValueHelpSiteCodeRequest"/>
                         </fb:control>
                     </fb:FilterGroupItem>
-                    <fb:FilterGroupItem name="SiteName" label="Site Name" groupName="Basic" visibleInFilterBar="true">
+                    <fb:FilterGroupItem name="SiteName" label="{i18n>siteName}" groupName="Basic" visibleInFilterBar="true">
                         <fb:control>
                             <Input id="fbSiteName"
-                                placeholder="Select Site Name"
+                                placeholder="{i18n>selectSiteName}"
                                 showValueHelp="true"
                                 valueHelpRequest="onValueHelpSiteNameRequest"/>
                         </fb:control>
                     </fb:FilterGroupItem>
-                    <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
+                    <fb:FilterGroupItem name="Status" label="{i18n>status}" groupName="Basic" visibleInFilterBar="true">
                         <fb:control>
                             <Input id="fbSiteStatus"
-                                placeholder="Select Status"
+                                placeholder="{i18n>selectStatus}"
                                 showValueHelp="true"
                                 valueHelpRequest="onValueHelpSiteStatusRequest"/>
                         </fb:control>
                     </fb:FilterGroupItem>
-                    <fb:FilterGroupItem name="Address" label="Address" groupName="Basic" visibleInFilterBar="true">
+                    <fb:FilterGroupItem name="Address" label="{i18n>address}" groupName="Basic" visibleInFilterBar="true">
                         <fb:control>
                             <Input id="fbSiteAddress"
-                                placeholder="Select Address"
+                                placeholder="{i18n>selectAddress}"
                                 showValueHelp="true"
                                 valueHelpRequest="onValueHelpSiteAddressRequest"/>
                         </fb:control>
                     </fb:FilterGroupItem>
-                    <fb:FilterGroupItem name="CreatedOn" label="Created On" groupName="Basic" visibleInFilterBar="true">
+                    <fb:FilterGroupItem name="CreatedOn" label="{i18n>createdOn}" groupName="Basic" visibleInFilterBar="true">
                         <fb:control>
                             <DatePicker
                                 id="fbSiteCreatedOn"
@@ -63,26 +63,26 @@
             <Table 
                 id="siteTable"
                 items="{ToSites}"
-                noDataText="No sites found.">
+                noDataText="{i18n>noSitesFound}">
                 <headerToolbar>
                     <OverflowToolbar>
-                        <Title text="Site List" level="H3"/>
+                        <Title text="{i18n>siteList}" level="H3"/>
                         <ToolbarSpacer/>
                         <Button 
                             id="btnAddSite"
-                            text="Add Site"
+                            text="{i18n>addSite}"
                             type="Emphasized"
                             icon="sap-icon://add"
                             press=".onAddSite"/>
                     </OverflowToolbar>
                 </headerToolbar>
                 <columns>
-                    <Column><Text text="Site Code" /></Column>
-                    <Column><Text text="Site Name" /></Column>
-                    <Column><Text text="Address" /></Column>
-                    <Column><Text text="Status" /></Column>
-                    <Column><Text text="Created On" /></Column>
-                    <Column width="8rem"><Text text="Actions" /></Column>
+                    <Column><Text text="{i18n>siteCode}" /></Column>
+                    <Column><Text text="{i18n>siteName}" /></Column>
+                    <Column><Text text="{i18n>address}" /></Column>
+                    <Column><Text text="{i18n>status}" /></Column>
+                    <Column><Text text="{i18n>createdOn}" /></Column>
+                    <Column width="8rem"><Text text="{i18n>actions}" /></Column>
                 </columns>
                 <items>
                     <ColumnListItem type="Navigation" press=".onSitePress">
@@ -101,8 +101,8 @@
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
                             }" />
                             <HBox>
-                                <Button icon="sap-icon://edit"   type="Transparent" press=".onEditSite"   />
-                                <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteSite" />
+                                <Button icon="sap-icon://edit"   type="Transparent" press=".onEditSite" tooltip="{i18n>editSite}" />
+                                <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteSite" tooltip="{i18n>deleteSite}" />
                             </HBox>
                         </cells>
                     </ColumnListItem>

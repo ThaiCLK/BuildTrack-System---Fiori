@@ -166,7 +166,7 @@ sap.ui.define([
                         }
                     });
                     aUnits.sort(function(a,b) { return a.Unit.localeCompare(b.Unit); });
-                    aUnits.unshift({ Unit: "ALL", DisplayText: "All Units" });
+                    aUnits.unshift({ Unit: "ALL", DisplayText: that.getView().getModel("i18n").getResourceBundle().getText("dashboardAllUnits") });
                     oDash.setProperty("/wbsUnitList", aUnits);
 
                     that._checkAndBuildCharts();
@@ -210,26 +210,26 @@ sap.ui.define([
                     w.TotalQuantityDone = sumDone;
                 }.bind(this));
             }
+            
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             var formatStatus = function (s) {
                 var m = {
-                    "PLANNING": "Planning",
-                    "PENDING_OPEN": "Pending Open",
-                    "OPENED": "Opened",
-                    "IN_PROGRESS": "In Progress",
-                    "PENDING_CLOSE": "Pending Close",
-                    "CLOSED": "Closed",
-                    "REJECTED": "Rejected"
+                    "PLANNING": oBundle.getText("planning"),
+                    "OPENED": oBundle.getText("opened"),
+                    "IN_PROGRESS": oBundle.getText("inProgress"),
+                    "CLOSED": oBundle.getText("closed"),
+                    "REJECTED": oBundle.getText("rejected")
                 };
                 return m[s] || s;
             };
 
             var aStatusOrder = [
-                "Planning",
-                "Opened",
-                "In Progress",
-                "Closed",
-                "Rejected"
+                oBundle.getText("planning"),
+                oBundle.getText("opened"),
+                oBundle.getText("inProgress"),
+                oBundle.getText("closed"),
+                oBundle.getText("rejected")
             ];
 
             // Filter sites by project
@@ -320,7 +320,7 @@ sap.ui.define([
             });
             // If no log data, show a friendly empty message placeholder
             if (aDailyChart.length === 0) {
-                aDailyChart = [{ date: "No Data", quantity: 0 }];
+                aDailyChart = [{ date: "---", quantity: 0 }];
             }
             oDash.setProperty("/dailyOutputChart", aDailyChart);
 
@@ -346,8 +346,8 @@ sap.ui.define([
                 // Ensure full name to prevent category grouping issues in VizFrame
                 var sName = w.WbsName || w.WbsCode || "WBS";
 
-                aProgressChart.push({ wbsName: sName, type: "Done", value: Math.round(fDone * 100) / 100 });
-                aProgressChart.push({ wbsName: sName, type: "Remaining", value: Math.round(fRem * 100) / 100 });
+                aProgressChart.push({ wbsName: sName, type: oBundle.getText("done"), value: Math.round(fDone * 100) / 100 });
+                aProgressChart.push({ wbsName: sName, type: oBundle.getText("remaining"), value: Math.round(fRem * 100) / 100 });
             });
             if (aProgressChart.length === 0) {
                 aProgressChart = [{ wbsName: "No Data", type: "Done", value: 0 }];

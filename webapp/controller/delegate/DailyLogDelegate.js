@@ -212,6 +212,7 @@ sap.ui.define([
             var oCtx = this.getView().getBindingContext();
             if (!oCtx) return false;
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var sStatus = oCtx.getProperty("Status");
             var aAllowed = ["IN_PROGRESS"];
             
@@ -223,12 +224,11 @@ sap.ui.define([
 
             if (aAllowed.indexOf(sStatus) === -1) {
                 var sStatusText = this.formatWbsStatusText(sStatus);
-                var sActionText = bIsDelete ? "xóa" : "ghi";
+                var sActionText = bIsDelete ? oBundle.getText("verifyStatusActionDelete") : oBundle.getText("verifyStatusActionWrite");
                 var sAllowedText = bIsDelete ? "'In Progress', 'Pending Open' hoặc 'Planning'" : "'In Progress'";
 
                 MessageBox.warning(
-                    "Không thể " + sActionText + " nhật ký cho WBS " + sStatusText + ".\n\n" +
-                    "Chỉ cho phép " + sActionText + " ở trạng thái " + sAllowedText + "."
+                    oBundle.getText("verifyStatusError", [sActionText, sStatusText, sAllowedText])
                 );
                 return false;
             }
@@ -266,11 +266,12 @@ sap.ui.define([
         },
 
         onExportExcel: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var oTable = this.byId("idDailyLogList");
             var aSelectedItems = oTable ? oTable.getSelectedItems() : [];
 
             if (!aSelectedItems || aSelectedItems.length === 0) {
-                MessageToast.show("Please select at least one log entry first.");
+                MessageToast.show(oBundle.getText("selectLogsForExport"));
                 return;
             }
 
@@ -364,7 +365,8 @@ sap.ui.define([
                 var oFile = oEvent.target.files[0];
                 if (!oFile) { return; }
 
-                MessageToast.show("Importing " + oFile.name + "...");
+                var oBundle = that.getView().getModel("i18n").getResourceBundle();
+                MessageToast.show(oBundle.getText("importingFile", [oFile.name]));
 
                 DailyLogExcelHandler.parseExcelFile(oFile).then(function (oParsed) {
                     var aLogs = DailyLogExcelHandler.transformExcelData(
@@ -374,13 +376,13 @@ sap.ui.define([
                     );
 
                     if (!aLogs || aLogs.length === 0) {
-                        MessageToast.show("No valid data found in the file.");
+                        MessageToast.show(oBundle.getText("noValidDataFound"));
                         return;
                     }
                     that.getView().getModel("importPreviewModel").setProperty("/logs", aLogs);
                     that._openImportPreviewDialog();
                 }).catch(function (e) {
-                    MessageBox.error("Failed to parse Excel file: " + e.message);
+                    MessageBox.error(oBundle.getText("parseExcelError", [e.message]));
                 });
             };
             oFileInput.click();
@@ -424,8 +426,9 @@ sap.ui.define([
             var oTable = this.byId("importPreviewTable");
             var aSelectedItems = oTable ? oTable.getSelectedItems() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aSelectedItems.length === 0) {
-                MessageToast.show("Please select at least one log to import.");
+                MessageToast.show(oBundle.getText("selectLogsToImport"));
                 return;
             }
 
@@ -434,7 +437,7 @@ sap.ui.define([
             });
 
             this.byId("importPreviewDialog").close();
-            MessageToast.show("Importing " + aSelectedLogs.length + " selected logs...");
+            MessageToast.show(oBundle.getText("importingLogsSequentially", [aSelectedLogs.length]));
             this._importLogsSequentially(aSelectedLogs, 0, 0);
         },
 
@@ -453,7 +456,8 @@ sap.ui.define([
         _importLogsSequentially: function (aLogs, iIndex, iSuccess) {
             var that = this;
             if (iIndex >= aLogs.length) {
-                MessageToast.show(iSuccess + " log(s) imported successfully!");
+                var oBundle = this.getView().getModel("i18n").getResourceBundle();
+                MessageToast.show(oBundle.getText("logsImportedSuccess", [iSuccess]));
                 this._bindDailyLogList(this._sWbsId);
                 this._updateWbsActualDates(this._sWbsId);
                 this._loadWorkSummary(this._sWbsId);
@@ -519,16 +523,17 @@ sap.ui.define([
                 return;
             }
             var that = this;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var oUIModel = this.getView().getModel("dailyLogModel");
             var sLogId = oUIModel.getProperty("/selectedLog/LogId");
 
             if (!sLogId) {
-                MessageToast.show("No entry selected.");
+                MessageToast.show(oBundle.getText("selectLogToViewDetail"));
                 return;
             }
 
-            MessageBox.confirm("Are you sure you want to delete this log entry?", {
-                title: "Delete Confirmation",
+            MessageBox.confirm(oBundle.getText("deleteLogConfirm"), {
+                title: oBundle.getText("deleteLogTitle"),
                 onClose: function (sAction) {
                     if (sAction !== MessageBox.Action.OK) { return; }
 
@@ -540,10 +545,10 @@ sap.ui.define([
                             that._bindDailyLogList(that._sWbsId);
                             that._updateWbsActualDates(that._sWbsId);
                             that._loadWorkSummary(that._sWbsId);
-                            MessageToast.show("Log entry deleted.");
+                            MessageToast.show(oBundle.getText("logDeletedSuccess"));
                         },
                         error: function () {
-                            MessageBox.error("Could not delete the log entry. Please try again.");
+                            MessageBox.error(oBundle.getText("deleteLogError"));
                         }
                     });
                 }
@@ -555,16 +560,17 @@ sap.ui.define([
                 return;
             }
             var that = this;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var oTable = this.byId("idDailyLogList");
             var aSelectedItems = oTable.getSelectedItems();
 
             if (!aSelectedItems || aSelectedItems.length === 0) {
-                MessageToast.show("No logs selected.");
+                MessageToast.show(oBundle.getText("noLogsSelected"));
                 return;
             }
 
-            MessageBox.confirm("Are you sure you want to delete " + aSelectedItems.length + " selected log(s)?", {
-                title: "Confirm Batch Delete",
+            MessageBox.confirm(oBundle.getText("deleteMultipleLogsConfirm", [aSelectedItems.length]), {
+                title: oBundle.getText("deleteMultipleLogsTitle"),
                 onClose: function (sAction) {
                     if (sAction !== MessageBox.Action.OK) { return; }
 
@@ -587,7 +593,7 @@ sap.ui.define([
                             that._bindDailyLogList(that._sWbsId);
                             that._updateWbsActualDates(that._sWbsId);
                             that._loadWorkSummary(that._sWbsId);
-                            MessageToast.show("Deleted " + iSuccess + " out of " + iTotal + " logs.");
+                            MessageToast.show(oBundle.getText("deleteMultipleLogsResult", [iSuccess, iTotal]));
                             return;
                         }
 
@@ -685,7 +691,8 @@ sap.ui.define([
         },
 
         onSaveLog: function () {
-            this._persistLog("Log saved successfully.");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            this._persistLog(oBundle.getText("dailyLogSaveSuccess"));
         },
 
         _persistLog: function (sToast) {
@@ -712,6 +719,7 @@ sap.ui.define([
                 ContractorNote: oLog.ContractorNote || ""
             };
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var fnContinueSave = function () {
                 oUIModel.setProperty("/ui/busy", true);
                 var fnAfterLog = function (sLogId) {
@@ -734,7 +742,7 @@ sap.ui.define([
                         },
                         error: function () {
                             oUIModel.setProperty("/ui/busy", false);
-                            MessageBox.error("Could not save the log entry. Please try again.");
+                            MessageBox.error(oBundle.getText("dailyLogSaveError"));
                         }
                     });
                 } else {
@@ -744,7 +752,7 @@ sap.ui.define([
                         },
                         error: function () {
                             oUIModel.setProperty("/ui/busy", false);
-                            MessageBox.error("Could not update the log entry. Please try again.");
+                            MessageBox.error(oBundle.getText("dailyLogSaveError"));
                         }
                     });
                 }
@@ -772,14 +780,14 @@ sap.ui.define([
                     }
 
                     if (bDuplicate) {
-                        MessageBox.error("A Daily Log already exists for this date. Please select a different date.");
+                        MessageBox.error(oBundle.getText("duplicateLogDateError"));
                     } else {
                         fnContinueSave();
                     }
                 },
                 error: function () {
                     oUIModel.setProperty("/ui/busy", false);
-                    MessageBox.error("Could not validate Log Date. Please try again.");
+                    MessageBox.error(oBundle.getText("logDateValidationError"));
                 }
             });
         },

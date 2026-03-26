@@ -9,10 +9,20 @@
                 <Bar class="dashboardHeader">
                     <contentLeft>
                         <HBox alignItems="Center">
-                            <Button icon="sap-icon://home" text="Home" type="Transparent" press=".onNavToDashboard" class="dashboardHeaderBtn"/>
+                            <Button icon="sap-icon://home" text="{i18n>home}" type="Transparent" press=".onNavToDashboard" class="dashboardHeaderBtn"/>
                         </HBox>
                     </contentLeft>
                     <contentRight>
+                        <MenuButton icon="sap-icon://world" tooltip="{i18n>language}" class="dashboardHeaderBtn">
+                            <menu>
+                                <Menu itemSelected=".onLanguageSelect">
+                                    <items>
+                                        <MenuItem key="en" text="{i18n>english}" icon="sap-icon://flag-2" />
+                                        <MenuItem key="vi" text="{i18n>vietnamese}" icon="sap-icon://flag-2" />
+                                    </items>
+                                </Menu>
+                            </menu>
+                        </MenuButton>
                         <Button icon="sap-icon://customer" type="Transparent" press=".onPressProfile" class="dashboardHeaderBtn"/>
                     </contentRight>
                 </Bar>

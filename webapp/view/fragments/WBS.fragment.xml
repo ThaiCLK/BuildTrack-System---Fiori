@@ -5,47 +5,47 @@
 
     <!-- Toolbar WBS CRUD -->
     <OverflowToolbar style="Clear" class="sapUiSmallMarginBottom">
-        <Title text="WBS &amp; Gantt Schedule" level="H4"/>
+        <Title text="{i18n>wbsGanttSchedule}" level="H4"/>
         <ToolbarSpacer/>
         <Button
             id="btnSubmitOpenWbs"
-            text="Gửi duyệt Mở"
+            text="{i18n>submitOpenApproval}"
             icon="sap-icon://sys-enter-2"
             type="Accept"
             press=".onSubmitOpenWbsApproval"
             visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
-            tooltip="Gửi duyệt yêu cầu Mở WBS"/>
+            tooltip="{i18n>submitOpenApprovalTooltip}"/>
         <Button
             id="btnSubmitCloseWbs"
-            text="Gửi duyệt Đóng"
+            text="{i18n>submitCloseApproval}"
             icon="sap-icon://locked"
             type="Accept"
             press=".onSubmitCloseWbsApproval"
             visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
-            tooltip="Gửi duyệt yêu cầu Đóng (Nghiệm thu) WBS"/>
+            tooltip="{i18n>submitCloseApprovalTooltip}"/>
         <Button
             id="btnRunWbs"
-            text="Run WBS"
+            text="{i18n>runWbs}"
             icon="sap-icon://play"
             type="Emphasized"
             press=".onRunWbs"
-            tooltip="Set selected WBS to In Progress"/>
+            tooltip="{i18n>runWbsTooltip}"/>
         <Button
             id="btnAddWbs"
-            text="Create WBS"
+            text="{i18n>createWbs}"
             icon="sap-icon://add"
             type="Default"
             press=".onAddWbs"
-            tooltip="Create root WBS, or child WBS if a row is selected"/>
+            tooltip="{i18n>createWbsTooltip}"/>
         <Button
             id="btnEditWbs"
-            text="Edit"
+            text="{i18n>edit}"
             icon="sap-icon://edit"
             type="Default"
             press=".onEditWbs"/>
         <Button
             id="btnDeleteWbs"
-            text="Delete"
+            text="{i18n>delete}"
             icon="sap-icon://delete"
             type="Reject"
             press=".onDeleteWbs"/>
@@ -61,7 +61,7 @@
 
         <t:columns>
             <t:Column width="15rem">
-                <t:label><Label text="Work progress" design="Bold"/></t:label>
+                <t:label><Label text="{i18n>workProgress}" design="Bold"/></t:label>
                 <t:template>
                     <HBox alignItems="Center">
                         <core:Icon src="{= ${viewData>Type} === 'WBS' ? 'sap-icon://folder-blank' : 'sap-icon://activity-items'}"
@@ -73,7 +73,7 @@
             </t:Column>
 
             <t:Column width="8rem" hAlign="Center">
-                <t:label><Label text="Status"/></t:label>
+                <t:label><Label text="{i18n>status}"/></t:label>
                 <t:template>
                     <ObjectStatus
                         text="{path: 'viewData>Status', formatter: '.formatWbsStatusText'}"
@@ -82,14 +82,14 @@
             </t:Column>
 
             <t:Column width="6rem" hAlign="Center">
-                <t:label><Label text="Start"/></t:label>
+                <t:label><Label text="{i18n>start}"/></t:label>
                 <t:template>
                     <Text text="{path: 'viewData>StartDate', formatter: '.formatDate'}"/>
                 </t:template>
             </t:Column>
 
             <t:Column width="6rem" hAlign="Center">
-                <t:label><Label text="End"/></t:label>
+                <t:label><Label text="{i18n>end}"/></t:label>
                 <t:template>
                     <Text text="{path: 'viewData>EndDate', formatter: '.formatDate'}"/>
                 </t:template>

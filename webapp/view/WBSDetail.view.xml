@@ -4,11 +4,11 @@
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
     xmlns:form="sap.ui.layout.form">
-    <Page title="WBS Detail: {WbsName}" showNavButton="true" navButtonPress="onNavBack">
+    <Page title="{parts: [{path: 'WbsName'}], formatter: '.formatWbsDetailTitle'}" showNavButton="true" navButtonPress="onNavBack">
         <content>
             <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding">
                 <items>
-                    <IconTabFilter icon="sap-icon://hint" text="Thông tin" key="infoTab">
+                    <IconTabFilter icon="sap-icon://hint" text="{i18n>siteInfoTab}" key="infoTab">
                         
                         <form:SimpleForm 
                             editable="{viewData>/editMode}"
@@ -20,52 +20,52 @@
                             singleContainerFullSize="false">
                             <form:toolbar>
                                 <Toolbar>
-                                    <Title text="Work Item Details" />
+                                    <Title text="{i18n>workItemDetails}" />
                                     <ToolbarSpacer />
-                                    <Button id="btnEditWbs" icon="sap-icon://edit" text="Edit" press=".onEditWbs" visible="{= !${viewData>/editMode} }" />
-                                    <Button id="btnSaveWbs" icon="sap-icon://save" text="Save" type="Emphasized" press=".onSaveWbs" visible="{viewData>/editMode}" />
-                                    <Button id="btnCancelWbs" icon="sap-icon://sys-cancel" text="Cancel" press=".onCancelWbs" visible="{viewData>/editMode}" />
+                                    <Button id="btnEditWbs" icon="sap-icon://edit" text="{i18n>edit}" press=".onEditWbs" visible="{= !${viewData>/editMode} }" />
+                                    <Button id="btnSaveWbs" icon="sap-icon://save" text="{i18n>save}" type="Emphasized" press=".onSaveWbs" visible="{viewData>/editMode}" />
+                                    <Button id="btnCancelWbs" icon="sap-icon://sys-cancel" text="{i18n>cancel}" press=".onCancelWbs" visible="{viewData>/editMode}" />
                                 </Toolbar>
                             </form:toolbar>
                             <form:content>
                                 
-                                <core:Title text="Identification" />
+                                <core:Title text="{i18n>identification}" />
                                 
-                                <Label text="WBS Name" design="Bold" />
+                                <Label text="{i18n>name}" design="Bold" />
                                 <VBox width="100%">
                                     <Input id="inWbsName" value="{WbsName}" visible="{viewData>/editMode}" />
                                     <Text text="{WbsName}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="WBS Code" />
+                                <Label text="{i18n>wbsCode}" />
                                 <VBox width="100%">
                                     <Input id="inWbsCode" value="{WbsCode}" visible="{viewData>/editMode}" />
                                     <Text text="{WbsCode}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <core:Title text="Schedule (Planned vs Actual)" />
+                                <core:Title text="{i18n>schedulePlannedVsActual}" />
 
-                                <Label text="Planned Start" />
+                                <Label text="{i18n>plannedStart}" />
                                 <VBox width="100%">
                                     <DatePicker id="inWbsStartDate" value="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
                                     <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="Planned End" />
+                                <Label text="{i18n>plannedEnd}" />
                                 <VBox width="100%">
                                     <DatePicker id="inWbsEndDate" value="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
                                     <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="Actual Start" />
+                                <Label text="{i18n>actualStart}" />
                                 <Text text="{path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
 
-                                <Label text="Actual End" />
+                                <Label text="{i18n>actualEnd}" />
                                 <Text text="{path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
 
-                                <core:Title text="Metrics &amp; Status" />
+                                <core:Title text="{i18n>metricsAndStatus}" />
 
-                                <Label text="Quantity" />
+                                <Label text="{i18n>quantity}" />
                                 <VBox width="100%">
                                     <Input id="inWbsQuantity" value="{Quantity}" description="{UnitCode}" visible="{viewData>/editMode}" type="Number"/>
                                     <ObjectNumber
@@ -79,15 +79,15 @@
                                         state="None" />
                                 </VBox>
 
-                                <Label text="Status" />
+                                <Label text="{i18n>status}" />
                                 <VBox width="100%">
                                     <Select id="inWbsStatus" selectedKey="{Status}" visible="{viewData>/editMode}" width="100%">
-                                        <core:Item key="PLANNING" text="Planning" />
-                                        <core:Item key="PENDING_OPEN" text="Pending Open" />
-                                        <core:Item key="OPENED" text="Opened" />
-                                        <core:Item key="IN_PROGRESS" text="In Progress" />
-                                        <core:Item key="PENDING_CLOSE" text="Pending Close" />
-                                        <core:Item key="CLOSED" text="Closed" />
+                                        <core:Item key="PLANNING" text="{i18n>planningStatus}" />
+                                        <core:Item key="PENDING_OPEN" text="{i18n>pendingOpenStatus}" />
+                                        <core:Item key="OPENED" text="{i18n>openedStatus}" />
+                                        <core:Item key="IN_PROGRESS" text="{i18n>inProgressStatus}" />
+                                        <core:Item key="PENDING_CLOSE" text="{i18n>pendingCloseStatus}" />
+                                        <core:Item key="CLOSED" text="{i18n>closedStatus}" />
                                     </Select>
                                     <ObjectStatus 
                                         visible="{= !${viewData>/editMode} }"
@@ -103,7 +103,7 @@
                         <form:SimpleForm
                             editable="{viewData>/editMode}"
                             layout="ResponsiveGridLayout"
-                            title="Work Location"
+                            title="{i18n>workLocation}"
                             labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
                             adjustLabelSpan="false"
                             emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
@@ -112,21 +112,21 @@
                             class="sapUiSmallMarginTop"
                             visible="{= !!${locationModel>/LocationName} || ${viewData>/editMode} }">
                             <form:content>
-                                <core:Title text="Location" />
+                                <core:Title text="{i18n>location}" />
 
-                                <Label text="Location Name" design="Bold" />
+                                <Label text="{i18n>locationName}" design="Bold" />
                                 <VBox width="100%">
                                     <Input value="{locationModel>/LocationName}" visible="{viewData>/editMode}" />
                                     <Text text="{locationModel>/LocationName}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="Location Code" />
+                                <Label text="{i18n>locationCode}" />
                                 <VBox width="100%">
                                     <Input value="{locationModel>/LocationCode}" visible="{viewData>/editMode}" />
                                     <Text text="{locationModel>/LocationCode}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="Location Type" />
+                                <Label text="{i18n>locationType}" />
                                 <VBox width="100%">
                                     <Input value="{locationModel>/LocationType}" visible="{viewData>/editMode}" />
                                     <ObjectStatus
@@ -135,9 +135,9 @@
                                         state="{= ${locationModel>/LocationType} === 'FLOOR' ? 'Information' : ${locationModel>/LocationType} === 'ZONE' ? 'Success' : ${locationModel>/LocationType} === 'SHAFT' ? 'Warning' : 'None' }"/>
                                 </VBox>
 
-                                <core:Title text="Position (m)" />
+                                <core:Title text="{i18n>positionMetric}" />
 
-                                <Label text="Horizontal Range" />
+                                <Label text="{i18n>horizontalRange}" />
                                 <VBox width="100%">
                                     <HBox visible="{viewData>/editMode}">
                                         <Input value="{locationModel>/PosStart}" width="45%" type="Number" />
@@ -147,7 +147,7 @@
                                     <Text text="{locationModel>/PosStart} → {locationModel>/PosEnd} {locationModel>/UnitCode}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="Vertical Range" />
+                                <Label text="{i18n>verticalRange}" />
                                 <VBox width="100%">
                                     <HBox visible="{viewData>/editMode}">
                                         <Input value="{locationModel>/PosBot}" width="45%" type="Number" />
@@ -161,14 +161,14 @@
 
                     </IconTabFilter>
                     
-                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="Nhật ký thi công" visible="{path: 'ParentId', formatter: '.isChildNode'}">
+                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="{i18n>dailyLogTab}" visible="{path: 'ParentId', formatter: '.isChildNode'}">
                         <!-- Fragment được include trực tiếp — không cần lazy load -->
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.DailyLog" type="XML"/>
                     </IconTabFilter>
-                    <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="Tổng hợp" key="workSummaryTab">
+                    <IconTabFilter id="idWorkSummaryTab" icon="sap-icon://manager-insight" text="{i18n>workSummaryTab}" key="workSummaryTab">
                          <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WorkSummary" type="XML" />
                     </IconTabFilter>
-                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="Nhật ký phê duyệt" key="approvalLogTab">
+                    <IconTabFilter id="idApprovalLogTab" icon="sap-icon://approvals" text="{i18n>approvalLogTab}" key="approvalLogTab">
                          <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.ApprovalLog" type="XML" />
                     </IconTabFilter>
                 </items>

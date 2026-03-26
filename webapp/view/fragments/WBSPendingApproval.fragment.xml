@@ -6,20 +6,20 @@
         <Table
             id="pendingApprovalTable"
             items="{viewData>/pendingWBS}"
-            noDataText="No WBS items pending approval."
+            noDataText="{i18n>noPendingWbs}"
             mode="MultiSelect"
             sticky="HeaderToolbar,ColumnHeaders">
             <headerToolbar>
                 <OverflowToolbar>
-                    <Title text="Hạng mục chờ duyệt" level="H3"/>
+                    <Title text="{i18n>pendingApprovalItems}" level="H3"/>
                     <ToolbarSpacer/>
                     <Button
-                        text="Approve"
+                        text="{i18n>approve}"
                         type="Accept"
                         icon="sap-icon://accept"
                         press=".onApproveWbs" />
                     <Button
-                        text="Reject"
+                        text="{i18n>reject}"
                         type="Reject"
                         icon="sap-icon://decline"
                         press=".onRejectWbs" />
@@ -27,16 +27,16 @@
             </headerToolbar>
             <columns>
                 <Column width="8rem">
-                    <Text text="Mã WBS" />
+                    <Text text="{i18n>wbsCode}" />
                 </Column>
                 <Column>
-                    <Text text="Tên hạng mục" />
+                    <Text text="{i18n>wbsName}" />
                 </Column>
                 <Column width="10rem" hAlign="Center">
-                    <Text text="Trạng thái" />
+                    <Text text="{i18n>status}" />
                 </Column>
                 <Column width="9rem" hAlign="End">
-                    <Text text="Khối lượng" />
+                    <Text text="{i18n>quantity}" />
                 </Column>
             </columns>
             <items>

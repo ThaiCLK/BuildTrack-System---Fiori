@@ -13,7 +13,7 @@
             <headerContainer>
                 <!-- Workaround for inline editing the title of ObjectHeader -->
                 <VBox visible="{viewData>/editMode}">
-                    <Label text="Site Name" />
+                    <Label text="{i18n>siteName}" />
                     <Input value="{SiteName}" />
                 </VBox>
             </headerContainer>
@@ -38,39 +38,39 @@
             class="sapUiSmallMarginTop">
             <f:toolbar>
                 <Toolbar>
-                    <Title text="Overview Information" />
+                    <Title text="{i18n>overviewInfo}" />
                     <ToolbarSpacer />
-                    <Button id="btnEditSite" icon="sap-icon://edit" text="Edit" press=".onEditSite" visible="{= !${viewData>/editMode} }" />
-                    <Button id="btnSaveSite" icon="sap-icon://save" text="Save" type="Emphasized" press=".onSaveSite" visible="{viewData>/editMode}" />
-                    <Button id="btnCancelSite" icon="sap-icon://sys-cancel" text="Cancel" press=".onCancelSite" visible="{viewData>/editMode}" />
+                    <Button id="btnEditSite" icon="sap-icon://edit" text="{i18n>edit}" press=".onEditSite" visible="{= !${viewData>/editMode} }" />
+                    <Button id="btnSaveSite" icon="sap-icon://save" text="{i18n>save}" type="Emphasized" press=".onSaveSite" visible="{viewData>/editMode}" />
+                    <Button id="btnCancelSite" icon="sap-icon://sys-cancel" text="{i18n>cancel}" press=".onCancelSite" visible="{viewData>/editMode}" />
                 </Toolbar>
             </f:toolbar>
             <f:content>
-                <Label text="Site Name" />
+                <Label text="{i18n>siteName}" />
                 <VBox width="100%">
                     <Input id="inSiteName" value="{SiteName}" visible="{viewData>/editMode}" />
                     <Text text="{SiteName}" visible="{= !${viewData>/editMode} }" />
                 </VBox>
 
-                <Label text="Site Code" />
+                <Label text="{i18n>siteCode}" />
                 <VBox width="100%">
                     <Input id="inSiteCode" value="{SiteCode}" visible="{viewData>/editMode}" />
                     <Text text="{SiteCode}" visible="{= !${viewData>/editMode} }" />
                 </VBox>
 
-                <Label text="Address" />
+                <Label text="{i18n>address}" />
                 <VBox width="100%">
                     <Input id="inSiteAddress" value="{Address}" visible="{viewData>/editMode}" />
                     <Text text="{Address}" visible="{= !${viewData>/editMode} }" />
                 </VBox>
 
-                <Label text="Status" />
+                <Label text="{i18n>status}" />
                 <VBox width="100%">
                     <Select id="inSiteStatus" selectedKey="{Status}" visible="{viewData>/editMode}" width="100%">
-                        <core:Item key="PLANNING" text="Planning" />
-                        <core:Item key="READY" text="Ready" />
-                        <core:Item key="IN_PROGRESS" text="In Progress" />
-                        <core:Item key="COMPLETED" text="Completed" />
+                        <core:Item key="PLANNING" text="{i18n>planningStatus}" />
+                        <core:Item key="READY" text="{i18n>readyStatus}" />
+                        <core:Item key="IN_PROGRESS" text="{i18n>inProgressStatus}" />
+                        <core:Item key="COMPLETED" text="{i18n>completedStatus}" />
                     </Select>
                     <ObjectStatus 
                         class="sapUiNoMargin"

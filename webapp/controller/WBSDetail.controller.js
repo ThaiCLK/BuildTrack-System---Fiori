@@ -15,6 +15,12 @@ sap.ui.define([
 
 
     var WBSDetailController = Controller.extend("z.bts.buildtrack551.controller.WBSDetail", {
+ 
+        formatWbsDetailTitle: function (sWbsName) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            return oBundle.getText("wbsDetailTitle", [sWbsName || ""]);
+        },
+
 
         /* =========================================================== */
         /* LIFECYCLE                                                    */
@@ -134,10 +140,11 @@ sap.ui.define([
 
             // Trigger Saves sequentially
             if (bIsEditMode) {
+                var oBundle = this.getView().getModel("i18n").getResourceBundle();
                 fnSaveWbs().then(function() {
                     return fnSaveLocation();
                 }).then(function() {
-                    MessageToast.show("Update successful");
+                    MessageToast.show(oBundle.getText("updateSuccess") || "Update successful");
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     that._loadLocation(that._sWbsId);
                     if (oModel.hasPendingChanges()) {
@@ -146,7 +153,7 @@ sap.ui.define([
                     // Force refresh to update display text mappings seamlessly
                     oModel.refresh(true);
                 }).catch(function(oError) {
-                    MessageBox.error("Update failed. Please check the data.");
+                    MessageBox.error(oBundle.getText("updateError") || "Update failed. Please check the data.");
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     if (oModel.hasPendingChanges()) {
                         oModel.resetChanges();
@@ -500,13 +507,14 @@ sap.ui.define([
         /* =========================================================== */
 
         formatWbsStatusText: function (sStatus) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             switch (sStatus) {
-                case "PLANNING": return "Planning";
-                case "PENDING_OPEN": return "Pending Open";
-                case "OPENED": return "Opened";
-                case "IN_PROGRESS": return "In Progress";
-                case "PENDING_CLOSE": return "Pending Close";
-                case "CLOSED": return "Closed";
+                case "PLANNING": return oBundle.getText("planningStatus");
+                case "PENDING_OPEN": return oBundle.getText("pendingOpenStatus") || "Pending Open";
+                case "OPENED": return oBundle.getText("openedStatus") || "Opened";
+                case "IN_PROGRESS": return oBundle.getText("inProgressStatus");
+                case "PENDING_CLOSE": return oBundle.getText("pendingCloseStatus") || "Pending Close";
+                case "CLOSED": return oBundle.getText("closedStatus") || "Closed";
                 default: return sStatus || "";
             }
         },
@@ -688,7 +696,8 @@ sap.ui.define([
 
             var sStatus = oWbsCtx.getProperty("Status");
             if (sStatus !== "IN_PROGRESS") {
-                sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' mới có thể gửi phê duyệt đóng.");
+                var oBundle = this.getView().getModel("i18n").getResourceBundle();
+                sap.m.MessageBox.error(oBundle.getText("inProgressOnlyCloseApprovalError", [""]));
                 return;
             }
 
@@ -703,12 +712,13 @@ sap.ui.define([
             if (!oWbsCtx) return;
 
             var sStatus = oWbsCtx.getProperty("Status");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (sStatus !== "PLANNING") {
-                sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'Planning' mới có thể gửi phê duyệt mở.");
+                sap.m.MessageBox.error(oBundle.getText("planningOnlyOpenApprovalError", [""]));
                 return;
             }
-
-            sap.m.MessageBox.confirm("Bạn có chắc chắn muốn gửi duyệt Mở hạng mục này không?", {
+ 
+            sap.m.MessageBox.confirm(oBundle.getText("submitOpenApprovalConfirm", ["1"]), {
                 onClose: function (sAction) {
                     if (sAction === sap.m.MessageBox.Action.OK) {
                         oView.setBusy(true);
@@ -717,12 +727,12 @@ sap.ui.define([
                             urlParameters: { WS_ID: oWbsCtx.getProperty("WbsId") },
                             success: function () {
                                 oView.setBusy(false);
-                                sap.m.MessageToast.show("Đã gửi duyệt Mở thành công.");
+                                sap.m.MessageToast.show(oBundle.getText("submitSuccess", ["1"]));
                                 that.getOwnerComponent().getModel().refresh(true, true);
                             },
                             error: function () {
                                 oView.setBusy(false);
-                                sap.m.MessageBox.error("Lỗi khi gửi duyệt Mở.");
+                                sap.m.MessageBox.error(oBundle.getText("wbsSubmitError") || "Error on submission.");
                             }
                         });
                     }
@@ -745,8 +755,9 @@ sap.ui.define([
             var oWbsCtx = oView.getBindingContext();
             var sWorkItemId = oViewData.getProperty("/activeWorkItemId");
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var fnSubmit = function (sId) {
-                sap.m.MessageBox.confirm("Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
+                sap.m.MessageBox.confirm(oBundle.getText("decisionConfirm", [sTitle]) || "Do you want to " + sTitle + "?", {
                     onClose: function (sAction) {
                         if (sAction === sap.m.MessageBox.Action.OK) {
                             oView.setBusy(true);
@@ -759,12 +770,12 @@ sap.ui.define([
                                 },
                                 success: function (oData) {
                                     oView.setBusy(false);
-                                    sap.m.MessageBox.success("Đã xử lý quyết định thành công.");
+                                    sap.m.MessageBox.success(oBundle.getText("processSuccess", ["1"]));
                                     that.getOwnerComponent().getModel().refresh(true, true);
                                 },
                                 error: function (oError) {
                                     oView.setBusy(false);
-                                    sap.m.MessageBox.error("Lỗi khi xử lý quyết định.");
+                                    sap.m.MessageBox.error(oBundle.getText("processError") || "Error processing decision.");
                                 }
                             });
                         }
@@ -795,7 +806,7 @@ sap.ui.define([
                             oViewData.setProperty("/activeWorkItemId", oResult.WORKITEM_ID);
                             fnSubmit(oResult.WORKITEM_ID);
                         } else {
-                            sap.m.MessageBox.error("Không tìm thấy mã công việc (WorkItemId) để xử lý.");
+                            sap.m.MessageBox.error(oBundle.getText("workItemIdNotFoundError"));
                         }
                     },
                     error: function () {
@@ -1186,18 +1197,19 @@ sap.ui.define([
             var oContext = oView.getBindingContext();
             var sStatus = oContext ? oContext.getProperty("Status") : "";
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (sStatus === "PENDING_OPEN") {
-                sap.m.MessageBox.error("Hạng mục này đã được gửi phê duyệt mở và đang chờ xử lý.");
+                sap.m.MessageBox.error(oBundle.getText("wbsPendingOpenError") || "This item is pending open.");
                 return;
             }
 
             if (sStatus === "CLOSED") {
-                sap.m.MessageBox.information("Hạng mục này đã hoàn thành và được đóng.");
+                sap.m.MessageBox.information(oBundle.getText("wbsClosedInfo") || "This item is closed.");
                 return;
             }
 
             if (sStatus !== "PLANNING") {
-                sap.m.MessageBox.warning("Chỉ những hạng mục ở trạng thái 'Planning' mới có thể gửi phê duyệt mở.");
+                sap.m.MessageBox.warning(oBundle.getText("planningOnlyOpenApprovalError", [""]));
                 return;
             }
 
@@ -1214,19 +1226,22 @@ sap.ui.define([
                 },
                 success: function (oData) {
                     oView.setBusy(false);
+                    var sSuccessMsg = oData && oData.MESSAGE ? oData.MESSAGE : oBundle.getText("submitSuccess", ["1"]);
+                    var sErrorMsg = oData && oData.MESSAGE ? oData.MESSAGE : oBundle.getText("wbsSubmitError");
+
                     if (oData && oData.SUCCESS === false) {
-                        sap.m.MessageBox.error(oData.MESSAGE || "Failed to submit for approval.");
+                        sap.m.MessageBox.error(sErrorMsg);
                         return;
                     }
 
-                    sap.m.MessageBox.success(oData.MESSAGE || "Work Summary submitted for approval successfully.");
+                    sap.m.MessageBox.success(sSuccessMsg);
                     this._loadWorkSummary(sWbsId);
                     var oBinding = oView.getElementBinding();
                     if (oBinding) { oBinding.refresh(); }
                 }.bind(this),
                 error: function (oError) {
                     oView.setBusy(false);
-                    var sMsg = "Failed to submit for approval.";
+                    var sMsg = oBundle.getText("wbsSubmitError");
                     try {
                         var oErr = JSON.parse(oError.responseText);
                         sMsg = oErr.error.message.value || sMsg;

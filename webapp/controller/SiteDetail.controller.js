@@ -25,6 +25,42 @@ sap.ui.define([
     "use strict";
 
     var SiteDetailController = Controller.extend("z.bts.buildtrack551.controller.SiteDetail", {
+ 
+        formatSiteDetailTitle: function (sSiteName) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            return oBundle.getText("siteDetailTitle", [sSiteName || ""]);
+        },
+
+        formatStatusText: function (sStatus) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var m = {
+                "PLANNING": oBundle.getText("planningStatus"),
+                "SUBMITTED": oBundle.getText("submittedStatus"),
+                "REJECTED": oBundle.getText("rejectedStatus"),
+                "READY": oBundle.getText("readyStatus"),
+                "IN_PROGRESS": oBundle.getText("inProgressStatus"),
+                "COMPLETED": oBundle.getText("completedStatus")
+            };
+            return m[(sStatus || "").toUpperCase()] || sStatus;
+        },
+
+        formatWbsStatusText: function (sStatus) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var m = {
+                "PLANNING": oBundle.getText("planningStatus"),
+                "SUBMITTED": oBundle.getText("submittedStatus"),
+                "REJECTED": oBundle.getText("rejectedStatus"),
+                "READY": oBundle.getText("readyStatus"),
+                "IN_PROGRESS": oBundle.getText("inProgressStatus"),
+                "COMPLETED": oBundle.getText("completedStatus"),
+                "PENDING_OPEN": oBundle.getText("pendingOpenStatus") || "Pending Open",
+                "PENDING_CLOSE": oBundle.getText("pendingCloseStatus") || "Pending Close",
+                "OPENED": oBundle.getText("openedStatus") || "Opened",
+                "CLOSED": oBundle.getText("closedStatus") || "Closed"
+            };
+            return m[(sStatus || "").toUpperCase()] || sStatus;
+        },
+
 
         onInit: function () {
             this._oWBSDelegate = new WBSDelegate(this);
@@ -125,15 +161,16 @@ sap.ui.define([
                 ProjectId: oModel.getProperty(sPath + "/ProjectId")
             };
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             oModel.update(sPath, oPayload, {
                 success: function () {
-                    MessageToast.show("Site information updated successfully");
+                    MessageToast.show(oBundle.getText("siteUpdateSuccess"));
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     if (oModel.hasPendingChanges()) { oModel.resetChanges(); }
                     oModel.refresh(true);
                 },
                 error: function () {
-                    MessageBox.error("Error saving site information");
+                    MessageBox.error(oBundle.getText("siteUpdateError"));
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     if (oModel.hasPendingChanges()) { oModel.resetChanges(); }
                 }
@@ -332,8 +369,9 @@ sap.ui.define([
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length > 1) {
-                MessageToast.show("Please select only ONE row to create a child WBS.");
+                MessageToast.show(oBundle.getText("selectOneChildWbsError"));
                 return;
             }
 
@@ -346,7 +384,8 @@ sap.ui.define([
                 // Prevent creating grandchildren (i.e. if the selected row is already a child)
                 var sSelectedRowParentId = oCtx ? oCtx.getProperty("ParentId") : null;
                 if (sSelectedRowParentId && sSelectedRowParentId !== "00000000-0000-0000-0000-000000000000") {
-                    sap.m.MessageBox.warning("Không thể tạo thêm đầu việc cho hạng mục này.");
+                    var oBundle = this.getView().getModel("i18n").getResourceBundle();
+                    sap.m.MessageBox.warning(oBundle.getText("cannotAddSubWbsError"));
                     return;
                 }
 
@@ -362,11 +401,12 @@ sap.ui.define([
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length === 0) {
-                MessageToast.show("Please select a WBS row to edit.");
+                MessageToast.show(oBundle.getText("selectWbsToEditError"));
                 return;
             } else if (aIndices.length > 1) {
-                MessageToast.show("Please select only ONE row to edit.");
+                MessageToast.show(oBundle.getText("selectOneWbsToEditError"));
                 return;
             }
 
@@ -379,11 +419,12 @@ sap.ui.define([
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length === 0) {
-                MessageToast.show("Please select a WBS row to delete.");
+                MessageToast.show(oBundle.getText("selectWbsToDeleteError"));
                 return;
             } else if (aIndices.length > 1) {
-                MessageToast.show("Please select only ONE row to delete.");
+                MessageToast.show(oBundle.getText("selectOneWbsToDeleteError"));
                 return;
             }
 
@@ -393,16 +434,17 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
 
-            MessageBox.confirm("Are you sure you want to delete WBS \"" + sName + "\"?\nChild WBS items will not be deleted automatically.", {
-                title: "Confirm Delete WBS",
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            MessageBox.confirm(oBundle.getText("deleteWbsConfirm", [sName]), {
+                title: oBundle.getText("confirmDeleteWbs"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         oModel.remove("/WBSSet(guid'" + sWbsId + "')", {
                             success: function () {
-                                MessageToast.show("WBS deleted: " + sName);
+                                MessageToast.show(oBundle.getText("wbsDeletedSuccess", [sName]));
                                 that._loadWbsData();
                             },
-                            error: function () { MessageBox.error("Unable to delete WBS."); }
+                            error: function () { MessageBox.error(oBundle.getText("wbsDeleteError")); }
                         });
                     }
                 }
@@ -415,8 +457,9 @@ sap.ui.define([
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length === 0) {
-                MessageToast.show("Please select WBS items to submit for Open approval.");
+                MessageToast.show(oBundle.getText("selectWbsForOpenApprovalError"));
                 return;
             }
 
@@ -431,11 +474,11 @@ sap.ui.define([
             });
 
             if (aInvalidItems.length > 0) {
-                MessageBox.error("Only WBS items in 'Planning' status can be submitted for Open approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                MessageBox.error(oBundle.getText("planningOnlyOpenApprovalError", [aInvalidItems.join("\n- ")]));
                 return;
             }
 
-            MessageBox.confirm("Submit " + aIndices.length + " items for Open approval?", {
+            MessageBox.confirm(oBundle.getText("submitOpenApprovalConfirm", [aIndices.length]), {
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         that._submitMultipleWbs(aIndices, false);
@@ -449,8 +492,9 @@ sap.ui.define([
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length === 0) {
-                MessageToast.show("Please select WBS items to submit for Close approval.");
+                MessageToast.show(oBundle.getText("selectWbsForCloseApprovalError"));
                 return;
             }
 
@@ -465,11 +509,11 @@ sap.ui.define([
             });
 
             if (aInvalidItems.length > 0) {
-                MessageBox.error("Only WBS items in 'In Progress' status can be submitted for Close approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                MessageBox.error(oBundle.getText("inProgressOnlyCloseApprovalError", [aInvalidItems.join("\n- ")]));
                 return;
             }
 
-            MessageBox.confirm("Submit " + aIndices.length + " items for Close (Acceptance) approval?", {
+            MessageBox.confirm(oBundle.getText("submitCloseApprovalConfirm", [aIndices.length]), {
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         that._submitMultipleWbs(aIndices, true);
@@ -488,12 +532,13 @@ sap.ui.define([
             this.getView().setBusy(true);
 
             var fnNext = function () {
+                var oBundle = that.getView().getModel("i18n").getResourceBundle();
                 if (iDone + iError === aIndices.length) {
                     that.getView().setBusy(false);
                     if (iError === 0) {
-                        MessageToast.show("Submitted " + iDone + " items successfully.");
+                        MessageToast.show(oBundle.getText("submitSuccess", [iDone]));
                     } else {
-                        MessageBox.warning("Completed with " + iError + " errors.");
+                        MessageBox.warning(oBundle.getText("submitPartialError", [iError]));
                     }
                     that._loadWbsData();
                     return;
@@ -530,11 +575,12 @@ sap.ui.define([
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length === 0) {
-                MessageToast.show("Please select a WBS row to run.");
+                MessageToast.show(oBundle.getText("selectWbsToRunError"));
                 return;
             } else if (aIndices.length > 1) {
-                MessageToast.show("Please select only ONE row to run.");
+                MessageToast.show(oBundle.getText("selectOneWbsToRunError"));
                 return;
             }
 
@@ -547,36 +593,36 @@ sap.ui.define([
 
             // 1. Check Status
             if (sStatus !== "OPENED") {
-                MessageBox.warning("Only WBS with status 'OPENED' can be started. Current status: " + sStatus);
+                MessageBox.warning(oBundle.getText("openedOnlyRunError", [sStatus]));
                 return;
             }
 
             // 2. Check Start Date
             if (dStartDate && new Date(dStartDate) > dToday) {
                 var sFormattedDate = this.formatDate(dStartDate);
-                MessageBox.error("Cannot run WBS before its Start Date (" + sFormattedDate + ").");
+                MessageBox.error(oBundle.getText("startDateRunError", [sFormattedDate]));
                 return;
             }
 
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
 
-            MessageBox.confirm("Do you want to start WBS '" + oData.WbsName + "'? Status will change to IN_PROGRESS.", {
-                title: "Confirm Start WBS",
+            MessageBox.confirm(oBundle.getText("runWbsConfirm", [oData.WbsName]), {
+                title: oBundle.getText("confirmRunWbs"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         that.getView().setBusy(true);
                         oModel.update("/WBSSet(guid'" + oData.WbsId + "')", { Status: "IN_PROGRESS" }, {
                             success: function () {
                                 that.getView().setBusy(false);
-                                MessageToast.show("WBS is now IN_PROGRESS.");
+                                MessageToast.show(oBundle.getText("wbsRunSuccess"));
                                 that._loadWbsData();
                                 oModel.refresh(true);
                             },
                             error: function (oError) {
                                 that.getView().setBusy(false);
                                 console.error("Error starting WBS:", oError);
-                                MessageBox.error("Failed to start WBS.");
+                                MessageBox.error(oBundle.getText("wbsRunError"));
                             }
                         });
                     }
@@ -598,8 +644,9 @@ sap.ui.define([
             var oTable = this.byId("pendingApprovalTable"); // Unified table for both Open & Close
             var aSelectedItems = oTable.getSelectedItems();
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aSelectedItems.length === 0) {
-                MessageToast.show("Please select at least one pending WBS item.");
+                MessageToast.show(oBundle.getText("selectPendingWbsError"));
                 return;
             }
 
@@ -624,29 +671,29 @@ sap.ui.define([
             });
 
             if (bError && aItemsToProcess.length === 0) {
-                MessageBox.error("Không tìm thấy Work Item ID của hạng mục được chọn. Vui lòng tải lại trang và thử lại.");
+                MessageBox.error(oBundle.getText("workItemIdNotFoundError"));
                 return;
             }
 
             if (!this._oApproveDialog) {
                 this._oApproveDialog = new Dialog({
-                    title: "Decision Note",
+                    title: oBundle.getText("decisionNote"),
                     type: "Message",
                     content: [
-                        new Label({ text: "Add a comment for this decision:", labelFor: "approveNote" }),
+                        new Label({ text: oBundle.getText("decisionCommentLabel"), labelFor: "approveNote" }),
                         new TextArea("approveNote", {
                             width: "100%",
-                            placeholder: "Enter reason or note here...",
+                            placeholder: oBundle.getText("decisionNotePlaceholder"),
                             rows: 4
                         })
                     ],
                     beginButton: new Button({
-                        text: "Submit",
+                        text: oBundle.getText("submit"),
                         type: "Emphasized",
                         press: function () {
                             var sUserNote = sap.ui.getCore().byId("approveNote").getValue();
                             if (this._sPendingDecision === "0002" && (!sUserNote || sUserNote.trim() === "")) {
-                                MessageBox.error("Vui lòng nhập lý do từ chối (Note) trước khi Submit.");
+                                MessageBox.error(oBundle.getText("rejectReasonRequiredError"));
                                 return;
                             }
                             this._oApproveDialog.close();
@@ -654,7 +701,7 @@ sap.ui.define([
                         }.bind(this)
                     }),
                     endButton: new Button({
-                        text: "Cancel",
+                        text: oBundle.getText("cancel"),
                         press: function () {
                             this._oApproveDialog.close();
                         }.bind(this)
@@ -678,12 +725,13 @@ sap.ui.define([
             this.getView().setBusy(true);
 
             var fnNext = function () {
+                var oBundle = that.getView().getModel("i18n").getResourceBundle();
                 if (iDone + iError === aItems.length) {
                     that.getView().setBusy(false);
                     if (iError === 0) {
-                        MessageToast.show("Processed " + iDone + " items successfully.");
+                        MessageToast.show(oBundle.getText("processSuccess", [iDone]));
                     } else {
-                        MessageBox.warning("Completed with " + iError + " errors.");
+                        MessageBox.warning(oBundle.getText("submitPartialError", [iError]));
                     }
                     that._loadWbsData();
                     oModel.refresh(true);
@@ -727,6 +775,7 @@ sap.ui.define([
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var oInputCode = new Input({
                 placeholder: "e.g. 1.1.1",
                 liveChange: function (oEvent) {
@@ -737,10 +786,11 @@ sap.ui.define([
                     }
                 }
             });
-            var oInputName = new Input({ placeholder: "Work item name" });
+            var oInputName = new Input({ placeholder: oBundle.getText("workItemName") });
             var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
             var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
             var oInputQty = new Input({ type: "Number", placeholder: "0" });
+
             var oSelectUnit = new Select({
                 width: "100%",
                 items: [
@@ -754,19 +804,19 @@ sap.ui.define([
             var oSelectStatus = new Select({
                 width: "100%",
                 items: [
-                    new Item({ key: "PLANNING", text: "Planning" }),
-                    new Item({ key: "PENDING_OPEN", text: "Pending Open" }),
-                    new Item({ key: "OPENED", text: "Opened" }),
-                    new Item({ key: "IN_PROGRESS", text: "In Progress" }),
-                    new Item({ key: "PENDING_CLOSE", text: "Pending Close" }),
-                    new Item({ key: "CLOSED", text: "Closed" })
+                    new Item({ key: "PLANNING", text: oBundle.getText("planningStatus") }),
+                    new Item({ key: "PENDING_OPEN", text: oBundle.getText("pendingOpenStatus") || "Pending Open" }),
+                    new Item({ key: "OPENED", text: oBundle.getText("openedStatus") || "Opened" }),
+                    new Item({ key: "IN_PROGRESS", text: oBundle.getText("inProgressStatus") }),
+                    new Item({ key: "PENDING_CLOSE", text: oBundle.getText("pendingCloseStatus") || "Pending Close" }),
+                    new Item({ key: "CLOSED", text: oBundle.getText("closedStatus") || "Closed" })
                 ],
                 visible: false
             });
 
             var sDialogTitle;
             if (bEdit) {
-                sDialogTitle = "Edit WBS";
+                sDialogTitle = oBundle.getText("editWbs");
                 oInputCode.setValue(oContext.getProperty("WbsCode"));
                 oInputName.setValue(oContext.getProperty("WbsName"));
                 var oStart = oContext.getProperty("StartDate");
@@ -779,12 +829,12 @@ sap.ui.define([
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
             } else {
                 sDialogTitle = sParentId
-                    ? "Add Child WBS of: " + sParentName
-                    : "Create WBS (Root Level)";
+                    ? oBundle.getText("addChildWbsOf", [sParentName])
+                    : oBundle.getText("createWbsRoot");
                 oSelectStatus.setSelectedKey("NEW");
             }
 
-            var oStatusLabel = new Label({ text: "Status", visible: false });
+            var oStatusLabel = new Label({ text: oBundle.getText("status"), visible: false });
 
             var oForm = new SimpleForm({
                 editable: true,
@@ -792,12 +842,12 @@ sap.ui.define([
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
                 content: [
-                    new Label({ text: "WBS Code", required: true }), oInputCode,
-                    new Label({ text: "Name", required: true }), oInputName,
-                    new Label({ text: "Start Date", required: true }), oPickerStart,
-                    new Label({ text: "End Date", required: true }), oPickerEnd,
-                    new Label({ text: "Quantity", required: true }), oInputQty,
-                    new Label({ text: "Unit" }), oSelectUnit,
+                    new Label({ text: oBundle.getText("wbsCode"), required: true }), oInputCode,
+                    new Label({ text: oBundle.getText("name"), required: true }), oInputName,
+                    new Label({ text: oBundle.getText("startDate"), required: true }), oPickerStart,
+                    new Label({ text: oBundle.getText("endDate"), required: true }), oPickerEnd,
+                    new Label({ text: oBundle.getText("quantity"), required: true }), oInputQty,
+                    new Label({ text: oBundle.getText("unit") }), oSelectUnit,
                     oStatusLabel, oSelectStatus
                 ]
             });

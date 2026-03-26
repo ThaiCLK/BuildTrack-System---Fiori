@@ -32,6 +32,16 @@ sap.ui.define([
                   oPopover.close();
               });
           }
+      },
+
+      onLanguageSelect: function (oEvent) {
+          var sKey = oEvent.getParameter("item").getKey();
+          var oConfiguration = sap.ui.getCore().getConfiguration();
+          
+          if (oConfiguration.getLanguage() !== sKey) {
+              oConfiguration.setLanguage(sKey);
+              sap.m.MessageToast.show("Language changed to " + (sKey === "vi" ? "Tiếng Việt" : "English"));
+          }
       }
   });
 });

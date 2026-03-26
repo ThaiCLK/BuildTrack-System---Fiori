@@ -16,44 +16,44 @@
                     clear="onFilterClear"
                     showClearOnFB="true">
                     <fb:filterGroupItems>
-                        <fb:FilterGroupItem name="ProjectCode" label="Project Code" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="ProjectCode" label="{i18n>projectCode}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
                                 <Input id="fbProjectCode"
-                                    placeholder="Select Project Code"
+                                    placeholder="{i18n>selectProjectCode}"
                                     showValueHelp="true"
                                     valueHelpRequest="onValueHelpProjectCodeRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
-                        <fb:FilterGroupItem name="ProjectName" label="Project Name" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="ProjectName" label="{i18n>projectName}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
                                 <Input id="fbProjectName"
-                                    placeholder="Select Project Name"
+                                    placeholder="{i18n>selectProjectName}"
                                     showValueHelp="true"
                                     valueHelpRequest="onValueHelpProjectNameRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
-                        <fb:FilterGroupItem name="Status" label="Status" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="Status" label="{i18n>status}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
                                 <Input id="fbStatus"
-                                    placeholder="Select Status"
+                                    placeholder="{i18n>selectStatus}"
                                     showValueHelp="true"
                                     valueHelpRequest="onValueHelpStatusRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
-                        <fb:FilterGroupItem name="ProjectType" label="Project Type" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="ProjectType" label="{i18n>projectType}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
                                 <Input id="fbType"
-                                    placeholder="Select Type"
+                                    placeholder="{i18n>selectType}"
                                     showValueHelp="true"
                                     valueHelpRequest="onValueHelpTypeRequest"/>
                             </fb:control>
                         </fb:FilterGroupItem>
-                        <fb:FilterGroupItem name="StartDate" label="Start Date" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="StartDate" label="{i18n>startDate}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
                                 <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
                             </fb:control>
                         </fb:FilterGroupItem>
-                        <fb:FilterGroupItem name="EndDate" label="End Date" groupName="Basic" visibleInFilterBar="true">
+                        <fb:FilterGroupItem name="EndDate" label="{i18n>endDate}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
                                 <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
                             </fb:control>
@@ -72,41 +72,41 @@
                     <OverflowToolbar id="otbSubheader" style="Clear">
                         <!-- Back chevron + title -->
                         <Button icon="sap-icon://nav-back" type="Transparent" press=".onNavBack"
-                                tooltip="Back to Dashboard"/>
-                        <Title id="tableHeader" text="Project List" level="H2"/>
+                                tooltip="{i18n>backToDashboard}"/>
+                        <Title id="tableHeader" text="{i18n>projectList}" level="H2"/>
                         <ToolbarSpacer id="toolbarSpacer"/>
                         <Button
                             id="btnCreateProject"
-                            text="Create Project"
+                            text="{i18n>createProject}"
                             type="Emphasized"
                             icon="sap-icon://add"
                             press=".onPressCreate"/>
                         <Button id="btnSortProject" icon="sap-icon://sort" type="Transparent"
-                                tooltip="Sort"/>
+                                tooltip="{i18n>sort}"/>
                     </OverflowToolbar>
                 </headerToolbar>
 
                 <columns>
                     <Column id="colProjectCode" width="10rem">
-                        <Text id="txtColProjectCode" text="Project Code"/>
+                        <Text id="txtColProjectCode" text="{i18n>projectCode}"/>
                     </Column>
                     <Column id="colProjectName" minScreenWidth="Tablet" demandPopin="true">
-                        <Text id="txtColProjectName" text="Project Name"/>
+                        <Text id="txtColProjectName" text="{i18n>projectName}"/>
                     </Column>
                     <Column id="colProjectType" width="9rem" minScreenWidth="Tablet" demandPopin="true" hAlign="Center">
-                        <Text id="txtColProjectType" text="Type"/>
+                        <Text id="txtColProjectType" text="{i18n>type}"/>
                     </Column>
                     <Column id="colStartDate" width="8rem" hAlign="End">
-                        <Text id="txtColStartDate" text="Start Date"/>
+                        <Text id="txtColStartDate" text="{i18n>startDate}"/>
                     </Column>
                     <Column id="colEndDate" width="9rem" hAlign="End">
-                        <Text id="txtColEndDate" text="Est. End Date"/>
+                        <Text id="txtColEndDate" text="{i18n>estEndDate}"/>
                     </Column>
                     <Column id="colStatus" width="10rem" hAlign="Center">
-                        <Text id="txtColStatus" text="Status"/>
+                        <Text id="txtColStatus" text="{i18n>status}"/>
                     </Column>
                     <Column id="colAction" width="7rem" hAlign="Center">
-                        <Text id="txtColAction" text="Actions"/>
+                        <Text id="txtColAction" text="{i18n>actions}"/>
                     </Column>
                 </columns>
 
@@ -164,11 +164,11 @@
                             <HBox alignItems="Center" justifyContent="Center">
                                 <Button icon="sap-icon://edit"
                                         type="Transparent"
-                                        tooltip="Edit Project"
+                                        tooltip="{i18n>editProject}"
                                         press=".onEditProject"/>
                                 <Button icon="sap-icon://delete"
                                         type="Transparent"
-                                        tooltip="Delete Project"
+                                        tooltip="{i18n>deleteProject}"
                                         press=".onDeleteProject"/>
                             </HBox>
                         </cells>
@@ -178,8 +178,8 @@
                 <noData>
                     <IllustratedMessage
                         illustrationType="sapIllus-NoData"
-                        title="No Projects Found"
-                        description="Create a new project or adjust your search."/>
+                        title="{i18n>noProjectsFound}"
+                        description="{i18n>noProjectsFoundDesc}"/>
                 </noData>
 
                 </Table>
