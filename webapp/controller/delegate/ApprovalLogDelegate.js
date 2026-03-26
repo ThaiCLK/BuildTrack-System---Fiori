@@ -203,16 +203,8 @@ sap.ui.define([
                         oView.getController().updateProcessFlow(aGlobalLogs);
                     }
 
-                    // Filter logs by current user ID for the bottom list
-                    var sCurrentUserId = oUserModel ? oUserModel.getProperty("/userId") : null;
-                    if (sCurrentUserId) {
-                        aLogs = aGlobalLogs.filter(function (log) {
-                            var author = log.ActionBy || log.CreatedBy;
-                            return author === sCurrentUserId;
-                        });
-                    } else {
-                        aLogs = aGlobalLogs;
-                    }
+                    // Show ALL logs regardless of User ID
+                    aLogs = aGlobalLogs;
 
                     if (oLogListModel) oLogListModel.setData(aLogs);
 
@@ -296,10 +288,10 @@ sap.ui.define([
             var sDefaultLaneState = "Initial";
             var aLanes = [
                 { id: "lane0", icon: "sap-icon://status-in-process", label: "Planning",      position: 0, laneState: sDefaultLaneState },
-                { id: "lane1", icon: "sap-icon://paper-plane",        label: "Pending Open",  position: 1, laneState: sStatus === "OPEN_REJECTED"   ? "Error" : sDefaultLaneState },
+                { id: "lane1", icon: "sap-icon://paper-plane",        label: "Pending Open",  position: 1, laneState: sDefaultLaneState },
                 { id: "lane2", icon: "sap-icon://accept",             label: "Opened",        position: 2, laneState: sDefaultLaneState },
                 { id: "lane3", icon: "sap-icon://machine",            label: "In Progress",   position: 3, laneState: sDefaultLaneState },
-                { id: "lane4", icon: "sap-icon://paper-plane",        label: "Pending Close", position: 4, laneState: sStatus === "CLOSE_REJECTED"  ? "Error" : sDefaultLaneState },
+                { id: "lane4", icon: "sap-icon://paper-plane",        label: "Pending Close", position: 4, laneState: sDefaultLaneState },
                 { id: "lane5", icon: "sap-icon://locked",             label: "Closed",        position: 5, laneState: sDefaultLaneState }
             ];
 
@@ -316,10 +308,6 @@ sap.ui.define([
                     state0 = "Positive"; text0 = "Published";
                     state1 = "Neutral"; text1 = "In Review";
                     break;
-                case "OPEN_REJECTED":
-                    state0 = "Positive"; text0 = "Published";
-                    state1 = "Negative"; text1 = "Rejected";
-                    break;
                 case "OPENED":
                     state0 = "Positive"; text0 = "Published";
                     state1 = "Positive"; text1 = "Approved";
@@ -335,11 +323,6 @@ sap.ui.define([
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
                     text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started";
                     state4 = "Neutral"; text4 = "In Review";
-                    break;
-                case "CLOSE_REJECTED":
-                    state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
-                    text0 = "Published"; text1 = "Approved"; text2 = "Actived"; text3 = "Started";
-                    state4 = "Negative"; text4 = "Rejected";
                     break;
                 case "CLOSED":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive"; state4 = "Positive"; state5 = "Positive";
@@ -500,31 +483,6 @@ sap.ui.define([
                 var oProcessFlow = oView.byId("wbsProcessFlow");
                 if (oProcessFlow && typeof oProcessFlow.updateModel === "function") {
                     oProcessFlow.updateModel();
-                }
-
-                // Force lane circle to fully red when rejection occurs.
-                // ProcessFlowLaneHeader.state is an array of {state, value} objects (proportion of each node state).
-                // To make the circle 100% red, set all values to Negative.
-                if (sStatus === "OPEN_REJECTED" || sStatus === "CLOSE_REJECTED") {
-                    var sRejectedLaneId = sStatus === "OPEN_REJECTED" ? "lane1" : "lane4";
-                    var aFullyRedState = [
-                        { state: "Positive",  value: 0 },
-                        { state: "Negative",  value: 3 },   // 3 = all 3 approval levels
-                        { state: "Neutral",   value: 0 },
-                        { state: "Planned",   value: 0 },
-                        { state: "Critical",  value: 0 }
-                    ];
-                    setTimeout(function () {
-                        var oFlow = oView.byId("wbsProcessFlow");
-                        if (!oFlow) return;
-                        var aHeaders = oFlow.getAggregation("lanes") || [];
-                        aHeaders.forEach(function (oHeader) {
-                            if (oHeader.getLaneId && oHeader.getLaneId() === sRejectedLaneId) {
-                                oHeader.setState(aFullyRedState);
-                                oHeader.invalidate();
-                            }
-                        });
-                    }, 500);
                 }
             }
         },

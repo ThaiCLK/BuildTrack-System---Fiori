@@ -3,13 +3,15 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:l="sap.ui.layout"
-    xmlns:core="sap.ui.core">
+    xmlns:core="sap.ui.core"
+    xmlns:viz="sap.viz.ui5.controls"
+    xmlns:vizdata="sap.viz.ui5.data"
+    xmlns:feeds="sap.viz.ui5.controls.common.feeds">
 
-    <Page id="pageDashboard" showHeader="false" class="dashboardPage">
-
+    <Page id="pageDashboard" showHeader="false" class="dashboardPage sapUiNoContentPadding">
         <content>
-            <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false">
-            <l:VerticalLayout width="100%" class="dashboardContent">
+            <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false" class="sapUiNoContentPadding">
+            <l:VerticalLayout width="100%" class="dashboardContent sapUiNoContentPadding">
 
                 <!-- ══════════════════════════════════════════════════════
                      TOP ROW: Project Overview (left) + Daily Operations (right)
@@ -24,6 +26,7 @@
                         <HBox class="dashboardCardRow">
                             <Panel id="cardMyProjects" class="dashboardCard dashboardCardClickable"
                                    headerText="" expandable="false">
+                                <layoutData><FlexItemData growFactor="0" baseSize="16rem"/></layoutData>
                                 <HBox alignItems="Center" class="dashboardCardHeader">
                                     <core:Icon src="sap-icon://project-definition-triangle" class="dashboardCardIcon iconBlue"/>
                                     <VBox class="sapUiTinyMarginBegin">
@@ -40,6 +43,7 @@
 
                             <Panel id="cardProjectSites" class="dashboardCard dashboardCardClickable"
                                    headerText="" expandable="false">
+                                <layoutData><FlexItemData growFactor="0" baseSize="16rem"/></layoutData>
                                 <HBox alignItems="Center" class="dashboardCardHeader">
                                     <core:Icon src="sap-icon://building" class="dashboardCardIcon iconGreen"/>
                                     <VBox class="sapUiTinyMarginBegin">
@@ -64,6 +68,7 @@
                         <HBox class="dashboardCardRow">
                             <Panel id="cardWeather" class="dashboardCard"
                                    headerText="" expandable="false">
+                                <layoutData><FlexItemData growFactor="0" baseSize="30rem"/></layoutData>
                                 <HBox alignItems="Center" class="dashboardCardHeader">
                                     <core:Icon src="sap-icon://weather-proofing" class="dashboardCardIcon iconOrange"/>
                                     <VBox class="sapUiTinyMarginBegin">
@@ -90,35 +95,178 @@
 
                 </HBox>
 
-                <!-- ════════════════════════════════
-                     SECTION 2 · APPROVALS & TASKS
-                ════════════════════════════════ -->
-                <Title id="secTasks" text="Approvals &amp; Tasks" level="H4"
+
+
+                <!-- ════════════════════════════════════════════════════════
+                     SECTION 3 · ANALYTICS (SAP VizFrame Charts)
+                ════════════════════════════════════════════════════════ -->
+                <Title id="secAnalytics" text="Analytics" level="H4"
                     class="dashboardSectionTitle"/>
 
-                <HBox class="dashboardCardRow">
-                    <!-- Pending Approvals -->
-                    <Panel id="cardPendingApprovals" class="dashboardCard dashboardCardRed"
-                           headerText="" expandable="false">
+                <!-- Filter Bar -->
+                <OverflowToolbar class="dashboardFilterBar" style="border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.07);margin-bottom:0.75rem;padding:0.4rem 1rem;">
+                    <core:Icon src="sap-icon://filter" style="color:#5899DA;margin-right:0.5rem;font-size:1rem;"/>
+                    <Label text="Project:" class="sapUiSmallMarginEnd" style="font-weight:600;color:#2c3e50;"/>
+                    <ComboBox id="cbProject"
+                        width="220px"
+                        placeholder="All Projects"
+                        items="{dashboard>/projects}"
+                        change=".onFilterChange"
+                        selectionChange=".onFilterChange">
+                        <core:Item key="{dashboard>ProjectId}" text="{dashboard>ProjectName}"/>
+                    </ComboBox>
+                    <ToolbarSpacer/>
+                    <Button text="Reset" icon="sap-icon://refresh" press="onResetFilter" type="Transparent"/>
+                </OverflowToolbar>
+
+                <!-- Chart Grid Row 1: Donut + Stacked Bar -->
+                <HBox class="dashboardChartRow" width="100%" renderType="Bare">
+
+                    <!-- Card 1: WBS Status Donut -->
+                    <Panel class="dashboardCard dashboardChartCard" headerText="" expandable="false">
+                        <layoutData><FlexItemData growFactor="1" baseSize="0%"/></layoutData>
                         <HBox alignItems="Center" class="dashboardCardHeader">
-                            <core:Icon src="sap-icon://alert" class="dashboardCardIcon iconWhite"/>
+                            <core:Icon src="sap-icon://pie-chart" class="dashboardCardIcon iconBlue"/>
                             <VBox class="sapUiTinyMarginBegin">
-                                <Title text="Pending Approvals" level="H5" class="dashboardWhiteText"/>
+                                <Title text="WBS Status Distribution" level="H5"/>
+                                <Text text="Breakdown by lifecycle stage" class="dashboardSubLabel"/>
                             </VBox>
                         </HBox>
-                        <HBox justifyContent="SpaceAround" class="dashboardCardBody">
-                            <VBox alignItems="Center">
-                                <Text text="{dashboard>/pendingApprovals}" class="dashboardBigNumberWhite"/>
-                                <Text text="Ongoing Requests" class="dashboardSubLabelWhite"/>
-                            </VBox>
-                            <VBox alignItems="Center">
-                                <Text text="3" class="dashboardBigNumberWhite"/>
-                                <Text text="Critical Allocation" class="dashboardSubLabelWhite"/>
-                            </VBox>
-                        </HBox>
-                        <Text text="Delayed: 2" class="dashboardCardFooterWhite"/>
+                        <viz:VizFrame id="chartWbsStatus"
+                            vizType="donut"
+                            width="100%"
+                            height="260px"
+                            class="dashboardVizFrame">
+                            <viz:dataset>
+                                <vizdata:FlattenedDataset data="{dashboard>/wbsStatusChart}">
+                                    <vizdata:dimensions>
+                                        <vizdata:DimensionDefinition name="Status" value="{dashboard>status}"/>
+                                    </vizdata:dimensions>
+                                    <vizdata:measures>
+                                        <vizdata:MeasureDefinition name="Count" value="{dashboard>count}"/>
+                                    </vizdata:measures>
+                                </vizdata:FlattenedDataset>
+                            </viz:dataset>
+                            <viz:feeds>
+                                <feeds:FeedItem uid="color" type="Dimension" values="Status"/>
+                                <feeds:FeedItem uid="size" type="Measure" values="Count"/>
+                            </viz:feeds>
+                        </viz:VizFrame>
                     </Panel>
 
+                    <!-- Card 2: WBS per Site Stacked Bar (wider) -->
+                    <Panel class="dashboardCard dashboardChartCard" headerText="" expandable="false">
+                        <layoutData><FlexItemData growFactor="2" baseSize="0%"/></layoutData>
+                        <HBox alignItems="Center" class="dashboardCardHeader">
+                            <core:Icon src="sap-icon://bar-chart" class="dashboardCardIcon iconGreen"/>
+                            <VBox class="sapUiTinyMarginBegin">
+                                <Title text="WBS Count per Site" level="H5"/>
+                                <Text text="Grouped by status per construction site" class="dashboardSubLabel"/>
+                            </VBox>
+                        </HBox>
+                        <viz:VizFrame id="chartWbsPerSite"
+                            vizType="stacked_bar"
+                            width="100%"
+                            height="300px"
+                            class="dashboardVizFrame">
+                            <viz:dataset>
+                                <vizdata:FlattenedDataset data="{dashboard>/wbsPerSiteChart}">
+                                    <vizdata:dimensions>
+                                        <vizdata:DimensionDefinition name="Site" value="{dashboard>site}"/>
+                                        <vizdata:DimensionDefinition name="Status" value="{dashboard>status}"/>
+                                    </vizdata:dimensions>
+                                    <vizdata:measures>
+                                        <vizdata:MeasureDefinition name="Count" value="{dashboard>count}"/>
+                                    </vizdata:measures>
+                                </vizdata:FlattenedDataset>
+                            </viz:dataset>
+                            <viz:feeds>
+                                <feeds:FeedItem uid="categoryAxis" type="Dimension" values="Site"/>
+                                <feeds:FeedItem uid="color" type="Dimension" values="Status"/>
+                                <feeds:FeedItem uid="valueAxis" type="Measure" values="Count"/>
+                            </viz:feeds>
+                        </viz:VizFrame>
+                    </Panel>
+
+                </HBox>
+
+                <!-- Chart Grid Row 2: Line + Bar Progress -->
+                <HBox class="dashboardChartRow" width="100%" renderType="Bare">
+
+                    <!-- Card 3: Daily Output Line Chart (narrow) -->
+                    <Panel class="dashboardCard dashboardChartCard" headerText="" expandable="false">
+                        <layoutData><FlexItemData growFactor="2" baseSize="0%"/></layoutData>
+                        <HBox alignItems="Center" class="dashboardCardHeader">
+                            <core:Icon src="sap-icon://line-chart" class="dashboardCardIcon iconOrange"/>
+                            <VBox class="sapUiTinyMarginBegin">
+                                <Title text="Daily Output — Last 14 Days" level="H5"/>
+                                <Text text="Total quantity done per day (all WBS)" class="dashboardSubLabel"/>
+                            </VBox>
+                        </HBox>
+                        <viz:VizFrame id="chartDailyOutput"
+                            vizType="line"
+                            width="100%"
+                            height="300px"
+                            class="dashboardVizFrame">
+                            <viz:dataset>
+                                <vizdata:FlattenedDataset data="{dashboard>/dailyOutputChart}">
+                                    <vizdata:dimensions>
+                                        <vizdata:DimensionDefinition name="Date" value="{dashboard>date}"/>
+                                    </vizdata:dimensions>
+                                    <vizdata:measures>
+                                        <vizdata:MeasureDefinition name="Quantity" value="{dashboard>quantity}"/>
+                                    </vizdata:measures>
+                                </vizdata:FlattenedDataset>
+                            </viz:dataset>
+                            <viz:feeds>
+                                <feeds:FeedItem uid="categoryAxis" type="Dimension" values="Date"/>
+                                <feeds:FeedItem uid="valueAxis" type="Measure" values="Quantity"/>
+                            </viz:feeds>
+                        </viz:VizFrame>
+                    </Panel>
+
+                    <!-- Card 4: Top WBS Progress Bar Chart (wider) -->
+                    <Panel class="dashboardCard dashboardChartCard" headerText="" expandable="false">
+                        <layoutData><FlexItemData growFactor="2" baseSize="0%"/></layoutData>
+                        <HBox alignItems="Center" justifyContent="SpaceBetween" class="dashboardCardHeader">
+                            <HBox alignItems="Center">
+                                <core:Icon src="sap-icon://activities" class="dashboardCardIcon iconTeal"/>
+                                <VBox class="sapUiTinyMarginBegin">
+                                    <Title text="Top WBS Completion" level="H5"/>
+                                    <Text text="Done vs. Remaining quantity" class="dashboardSubLabel"/>
+                                </VBox>
+                            </HBox>
+                            <ComboBox id="cbWbsUnit"
+                                      items="{dashboard>/wbsUnitList}"
+                                      selectionChange=".onFilterChange"
+                                      selectedKey="ALL"
+                                      width="120px">
+                                <core:Item key="{dashboard>Unit}" text="{dashboard>DisplayText}"/>
+                            </ComboBox>
+                        </HBox>
+                        <viz:VizFrame id="chartWbsProgress"
+                            vizType="stacked_bar"
+                            width="100%"
+                            height="300px"
+                            class="dashboardVizFrame">
+                            <viz:dataset>
+                                <vizdata:FlattenedDataset data="{dashboard>/wbsProgressChart}">
+                                    <vizdata:dimensions>
+                                        <vizdata:DimensionDefinition name="WBS" value="{dashboard>wbsName}"/>
+                                        <vizdata:DimensionDefinition name="Type" value="{dashboard>type}"/>
+                                    </vizdata:dimensions>
+                                    <vizdata:measures>
+                                        <vizdata:MeasureDefinition name="Value" value="{dashboard>value}"/>
+                                    </vizdata:measures>
+                                </vizdata:FlattenedDataset>
+                            </viz:dataset>
+                            <viz:feeds>
+                                <feeds:FeedItem uid="categoryAxis" type="Dimension" values="WBS"/>
+                                <feeds:FeedItem uid="color" type="Dimension" values="Type"/>
+                                <feeds:FeedItem uid="valueAxis" type="Measure" values="Value"/>
+                            </viz:feeds>
+                        </viz:VizFrame>
+                    </Panel>
 
                 </HBox>
 

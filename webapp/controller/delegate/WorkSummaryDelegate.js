@@ -71,7 +71,7 @@ sap.ui.define([
 
         _loadParentAggregation: function (sWbsId, oWSModel, oModel) {
             oModel.read("/WBSSet", {
-                filters: [new Filter("ParentId", FilterOperator.EQ, sWbsId)],
+                filters: sWbsId ? [new Filter("ParentId", FilterOperator.EQ, sWbsId)] : [],
                 urlParameters: {
                     "$expand": "ToApprovalLog"
                 },
@@ -90,7 +90,7 @@ sap.ui.define([
                     var iProcessed = 0;
                     aChildren.forEach(function (oChild) {
                         oModel.read("/DailyLogSet", {
-                            filters: [new Filter("WbsId", FilterOperator.EQ, oChild.WbsId)],
+                            filters: oChild.WbsId ? [new Filter("WbsId", FilterOperator.EQ, oChild.WbsId)] : [],
                             success: function (oLogData) {
                                 var fSum = 0;
                                 (oLogData.results || []).forEach(function (l) {
@@ -130,7 +130,7 @@ sap.ui.define([
         _loadLeafNodeAggregation: function (sWbsId, oWSModel, oModel) {
             var that = this;
             oModel.read("/DailyLogSet", {
-                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                filters: sWbsId ? [new Filter("WbsId", FilterOperator.EQ, sWbsId)] : [],
                 success: function (oData) {
                     var fTotal = 0;
                     (oData.results || []).forEach(function (oLog) {
@@ -242,11 +242,9 @@ sap.ui.define([
             var m = {
                 "PLANNING": 1,
                 "PENDING_OPEN": 2,
-                "OPEN_REJECTED": 2,
                 "OPENED": 3,
                 "IN_PROGRESS": 4,
                 "PENDING_CLOSE": 5,
-                "CLOSE_REJECTED": 5,
                 "CLOSED": 6
             };
             return m[sStatus] || 0;
@@ -254,8 +252,6 @@ sap.ui.define([
 
         formatStepClass: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
-            if (iStep === 2 && sStatus === "OPEN_REJECTED") return "wbsStepCircle stepRejected";
-            if (iStep === 5 && sStatus === "CLOSE_REJECTED") return "wbsStepCircle stepRejected";
             if (iCurrent > iStep) return "wbsStepCircle stepCompleted";
             if (iCurrent === iStep) return "wbsStepCircle stepActive";
             return "wbsStepCircle stepPending";
@@ -263,8 +259,6 @@ sap.ui.define([
 
         formatStepLabelClass: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
-            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "labelRejected";
-            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "labelRejected";
             if (iCurrent === iStep) return "labelActive";
             return "";
         },
@@ -277,9 +271,6 @@ sap.ui.define([
 
         formatStepIcon: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
-            if (iStep === 2 && sStatus === "OPEN_REJECTED") return "sap-icon://decline";
-            if (iStep === 5 && sStatus === "CLOSE_REJECTED") return "sap-icon://decline";
-
             // Success icon for completed steps
             if (iCurrent > iStep) return "sap-icon://accept";
 
@@ -300,12 +291,7 @@ sap.ui.define([
             // UI5 parts might pass objects or strings, ensure iStep is numeric
             var iStepNum = parseInt(iStep);
             var aLabels = ["Planning", "Pending Open", "Opened", "In Progress", "Pending Close", "Closed"];
-            var sLabel = aLabels[iStepNum - 1];
-
-            if (iStepNum === 3 && sStatus === "OPEN_REJECTED") return "Open Rejected";
-            if (iStepNum === 6 && sStatus === "CLOSE_REJECTED") return "Close Rejected";
-
-            return sLabel;
+            return aLabels[iStepNum - 1] || "";
         },
 
         onSubmitForApproval: function () {
@@ -327,8 +313,8 @@ sap.ui.define([
                 var sStatus = oWbsCtx ? oWbsCtx.getProperty("Status") : "";
 
                 // Strict status guard for Closing flow
-                if (sStatus !== "IN_PROGRESS" && sStatus !== "CLOSE_REJECTED") {
-                    sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' hoặc 'Close Rejected' mới có thể gửi phê duyệt đóng.");
+                if (sStatus !== "IN_PROGRESS") {
+                    sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' mới có thể gửi phê duyệt đóng.");
                     return;
                 }
 

@@ -159,10 +159,39 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
 }
 
-/* ── CONTENT AREA ── */
-.dashboardContent {
-    padding: 0.75rem 1.25rem !important;
+/* ── SAP FLP SHELL FULL-WIDTH OVERRIDE ───────────────────────────
+   Force the local FLP test shell to fill 100% of the viewport.
+────────────────────────────────────────────────────────────────── */
+
+/* Aggressive breakout: target the shell containers by common classes and IDs */
+.sapUShellApplicationContainerLimitedWidth,
+.sapUShellApplicationContainer,
+#sapUshellShellCanvas,
+.sapUShellCanvas,
+.sapUShellCntntDiv {
+    max-width: none !important;
+    width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
 }
+
+/* Ensure the wrapper of the app itself is not limited */
+[id$="-app-app"],
+#container-uiarea,
+#content {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* ── CONTENT AREA (SAP Fiori Responsive Padding standard) ── */
+.dashboardContent {
+    /* SAP Fiori standard: 1rem vertical, 2rem horizontal on desktop */
+    padding: 0.5rem 1rem !important;
+    box-sizing: border-box;
+    width: 100%;
+}
+
 
 /* ── TOP ROW: 2-column side-by-side ── */
 .dashboardTopRow {
@@ -816,3 +845,74 @@
     color: #27ae60 !important;
     font-weight: 700 !important;
 }
+
+/* ═══════════════════════════════════════════
+   ANALYTICS / CHART SECTION
+   ═══════════════════════════════════════════ */
+
+/* ── Chart card (larger than KPI card) ── */
+.dashboardChartCard {
+    min-height: 360px !important;
+    cursor: default !important;
+}
+
+.dashboardChartCard:hover {
+    transform: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Wide chart card (2/3 width) — 1:2 split with narrow card */
+.dashboardChartCardWide {
+    flex: 2 1 0 !important;
+}
+
+/* ── Chart two-column row ── */
+.dashboardChartRow {
+    gap: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+    width: 100% !important;
+    align-items: stretch !important;
+}
+
+/* ── Hide panel header (reuse dashboardCard pattern) ── */
+.dashboardChartCard .sapMPanelHdr {
+    display: none !important;
+}
+
+.dashboardChartCard .sapMPanelContent {
+    padding: 0.75rem 1rem !important;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* ── VizFrame container ── */
+.dashboardVizFrame {
+    width: 100% !important;
+    display: block;
+}
+
+/* Remove VizFrame inner border/background */
+.dashboardVizFrame .v-m-root {
+    border: none !important;
+    background: transparent !important;
+}
+
+/* ── Filter Bar ── */
+.dashboardFilterBar.sapMTB {
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07) !important;
+    border: 1px solid #e8eaf0 !important;
+    min-height: 3rem !important;
+    padding: 0 1rem !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.dashboardFilterBar .sapMLabel {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+}
+
+.dashboardFilterBar .sapMComboBox {
+    border-radius: 6px !important;
+}

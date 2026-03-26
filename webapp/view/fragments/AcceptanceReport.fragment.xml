@@ -162,7 +162,7 @@
             </VBox>
         </content>
         <buttons>
-             <Button text="Gửi duyệt Đóng" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
+             <Button text="Gửi duyệt Đóng" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS') }" />
              <Button text="Từ chối" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
              <Button text="Đóng" press=".onCloseAcceptanceDialog" />
         </buttons>

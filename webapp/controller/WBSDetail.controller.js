@@ -503,11 +503,9 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "Planning";
                 case "PENDING_OPEN": return "Pending Open";
-                case "OPEN_REJECTED": return "Open Rejected";
                 case "OPENED": return "Opened";
                 case "IN_PROGRESS": return "In Progress";
                 case "PENDING_CLOSE": return "Pending Close";
-                case "CLOSE_REJECTED": return "Close Rejected";
                 case "CLOSED": return "Closed";
                 default: return sStatus || "";
             }
@@ -517,11 +515,9 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "None";
                 case "PENDING_OPEN": return "Information";
-                case "OPEN_REJECTED": return "Error";
                 case "OPENED": return "Success";
                 case "IN_PROGRESS": return "Warning";
                 case "PENDING_CLOSE": return "Information";
-                case "CLOSE_REJECTED": return "Error";
                 case "CLOSED": return "None";
                 // Legacy
                 case "NEW": return "None";
@@ -534,11 +530,9 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "sap-icon://status-in-process";
                 case "PENDING_OPEN": return "sap-icon://paper-plane";
-                case "OPEN_REJECTED": return "sap-icon://decline";
                 case "OPENED": return "sap-icon://accept";
                 case "IN_PROGRESS": return "sap-icon://machine";
                 case "PENDING_CLOSE": return "sap-icon://paper-plane";
-                case "CLOSE_REJECTED": return "sap-icon://decline";
                 case "CLOSED": return "sap-icon://locked";
                 // Legacy
                 case "NEW": return "sap-icon://status-in-process";
@@ -693,8 +687,8 @@ sap.ui.define([
             if (!oWbsCtx) return;
 
             var sStatus = oWbsCtx.getProperty("Status");
-            if (sStatus !== "IN_PROGRESS" && sStatus !== "CLOSE_REJECTED") {
-                sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' hoặc 'Close Rejected' mới có thể gửi phê duyệt đóng.");
+            if (sStatus !== "IN_PROGRESS") {
+                sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'In Progress' mới có thể gửi phê duyệt đóng.");
                 return;
             }
 
@@ -709,8 +703,8 @@ sap.ui.define([
             if (!oWbsCtx) return;
 
             var sStatus = oWbsCtx.getProperty("Status");
-            if (sStatus !== "PLANNING" && sStatus !== "OPEN_REJECTED") {
-                sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'Planning' hoặc 'Open Rejected' mới có thể gửi phê duyệt mở.");
+            if (sStatus !== "PLANNING") {
+                sap.m.MessageBox.error("Hạng mục phải ở trạng thái 'Planning' mới có thể gửi phê duyệt mở.");
                 return;
             }
 
@@ -1202,8 +1196,8 @@ sap.ui.define([
                 return;
             }
 
-            if (sStatus !== "PLANNING" && sStatus !== "OPEN_REJECTED") {
-                sap.m.MessageBox.warning("Chỉ những hạng mục ở trạng thái 'Planning' hoặc bị từ chối mở mới có thể gửi phê duyệt mở.");
+            if (sStatus !== "PLANNING") {
+                sap.m.MessageBox.warning("Chỉ những hạng mục ở trạng thái 'Planning' mới có thể gửi phê duyệt mở.");
                 return;
             }
 

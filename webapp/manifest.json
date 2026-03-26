@@ -54,7 +54,8 @@
         "sap.ui.layout": {},
         "sap.ui.comp": {},
         "sap.f": {},
-        "sap.suite.ui.commons": {}
+        "sap.suite.ui.commons": {},
+        "sap.viz": {}
       }
     },
     "contentDensities": {
@@ -172,5 +173,8 @@
       "id": "App",
       "async": true
     }
+  },
+  "sap.flp": {
+    "fullWidth": true
   }
-}
+}

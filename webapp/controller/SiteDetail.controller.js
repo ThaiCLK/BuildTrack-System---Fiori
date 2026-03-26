@@ -420,18 +420,18 @@ sap.ui.define([
                 return;
             }
 
-            // Check if all selected items are in PLANNING or OPEN_REJECTED status
+            // Check if all selected items are in PLANNING status
             var aInvalidItems = [];
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
-                if (oData.Status !== "PLANNING" && oData.Status !== "OPEN_REJECTED") {
+                if (oData.Status !== "PLANNING") {
                     aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
                 }
             });
 
             if (aInvalidItems.length > 0) {
-                MessageBox.error("Only WBS items in 'Planning' or 'Open Rejected' status can be submitted for Open approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                MessageBox.error("Only WBS items in 'Planning' status can be submitted for Open approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
                 return;
             }
 
@@ -454,18 +454,18 @@ sap.ui.define([
                 return;
             }
 
-            // Check if all selected items are in IN_PROGRESS or CLOSE_REJECTED status
+            // Check if all selected items are in IN_PROGRESS status
             var aInvalidItems = [];
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
-                if (oData.Status !== "IN_PROGRESS" && oData.Status !== "CLOSE_REJECTED") {
+                if (oData.Status !== "IN_PROGRESS") {
                     aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
                 }
             });
 
             if (aInvalidItems.length > 0) {
-                MessageBox.error("Only WBS items in 'In Progress' or 'Close Rejected' status can be submitted for Close approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
+                MessageBox.error("Only WBS items in 'In Progress' status can be submitted for Close approval. Invalid items:\n\n- " + aInvalidItems.join("\n- "));
                 return;
             }
 
@@ -756,11 +756,9 @@ sap.ui.define([
                 items: [
                     new Item({ key: "PLANNING", text: "Planning" }),
                     new Item({ key: "PENDING_OPEN", text: "Pending Open" }),
-                    new Item({ key: "OPEN_REJECTED", text: "Open Rejected" }),
                     new Item({ key: "OPENED", text: "Opened" }),
                     new Item({ key: "IN_PROGRESS", text: "In Progress" }),
                     new Item({ key: "PENDING_CLOSE", text: "Pending Close" }),
-                    new Item({ key: "CLOSE_REJECTED", text: "Close Rejected" }),
                     new Item({ key: "CLOSED", text: "Closed" })
                 ],
                 visible: false
@@ -1021,11 +1019,9 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "Planning";
                 case "PENDING_OPEN": return "Pending Open";
-                case "OPEN_REJECTED": return "Open Rejected";
                 case "OPENED": return "Opened";
                 case "IN_PROGRESS": return "In Progress";
                 case "PENDING_CLOSE": return "Pending Close";
-                case "CLOSE_REJECTED": return "Close Rejected";
                 case "CLOSED": return "Closed";
                 default: return sStatus || "";
             }
@@ -1047,11 +1043,9 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "None";
                 case "PENDING_OPEN": return "Information";
-                case "OPEN_REJECTED": return "Error";
                 case "OPENED": return "Success";
                 case "IN_PROGRESS": return "Warning";
                 case "PENDING_CLOSE": return "Information";
-                case "CLOSE_REJECTED": return "Error";
                 case "CLOSED": return "None";
                 default: return "None";
             }
@@ -1061,11 +1055,9 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "sap-icon://status-in-process";
                 case "PENDING_OPEN": return "sap-icon://paper-plane";
-                case "OPEN_REJECTED": return "sap-icon://decline";
                 case "OPENED": return "sap-icon://accept";
                 case "IN_PROGRESS": return "sap-icon://machine";
                 case "PENDING_CLOSE": return "sap-icon://paper-plane";
-                case "CLOSE_REJECTED": return "sap-icon://decline";
                 case "CLOSED": return "sap-icon://locked";
                 default: return "sap-icon://status-in-process";
             }

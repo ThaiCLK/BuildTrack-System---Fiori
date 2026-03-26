@@ -38,6 +38,7 @@ sap.ui.define([
         /* =========================================================== */
 
         _bindDailyLogList: function (sWbsId) {
+            var that = this;
             var oTable = this.byId("idDailyLogList");
             if (!oTable) { return; }
 
@@ -46,6 +47,7 @@ sap.ui.define([
             
             oTable.unbindAggregation("items");
 
+            if (!sWbsId) { return; }
             var oFilter = new Filter("WbsId", FilterOperator.EQ, sWbsId);
             oTable.setBusy(true);
 
@@ -85,7 +87,8 @@ sap.ui.define([
                                 unit: "{dailyLogModel>UnitCode}",
                                 state: "None"
                             })
-                        ]
+                        ],
+                        press: that.onLogRowPress.bind(that)
                     });
 
                     oTable.bindItems({
@@ -112,10 +115,10 @@ sap.ui.define([
 
             var oParams = oEvent.getParameters();
             if (oParams && oParams.listItem) {
-                var oCtx = oParams.listItem.getBindingContext();
+                var oCtx = oParams.listItem.getBindingContext("dailyLogModel");
                 this._showLogDetail(oCtx);
             } else if (aSelectedItems.length > 0) {
-                var oFirstCtx = aSelectedItems[0].getBindingContext();
+                var oFirstCtx = aSelectedItems[0].getBindingContext("dailyLogModel");
                 this._showLogDetail(oFirstCtx);
             } else {
                 this.getView().getModel("dailyLogModel").setProperty("/ui/isSelected", false);
@@ -124,7 +127,7 @@ sap.ui.define([
         },
 
         onLogRowPress: function (oEvent) {
-            var oCtx = oEvent.getSource().getBindingContext();
+            var oCtx = oEvent.getSource().getBindingContext("dailyLogModel");
             this._showLogDetail(oCtx);
         },
 
@@ -132,18 +135,30 @@ sap.ui.define([
             var oODataLog = oCtx.getObject();
             var oUIModel = this.getView().getModel("dailyLogModel");
 
+            var parseDate = function(vDate) {
+                if (vDate instanceof Date) return vDate;
+                if (!vDate) return null;
+                if (typeof vDate === "string" && vDate.indexOf("/Date(") !== -1) {
+                    var timestamp = parseInt(vDate.replace(/\/Date\((\d+)\)\//, "$1"));
+                    return new Date(timestamp);
+                }
+                var d = new Date(vDate);
+                return isNaN(d.getTime()) ? null : d;
+            };
+
             var oLog = {
                 LogId: oODataLog.LogId,
                 WbsId: oODataLog.WbsId,
-                LogDate: oODataLog.LogDate,
+                LogDate: parseDate(oODataLog.LogDate),
                 WeatherAm: oODataLog.WeatherAm || "SUNNY",
                 WeatherPm: oODataLog.WeatherPm || "SUNNY",
-                QuantityDone: oODataLog.QuantityDone || 0,
+                QuantityDone: oODataLog.QuantityDone !== undefined ? oODataLog.QuantityDone : 0,
                 UnitCode: oODataLog.UnitCode || "",
                 SafeNote: oODataLog.SafeNote || "",
                 GeneralNote: oODataLog.GeneralNote || "",
                 ContractorNote: oODataLog.ContractorNote || ""
             };
+            console.log("Showing Log Detail (parsed): ", oLog);
             oUIModel.setProperty("/selectedLog", oLog);
             oUIModel.setProperty("/ui/isSelected", true);
             oUIModel.setProperty("/ui/editMode", false);
@@ -164,7 +179,7 @@ sap.ui.define([
                     });
 
                     oModel.read("/ResourceUseSet", {
-                        filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
+                        filters: sLogId ? [new Filter("LogId", FilterOperator.EQ, sLogId)] : [],
                         success: function (oData) {
                             oUIModel.setProperty("/resourceUseList",
                                 (oData.results || []).map(function (u) {
@@ -198,19 +213,18 @@ sap.ui.define([
             if (!oCtx) return false;
 
             var sStatus = oCtx.getProperty("Status");
-            var aAllowed = ["IN_PROGRESS", "CLOSE_REJECTED"];
+            var aAllowed = ["IN_PROGRESS"];
             
             // Allow deletion in PENDING_OPEN for cleanup
             if (bIsDelete) {
                 aAllowed.push("PENDING_OPEN");
                 aAllowed.push("PLANNING");
-                aAllowed.push("OPEN_REJECTED");
             }
 
             if (aAllowed.indexOf(sStatus) === -1) {
                 var sStatusText = this.formatWbsStatusText(sStatus);
                 var sActionText = bIsDelete ? "xóa" : "ghi";
-                var sAllowedText = bIsDelete ? "'In Progress', 'Pending Open', 'Planning' hoặc 'Rejected'" : "'In Progress' hoặc 'Close Rejected'";
+                var sAllowedText = bIsDelete ? "'In Progress', 'Pending Open' hoặc 'Planning'" : "'In Progress'";
 
                 MessageBox.warning(
                     "Không thể " + sActionText + " nhật ký cho WBS " + sStatusText + ".\n\n" +
@@ -739,7 +753,7 @@ sap.ui.define([
             // Validate duplicate date before saving
             oUIModel.setProperty("/ui/busy", true);
             oModel.read("/DailyLogSet", {
-                filters: [new Filter("WbsId", FilterOperator.EQ, oLog.WbsId)],
+                filters: oLog.WbsId ? [new Filter("WbsId", FilterOperator.EQ, oLog.WbsId)] : [],
                 success: function (oData) {
                     oUIModel.setProperty("/ui/busy", false);
                     var bDuplicate = false;
@@ -830,7 +844,7 @@ sap.ui.define([
             var oView = this.getView();
 
             oModel.read("/DailyLogSet", {
-                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                filters: sWbsId ? [new Filter("WbsId", FilterOperator.EQ, sWbsId)] : [],
                 success: function (oData) {
                     var aLogs = oData.results || [];
                     var oUpdate = {};

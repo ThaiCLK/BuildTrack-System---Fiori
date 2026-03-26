@@ -65,8 +65,8 @@
                     <f:content>
                         <Label text="Work Item Title" design="Bold"/>
                         <VBox>
-                            <Text text="{WbsName}" design="Bold" style="font-size: 1.1rem;"/>
-                            <Text text="Code: {WbsCode}" color="Neutral" />
+                            <Text text="{WbsName}" class="sapUiTinyMarginBottom" />
+                            <Text text="Code: {WbsCode}" />
                         </VBox>
                         
                         <Label text="Project" design="Bold"/>
@@ -121,7 +121,7 @@
                         <Column width="4.5rem">
                             <Text text="WBS Code" />
                         </Column>
-                        <Column minWidth="12rem">
+                        <Column width="12rem">
                             <Text text="Work Item Name" />
                         </Column>
                         <Column hAlign="End" width="6.5rem">
@@ -141,7 +141,7 @@
                         <ColumnListItem>
                             <cells>
                                 <Text text="{workSummaryModel>WbsCode}" />
-                                <Text text="{workSummaryModel>WbsName}" design="Bold" wrapping="true" />
+                                <Text text="{workSummaryModel>WbsName}" wrapping="true" />
                                 <ObjectNumber number="{path: 'workSummaryModel>Quantity', formatter: '.formatTotalQty'}" unit="{workSummaryModel>UnitCode}" />
                                 <ObjectNumber 
                                     number="{path: 'workSummaryModel>TotalQtyDone', formatter: '.formatTotalQty'}" 
