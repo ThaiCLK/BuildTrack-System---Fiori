@@ -1,4 +1,4 @@
-﻿sap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/m/MessageBox",
@@ -9,13 +9,14 @@
     "sap/ui/model/Sorter",
     "z/bts/buildtrack551/controller/delegate/DailyLogDelegate",
     "z/bts/buildtrack551/controller/delegate/WorkSummaryDelegate",
-    "z/bts/buildtrack551/controller/delegate/ApprovalLogDelegate"
-], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter, DailyLogDelegate, WorkSummaryDelegate, ApprovalLogDelegate) {
+    "z/bts/buildtrack551/controller/delegate/ApprovalLogDelegate",
+    "z/bts/buildtrack551/controller/delegate/DependencyDelegate"
+], function (Controller, History, MessageBox, MessageToast, JSONModel, Filter, FilterOperator, Sorter, DailyLogDelegate, WorkSummaryDelegate, ApprovalLogDelegate, DependencyDelegate) {
     "use strict";
 
 
     var WBSDetailController = Controller.extend("z.bts.buildtrack551.controller.WBSDetail", {
- 
+
         formatWbsDetailTitle: function (sWbsName) {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             return oBundle.getText("wbsDetailTitle", [sWbsName || ""]);
@@ -62,7 +63,7 @@
 
             var bHasLocationData = !!oLocationModel.getProperty("/LocationName");
             var sLocationId = oLocationModel.getProperty("/LocationId");
-            
+
             var oPayloadLocation = {
                 LocationName: oLocationModel.getProperty("/LocationName") || "",
                 LocationCode: oLocationModel.getProperty("/LocationCode") || "",
@@ -82,7 +83,7 @@
 
             var fnSaveLocation = function () {
                 if (!bHasLocationData) return Promise.resolve();
-                
+
                 return new Promise(function (resolve, reject) {
                     if (sLocationId) {
                         // Update existing
@@ -102,15 +103,15 @@
             };
 
             var bIsEditMode = this.getView().getModel("viewData").getProperty("/editMode");
-            
+
             var fnSaveWbs = function () {
                 if (!bIsEditMode) return Promise.resolve();
-                return new Promise(function(resolve, reject) {
+                return new Promise(function (resolve, reject) {
                     var sPath = "/WBSSet(guid'" + that._sWbsId + "')";
-                    
+
                     var oStartDatePicker = that.byId("inWbsStartDate");
                     var oEndDatePicker = that.byId("inWbsEndDate");
-                    
+
                     var toUTC = function (d) {
                         return d ? new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) : null;
                     };
@@ -141,9 +142,9 @@
             // Trigger Saves sequentially
             if (bIsEditMode) {
                 var oBundle = this.getView().getModel("i18n").getResourceBundle();
-                fnSaveWbs().then(function() {
+                fnSaveWbs().then(function () {
                     return fnSaveLocation();
-                }).then(function() {
+                }).then(function () {
                     MessageToast.show(oBundle.getText("updateSuccess") || "Update successful");
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     that._loadLocation(that._sWbsId);
@@ -152,7 +153,7 @@
                     }
                     // Force refresh to update display text mappings seamlessly
                     oModel.refresh(true);
-                }).catch(function(oError) {
+                }).catch(function (oError) {
                     MessageBox.error(oBundle.getText("updateError") || "Update failed. Please check the data.");
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     if (oModel.hasPendingChanges()) {
@@ -178,6 +179,7 @@
             DailyLogDelegate.init(this);
             WorkSummaryDelegate.init(this);
             ApprovalLogDelegate.init(this);
+            DependencyDelegate.init(this);
 
             // Location model for WBS location info
             var oLocationModel = new JSONModel({});
@@ -314,6 +316,9 @@
             // Bind approval log list
             this._bindApprovalLogList(sWbsId);
 
+            // Load dependencies
+            this._loadDependencies(sWbsId);
+
             // Load location info
             this._loadLocation(sWbsId);
 
@@ -382,16 +387,28 @@
                             sWorkItemId = oResult.WORKITEM_ID;
                         } else if (oResult == 1 || oResult == "1") {
                             bActionable = true;
-                            // Extract Latest WorkItem ID from ToApprovalLog
-                            var oWbs = that.getView().getBindingContext().getObject();
-                            var aLogs = (oWbs.ToApprovalLog && oWbs.ToApprovalLog.results) ? oWbs.ToApprovalLog.results : [];
-                            if (aLogs.length > 0) {
-                                aLogs.sort(function (a, b) {
-                                    if (a.CreatedTimestamp < b.CreatedTimestamp) return 1;
-                                    if (a.CreatedTimestamp > b.CreatedTimestamp) return -1;
-                                    return 0;
+                            // Extract Latest WorkItem ID from _aGlobalLogs (already fully fetched by ApprovalLogDelegate)
+                            var aGLogs = that._aGlobalLogs || [];
+                            if (aGLogs.length > 0) {
+                                // Sort descending by timestamp
+                                var aSorted = aGLogs.slice().sort(function (a, b) {
+                                    var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                                    var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                                    return tB - tA;
                                 });
-                                sWorkItemId = aLogs[0].WorkItemId;
+                                // Find any log with WorkItemId from current cycle
+                                // IMPORTANT: WorkItemId may be on the submit row itself — capture it BEFORE breaking
+                                var sGFound = null;
+                                for (var gi = 0; gi < aSorted.length; gi++) {
+                                    if (aSorted[gi].WorkItemId && !sGFound) {
+                                        sGFound = aSorted[gi].WorkItemId;
+                                    }
+                                    var gAct = (aSorted[gi].Action || "").toUpperCase().trim();
+                                    var bIsReset = gAct === "0000" || gAct === "SUBMITTED" || gAct === "TẠO WBS" ||
+                                        (gAct.indexOf("GỬI") !== -1 && gAct.indexOf("YÊU CẦU") !== -1);
+                                    if (bIsReset) break;
+                                }
+                                sWorkItemId = sGFound || "";
                             }
                         }
 
@@ -427,7 +444,7 @@
                 success: function (oData) {
                     if (oData.results && oData.results.length > 0) {
                         // Client-side fallback to handle backend not processing $filter correctly
-                        var aMatches = oData.results.filter(function(loc) { return loc.WbsId === sWbsId; });
+                        var aMatches = oData.results.filter(function (loc) { return loc.WbsId === sWbsId; });
                         if (aMatches.length > 0) {
                             oLocationModel.setData(aMatches[0]);
                         } else {
@@ -564,6 +581,19 @@
 
 
 
+    });
+
+    // Mix in DependencyDelegate functions
+    Object.assign(WBSDetailController.prototype, {
+        _loadDependencies: DependencyDelegate._loadDependencies,
+        onAddDependency: DependencyDelegate.onAddDependency,
+        onConfirmAddDependency: DependencyDelegate.onConfirmAddDependency,
+        onCancelAddDependency: DependencyDelegate.onCancelAddDependency,
+        onDeleteDependency: DependencyDelegate.onDeleteDependency,
+        formatDepType: DependencyDelegate.formatDepType,
+        formatDepTypeState: DependencyDelegate.formatDepTypeState,
+        validateDependencyOnRun: DependencyDelegate.validateDependencyOnRun,
+        validateDependencyOnClose: DependencyDelegate.validateDependencyOnClose
     });
 
     // Mix in DailyLogDelegate functions
@@ -716,7 +746,7 @@
                 sap.m.MessageBox.error(oBundle.getText("planningOnlyOpenApprovalError", [""]));
                 return;
             }
- 
+
             sap.m.MessageBox.confirm(oBundle.getText("submitOpenApprovalConfirm", ["1"]), {
                 onClose: function (sAction) {
                     if (sAction === sap.m.MessageBox.Action.OK) {
@@ -892,9 +922,18 @@
                             var sAction = (log.Action || "").toUpperCase().trim();
                             var iLevel = parseInt(log.ApprovalLevel) || 0;
 
-                            // Extract WorkItemId directly from logs if CheckDecision didn't provide one
-                            if (!sFoundWorkItemId && sAction.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 && iLevel === myAuthLevel && log.WorkItemId) {
-                                sFoundWorkItemId = log.WorkItemId;
+                            // Extract WorkItemId directly from logs if CheckDecision didn't provide one.
+                            // Prioritise the log matching myAuthLevel, but fall back to any log with a WorkItemId
+                            // (Approval Log no longer filters by user, so all agents' logs are visible)
+                            if (log.WorkItemId) {
+                                if (!sFoundWorkItemId) {
+                                    // Accept any WorkItemId as initial fallback
+                                    sFoundWorkItemId = log.WorkItemId;
+                                }
+                                if (sAction.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 && iLevel === myAuthLevel) {
+                                    // Prefer the log addressed specifically to this user's level
+                                    sFoundWorkItemId = log.WorkItemId;
+                                }
                             }
 
                             // Ignore informational routing logs from Workflow

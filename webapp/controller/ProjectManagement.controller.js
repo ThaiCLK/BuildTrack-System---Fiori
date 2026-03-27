@@ -1,4 +1,4 @@
-﻿sap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/ui/model/json/JSONModel",
@@ -624,8 +624,21 @@
                     new Item({ key: "OTHER", text: oBundle.getText("typeOther") })
                 ]
             });
-            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
-            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
+            var dToday = new Date();
+            dToday.setHours(0, 0, 0, 0);
+
+            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+
+            oPickerStart.attachChange(function (oEvent) {
+                var dNewStart = oEvent.getSource().getDateValue();
+                if (dNewStart) {
+                    var dMinEnd = new Date(Math.max(dToday.getTime(), dNewStart.getTime()));
+                    dMinEnd.setDate(dMinEnd.getDate() + 1); // End date should be > Start date
+                    oPickerEnd.setMinDate(dMinEnd);
+                }
+            });
+
             var oSelectStatus = new Select({
                 width: "100%",
                 enabled: false, // Status can never be edited manually (always disabled)
@@ -652,8 +665,35 @@
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
                 var oStart = oContext.getProperty("StartDate");
                 var oEnd = oContext.getProperty("EndDate");
-                if (oStart) oPickerStart.setDateValue(oStart);
-                if (oEnd) oPickerEnd.setDateValue(oEnd);
+                
+                if (oStart) {
+                    oPickerStart.setDateValue(oStart);
+                    // Prevent error state if existing date is in the past
+                    var dStartMin = new Date(dToday);
+                    if (oStart < dToday) {
+                        dStartMin = new Date(oStart);
+                        dStartMin.setHours(0, 0, 0, 0);
+                    }
+                    oPickerStart.setMinDate(dStartMin);
+                }
+                
+                if (oEnd) {
+                    oPickerEnd.setDateValue(oEnd);
+                    var dEndMin = new Date(dToday);
+                    if (oEnd < dToday) {
+                        dEndMin = new Date(oEnd);
+                        dEndMin.setHours(0, 0, 0, 0);
+                    }
+                    if (oStart && oStart >= dStartMin) {
+                        var dMinEndFromStart = new Date(oStart);
+                        dMinEndFromStart.setHours(0, 0, 0, 0);
+                        dMinEndFromStart.setDate(dMinEndFromStart.getDate() + 1);
+                        if (dMinEndFromStart > dEndMin) {
+                            dEndMin = dMinEndFromStart;
+                        }
+                    }
+                    oPickerEnd.setMinDate(dEndMin);
+                }
             }
 
             var aFormContent = [
@@ -686,6 +726,41 @@
                             MessageToast.show(oBundle.getText("enterProjectCodeNameError"));
                             return;
                         }
+
+                        // Validate Project Code format: PRJ-YYYY-XXX
+                        var rCodePattern = /^PRJ-\d{4}-\d{3}$/;
+                        if (!rCodePattern.test(sCode)) {
+                            MessageBox.error(oBundle.getText("invalidProjectCodeFormat"));
+                            return;
+                        }
+
+                        var dStart = oPickerStart.getDateValue();
+                        var dEnd = oPickerEnd.getDateValue();
+
+                        if (dStart) {
+                            var dToday = new Date();
+                            dToday.setHours(0, 0, 0, 0);
+                            var dStartCompare = new Date(dStart.getTime());
+                            dStartCompare.setHours(0, 0, 0, 0);
+
+                            if (dStartCompare < dToday) {
+                                MessageBox.error(oBundle.getText("startDatePastError"));
+                                return;
+                            }
+                        }
+
+                        if (dStart && dEnd) {
+                            var dStartCompare = new Date(dStart.getTime());
+                            dStartCompare.setHours(0, 0, 0, 0);
+                            var dEndCompare = new Date(dEnd.getTime());
+                            dEndCompare.setHours(0, 0, 0, 0);
+
+                            if (dEndCompare <= dStartCompare) {
+                                MessageBox.error(oBundle.getText("endDateBeforeStartError"));
+                                return;
+                            }
+                        }
+
                         var oPayload = {
                             ProjectCode: sCode,
                             ProjectName: sName,

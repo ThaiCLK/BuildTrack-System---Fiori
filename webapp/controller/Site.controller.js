@@ -1,4 +1,4 @@
-﻿sap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/m/MessageToast",
@@ -51,11 +51,8 @@
         formatStatusIcon: function (sStatus) {
             var m = {
                 "PLANNING": "sap-icon://status-in-process",
-                "SUBMITTED": "sap-icon://paper-plane",
-                "REJECTED": "sap-icon://status-negative",
-                "READY": "sap-icon://status-positive",
                 "IN_PROGRESS": "sap-icon://play",
-                "COMPLETED": "sap-icon://accept"
+                "CLOSED": "sap-icon://status-negative"
             };
             return m[(sStatus || "").toUpperCase()] || "sap-icon://status-inactive";
         },
@@ -63,11 +60,8 @@
         formatStatusState: function (sStatus) {
             var m = {
                 "PLANNING": "Warning",
-                "SUBMITTED": "Information",
-                "REJECTED": "Error",
-                "READY": "Success",
-                "IN_PROGRESS": "Warning",
-                "COMPLETED": "Success"
+                "IN_PROGRESS": "Success",
+                "CLOSED": "Error"
             };
             return m[(sStatus || "").toUpperCase()] || "None";
         },
@@ -76,11 +70,8 @@
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var mLabels = {
                 "PLANNING": oBundle.getText("planningStatus"),
-                "SUBMITTED": oBundle.getText("submittedStatus"),
-                "REJECTED": oBundle.getText("rejectedStatus"),
-                "READY": oBundle.getText("readyStatus"),
                 "IN_PROGRESS": oBundle.getText("inProgressStatus"),
-                "COMPLETED": oBundle.getText("completedStatus")
+                "CLOSED": oBundle.getText("closedStatus")
             };
             return mLabels[(sStatus || "").toUpperCase()] || sStatus;
         },

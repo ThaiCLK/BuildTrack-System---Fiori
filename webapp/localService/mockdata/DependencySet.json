@@ -1,0 +1,26 @@
+[
+    {
+        "WbsId":          "00000000-0000-0000-0000-000000000102",
+        "DepWbsId":       "00000000-0000-0000-0000-000000000101",
+        "DepType":        "FS",
+        "DepDescription": "Ép cọc xong mới đào đất"
+    },
+    {
+        "WbsId":          "00000000-0000-0000-0000-000000000103",
+        "DepWbsId":       "00000000-0000-0000-0000-000000000102",
+        "DepType":        "FS",
+        "DepDescription": "Đào đất xong mới thi công hầm"
+    },
+    {
+        "WbsId":          "00000000-0000-0000-0000-000000000302",
+        "DepWbsId":       "00000000-0000-0000-0000-000000000301",
+        "DepType":        "SS",
+        "DepDescription": "MEP và thang máy thi công song song"
+    },
+    {
+        "WbsId":          "00000000-0000-0000-0000-000000000304",
+        "DepWbsId":       "00000000-0000-0000-0000-000000000303",
+        "DepType":        "FF",
+        "DepDescription": "Nội thất và ốp lát phải hoàn thành cùng lúc"
+    }
+]

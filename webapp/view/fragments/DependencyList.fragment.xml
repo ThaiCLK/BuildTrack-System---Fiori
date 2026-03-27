@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:t="sap.ui.table">
+
+    <Panel headerText="{i18n>depSectionTitle}" expandable="true" expanded="true"
+           class="sapUiSmallMarginTop">
+        <content>
+            <Toolbar design="Transparent">
+                <ToolbarSpacer />
+                <Button
+                    icon="sap-icon://add"
+                    text="{i18n>depAddButton}"
+                    type="Emphasized"
+                    press=".onAddDependency"
+                    enabled="{= ${Status} === 'PLANNING' || ${Status} === 'OPENED' }" />
+            </Toolbar>
+
+            <Table
+                items="{dependencyModel>/dependencies}"
+                noDataText="{i18n>depNoDependencies}"
+                mode="None"
+                alternateRowColors="true">
+                <columns>
+                    <Column width="15%">
+                        <Text text="{i18n>depPredCode}" />
+                    </Column>
+                    <Column width="30%">
+                        <Text text="{i18n>depPredName}" />
+                    </Column>
+                    <Column width="15%">
+                        <Text text="{i18n>depTypeLabel}" />
+                    </Column>
+                    <Column width="30%">
+                        <Text text="{i18n>depDescription}" />
+                    </Column>
+                    <Column width="10%" hAlign="Center">
+                        <Text text="{i18n>actions}" />
+                    </Column>
+                </columns>
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <ObjectIdentifier
+                                title="{dependencyModel>PredWbsCode}" />
+                            <Text text="{dependencyModel>PredWbsName}" wrapping="false" />
+                            <ObjectStatus
+                                text="{path: 'dependencyModel>DepType', formatter: '.formatDepType'}"
+                                state="{path: 'dependencyModel>DepType', formatter: '.formatDepTypeState'}" />
+                            <Text text="{dependencyModel>DepDescription}" />
+                            <Button
+                                icon="sap-icon://delete"
+                                type="Transparent"
+                                press=".onDeleteDependency" />
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </content>
+    </Panel>
+</core:FragmentDefinition>

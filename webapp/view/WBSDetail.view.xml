@@ -159,6 +159,9 @@
                             </form:content>
                         </form:SimpleForm>
 
+                        <!-- Dependencies Section -->
+                        <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.DependencyList" type="XML" />
+
                     </IconTabFilter>
                     
                     <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="{i18n>dailyLogTab}" visible="{path: 'ParentId', formatter: '.isChildNode'}">

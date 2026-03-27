@@ -195,6 +195,7 @@
                 <Property Name="ApprovalType"     Type="Edm.String"   MaxLength="15"  sap:label="Approval Type" />
                 <Property Name="ApprovalLevel"    Type="Edm.Int32"                    sap:label="Approval Level" />
                 <Property Name="Action"           Type="Edm.String"   MaxLength="100" sap:label="Action" />
+                <Property Name="EvaluationResult" Type="Edm.String"   MaxLength="50"  sap:label="Evaluation Result" />
                 <Property Name="ActionBy"         Type="Edm.String"   MaxLength="50"  sap:label="Action By" />
                 <Property Name="CreatedTimestamp" Type="Edm.DateTimeOffset" Precision="7" sap:label="Timestamp" />
                 <Property Name="ApprovalNote"     Type="Edm.String"   MaxLength="255" sap:label="Approval Note" />
@@ -205,12 +206,12 @@
             <!-- ═══════════════════════════════════════════════════════════ -->
             <EntityType Name="Dependency">
                 <Key>
-                    <PropertyRef Name="DepId" />
+                    <PropertyRef Name="WbsId" />
+                    <PropertyRef Name="DepWbsId" />
                 </Key>
                 <Property Name="Client"         Type="Edm.String"   MaxLength="3"   sap:label="Client" />
-                <Property Name="DepId"          Type="Edm.Guid"     Nullable="false" sap:label="Dependency UUID" />
-                <Property Name="PredWbsId"      Type="Edm.Guid"     sap:label="Predecessor WBS UUID" />
-                <Property Name="WbsId"          Type="Edm.Guid"     sap:label="WBS UUID" />
+                <Property Name="WbsId"          Type="Edm.Guid"     Nullable="false" sap:label="WBS UUID" />
+                <Property Name="DepWbsId"       Type="Edm.Guid"     Nullable="false" sap:label="Predecessor WBS UUID" />
                 <Property Name="DepType"        Type="Edm.String"   MaxLength="2"   sap:label="Dependency Type" />
                 <Property Name="DepDescription" Type="Edm.String"   MaxLength="50"  sap:label="Dependency Description" />
                 <Property Name="CreatedBy"      Type="Edm.String"   MaxLength="12"  sap:label="Created By" />

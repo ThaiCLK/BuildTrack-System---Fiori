@@ -45,11 +45,8 @@ sap.ui.define([
             if (!oBundle) { return sStatus; }
             var m = {
                 "PLANNING": oBundle.getText("planningStatus"),
-                "SUBMITTED": oBundle.getText("submittedStatus"),
-                "REJECTED": oBundle.getText("rejectedStatus"),
-                "READY": oBundle.getText("readyStatus"),
                 "IN_PROGRESS": oBundle.getText("inProgressStatus"),
-                "COMPLETED": oBundle.getText("completedStatus")
+                "CLOSED": oBundle.getText("closedStatus")
             };
             return m[(sStatus || "").toUpperCase()] || sStatus;
         },
@@ -222,7 +219,7 @@ sap.ui.define([
             oModel.read("/SiteSet(guid'" + this._sCurrentSiteId + "')/ToWbs", {
                 urlParameters: {
                     "$expand": "ToSubWbs,ToSubWbs/ToApprovalLog,ToApprovalLog",
-                    "$orderby": "WbsCode"
+                    "$orderby": "StartDate"
                 },
                 success: function (oData) {
                     var aRawResults = oData.results || [];
@@ -244,6 +241,13 @@ sap.ui.define([
                     };
                     fnFlatten(aRawResults);
 
+                    // Sort aResults by StartDate before transforming to tree to ensure proper ordering at all levels
+                    aResults.sort(function(a, b) {
+                        var tA = a.StartDate ? new Date(a.StartDate).getTime() : 0;
+                        var tB = b.StartDate ? new Date(b.StartDate).getTime() : 0;
+                        return tA - tB;
+                    });
+
                     var aTreeData = that._transformToTree(aResults);
                     var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
                     that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
@@ -251,109 +255,194 @@ sap.ui.define([
 
 
                     // 1. Filter items that are globally in a PENDING status
-                    var aGlobalPending = aResults.filter(function (item) {
+                    var aAllPending = aResults.filter(function (item) {
                         return item.Status === "PENDING_OPEN" || item.Status === "PENDING_CLOSE";
                     });
 
+                    // Build a set of pending WbsIds for quick lookup
+                    var oPendingIds = {};
+                    aAllPending.forEach(function (w) { oPendingIds[w.WbsId] = true; });
+
+                    // Exclude child WBS whose PARENT is also pending — those WBS are cascade-status
+                    // changed by the backend and have no independent workflow/WorkItemId of their own.
+                    var aGlobalPending = aAllPending.filter(function (item) {
+                        if (!item.ParentId) return true;
+                        var sParent = item.ParentId.replace(/-/g, "").toLowerCase();
+                        if (/^0+$/.test(sParent)) return true; // zero GUID = no real parent
+                        // Check if this WBS has its own ApprovalLog entry (owns a workflow)
+                        var aItemLogs = (item.ToApprovalLog && item.ToApprovalLog.results) ? item.ToApprovalLog.results : [];
+                        var bHasOwnLog = aItemLogs.some(function (l) {
+                            var sAct = (l.Action || "").toUpperCase();
+                            // A "GỬI YÊU CẦU" log indicates this WBS was independently submitted
+                            return sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1;
+                        });
+                        if (bHasOwnLog) return true;
+                        // If parent is also pending, exclude this child
+                        var sNormParent = item.ParentId.toLowerCase().replace(/-/g, "");
+                        var bParentPending = aAllPending.some(function (p) {
+                            return p.WbsId.toLowerCase().replace(/-/g, "") === sNormParent;
+                        });
+                        return !bParentPending;
+                    });
 
                     if (aGlobalPending.length === 0) {
+                        that.getView().getModel("viewData").setProperty("/pendingOpenWBS", []);
+                        that.getView().getModel("viewData").setProperty("/pendingCloseWBS", []);
                         that.getView().getModel("viewData").setProperty("/pendingWBS", []);
                         return;
                     }
 
-                    // 2. Perform user-specific check for each pending item
-                    var aUserActionableItems = [];
-                    var iProcessed = 0;
+                    // Asynchronously filter items by checking if the current user has actionability (WorkItemId)
+                    var aActionablePending = [];
+                    var iChecked = 0;
+                    var iPendingCount = aGlobalPending.length;
 
-                    aGlobalPending.forEach(function (oItem) {
-                        var sType = "OPEN";
-                        var aLogs = (oItem.ToApprovalLog && oItem.ToApprovalLog.results) ? oItem.ToApprovalLog.results : [];
-
-                        if (aLogs.length > 0) {
-                            // Sort by CreatedTimestamp (String comparison works if format is YYYYMMDD...)
-                            aLogs.sort(function (a, b) {
-                                if (a.CreatedTimestamp < b.CreatedTimestamp) return 1;
-                                if (a.CreatedTimestamp > b.CreatedTimestamp) return -1;
-                                return 0;
-                            });
-                            sType = aLogs[0].ApprovalType || "OPEN";
-                        } else if (oItem.Status && oItem.Status.indexOf("CLOSE") !== -1) {
-                            sType = "CLOSE";
+                    var oViewData = that.getView().getModel("viewData");
+                    
+                    var fnCheckDone = function () {
+                        iChecked++;
+                        if (iChecked === iPendingCount) {
+                            var aOpen = aActionablePending.filter(function (w) { return w.Status.indexOf("OPEN") !== -1; });
+                            var aClose = aActionablePending.filter(function (w) { return w.Status.indexOf("CLOSE") !== -1; });
+                            
+                            oViewData.setProperty("/pendingOpenWBS", aOpen);
+                            oViewData.setProperty("/pendingCloseWBS", aClose);
+                            oViewData.setProperty("/pendingWBS", aActionablePending);
                         }
+                    };
 
-
+                    aGlobalPending.forEach(function (wbs) {
+                        var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
                         oModel.callFunction("/CheckDecision", {
                             method: "POST",
-                            urlParameters: {
-                                WBS_IDS: oItem.WbsId,
-                                ApprovalType: sType
-                            },
-                            changeSetId: oItem.WbsId, // Ensure separate changeset per item
+                            urlParameters: { WBS_IDS: wbs.WbsId, ApprovalType: sType },
                             success: function (oResponse) {
-
-                                // Robust check: CheckDecision returns an object with WORKITEM_ID
-                                var oResult = oResponse.CheckDecision;
-                                if (oResult === undefined && oResponse.results) {
-                                    oResult = oResponse.results.CheckDecision;
+                                var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision) || oResponse;
+                                var sWiId = (oResult && oResult.WORKITEM_ID) ? oResult.WORKITEM_ID : "";
+                                // If BE returns a WorkItemId, the user has the right to approve it right now
+                                if (sWiId && sWiId !== "" && sWiId !== "000000000000") {
+                                    aActionablePending.push(wbs);
                                 }
-
-                                var bActionable = false;
-                                if (oResult && oResult.WORKITEM_ID && oResult.WORKITEM_ID !== "" && oResult.WORKITEM_ID !== "000000000000") {
-                                    bActionable = true;
-
-                                    // Extract Approval Level for Title display
-                                    var aLogs = (oItem.ToApprovalLog && oItem.ToApprovalLog.results) ? oItem.ToApprovalLog.results : [];
-                                    var oTargetLog = aLogs.find(function (log) {
-                                        return log.WorkItemId === oResult.WORKITEM_ID;
-                                    });
-                                    if (oTargetLog && oTargetLog.ApprovalLevel) {
-                                        that.getView().getModel("viewData").setProperty("/userLevel", oTargetLog.ApprovalLevel);
-                                    }
-                                } else if (oResult == 1 || oResult == "1") {
-                                    bActionable = true;
-                                }
-
-                                if (bActionable) {
-                                    oItem.WorkItemId = oResult.WORKITEM_ID; // Store for PostDecision
-
-                                    // Identify current user's approval level for this item
-                                    var currentLevel = 0;
-                                    var aLogs = (oItem.ToApprovalLog && oItem.ToApprovalLog.results) ? oItem.ToApprovalLog.results : [];
-                                    var oTargetLog = aLogs.find(function (log) {
-                                        return log.WorkItemId === oResult.WORKITEM_ID;
-                                    });
-                                    if (oTargetLog) {
-                                        currentLevel = oTargetLog.ApprovalLevel;
-                                    }
-                                    oItem.UserLevel = currentLevel;
-
-                                    aUserActionableItems.push(oItem);
-                                } else {
-                                }
-
-                                iProcessed++;
-                                if (iProcessed === aGlobalPending.length) {
-                                    // Split into Open and Close
-                                    var aOpen = aUserActionableItems.filter(function (w) { return w.Status.indexOf("OPEN") !== -1; });
-                                    var aClose = aUserActionableItems.filter(function (w) { return w.Status.indexOf("CLOSE") !== -1; });
-
-                                    var oViewData = that.getView().getModel("viewData");
-                                    oViewData.setProperty("/pendingOpenWBS", aOpen);
-                                    oViewData.setProperty("/pendingCloseWBS", aClose);
-                                    oViewData.setProperty("/pendingWBS", aUserActionableItems); // Fallback
-
-                                }
+                                fnCheckDone();
                             },
-                            error: function (oError) {
-                                iProcessed++;
-                                if (iProcessed === aGlobalPending.length) {
-                                    that.getView().getModel("viewData").setProperty("/pendingWBS", aUserActionableItems);
-                                }
+                            error: function () {
+                                fnCheckDone(); // On error, assume non-actionable and skip
                             }
                         });
                     });
+
+
                 },
                 error: function (oError) { console.error("Error reading WBSSet:", oError); }
+            });
+        },
+
+        /**
+         * Compute Site status from its WBS items and PATCH if changed.
+         * Rules:
+         *   - ANY WBS is IN_PROGRESS  → Site = IN_PROGRESS
+         *   - ALL WBS are CLOSED      → Site = CLOSED
+         *   - Otherwise               → Site = PLANNING
+         * Then read all Sites for the project and apply the same logic to patch Project status.
+         */
+        _computeAndPatchSiteAndProjectStatus: function () {
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            if (!this._sCurrentSiteId) { return; }
+
+            // 1. Read all WBS for this site (flat, no expand needed)
+            oModel.read("/SiteSet(guid'" + this._sCurrentSiteId + "')/ToWbs", {
+                success: function (oData) {
+                    var aWbs = (oData && oData.results) ? oData.results : [];
+
+                    // Compute new site status
+                    var sNewSiteStatus = "PLANNING";
+                    if (aWbs.length > 0) {
+                        var bAnyInProgress = aWbs.some(function (w) {
+                            return w.Status === "IN_PROGRESS";
+                        });
+                        var bAllClosed = aWbs.every(function (w) {
+                            return w.Status === "CLOSED";
+                        });
+                        if (bAnyInProgress) {
+                            sNewSiteStatus = "IN_PROGRESS";
+                        } else if (bAllClosed) {
+                            sNewSiteStatus = "CLOSED";
+                        }
+                    }
+
+                    // 2. Read current site to know its ProjectId and current status
+                    oModel.read("/SiteSet(guid'" + that._sCurrentSiteId + "')", {
+                        success: function (oSite) {
+                            var sProjectId = oSite.ProjectId;
+                            var sCurrentSiteStatus = oSite.Status;
+
+                            var fnComputeProject = function () {
+                                if (!sProjectId) { return; }
+                                // 4. Read all sites for project and compute project status
+                                oModel.read("/ProjectSet(guid'" + sProjectId + "')/ToSites", {
+                                    success: function (oProjData) {
+                                        var aSites = (oProjData && oProjData.results) ? oProjData.results : [];
+                                        var sNewProjStatus = "PLANNING";
+                                        if (aSites.length > 0) {
+                                            var bSiteInProgress = aSites.some(function (s) {
+                                                return s.Status === "IN_PROGRESS";
+                                            });
+                                            var bSiteAllClosed = aSites.every(function (s) {
+                                                return s.Status === "CLOSED";
+                                            });
+                                            if (bSiteInProgress) {
+                                                sNewProjStatus = "IN_PROGRESS";
+                                            } else if (bSiteAllClosed) {
+                                                sNewProjStatus = "CLOSED";
+                                            }
+                                        }
+
+                                        // Read current project status to avoid unnecessary PATCH
+                                        oModel.read("/ProjectSet(guid'" + sProjectId + "')", {
+                                            success: function (oProj) {
+                                                if (oProj.Status !== sNewProjStatus) {
+                                                    oModel.update("/ProjectSet(guid'" + sProjectId + "')", { Status: sNewProjStatus }, {
+                                                        success: function () { oModel.refresh(true); },
+                                                        error: function (e) { console.error("Error patching project status", e); }
+                                                    });
+                                                }
+                                            },
+                                            error: function () { }
+                                        });
+                                    },
+                                    error: function () { }
+                                });
+                            };
+
+                            // 3. Patch site status if changed
+                            if (sCurrentSiteStatus !== sNewSiteStatus) {
+                                var oSitePayload = {
+                                    SiteCode: oSite.SiteCode,
+                                    SiteName: oSite.SiteName,
+                                    Address: oSite.Address || "",
+                                    Status: sNewSiteStatus,
+                                    ProjectId: oSite.ProjectId,
+                                    Client: oSite.Client
+                                };
+                                oModel.update("/SiteSet(guid'" + that._sCurrentSiteId + "')", oSitePayload, {
+                                    success: function () {
+                                        oModel.refresh(true);
+                                        fnComputeProject();
+                                    },
+                                    error: function (e) {
+                                        console.error("Error patching site status", e);
+                                        fnComputeProject();
+                                    }
+                                });
+                            } else {
+                                fnComputeProject();
+                            }
+                        },
+                        error: function () { }
+                    });
+                },
+                error: function () { }
             });
         },
 
@@ -609,26 +698,38 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
 
-            MessageBox.confirm(oBundle.getText("runWbsConfirm", [oData.WbsName]), {
-                title: oBundle.getText("confirmRunWbs"),
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.OK) {
-                        that.getView().setBusy(true);
-                        oModel.update("/WBSSet(guid'" + oData.WbsId + "')", { Status: "IN_PROGRESS" }, {
-                            success: function () {
-                                that.getView().setBusy(false);
-                                MessageToast.show(oBundle.getText("wbsRunSuccess"));
-                                that._loadWbsData();
-                                oModel.refresh(true);
-                            },
-                            error: function (oError) {
-                                that.getView().setBusy(false);
-                                MessageBox.error(oBundle.getText("wbsRunError"));
-                            }
-                        });
+            // Check FS + SS dependency constraints before running
+            var fnRun = function () {
+                MessageBox.confirm(oBundle.getText("runWbsConfirm", [oData.WbsName]), {
+                    title: oBundle.getText("confirmRunWbs"),
+                    onClose: function (sAction) {
+                        if (sAction === MessageBox.Action.OK) {
+                            that.getView().setBusy(true);
+                            oModel.update("/WBSSet(guid'" + oData.WbsId + "')", { Status: "IN_PROGRESS" }, {
+                                success: function () {
+                                    that.getView().setBusy(false);
+                                    MessageToast.show(oBundle.getText("wbsRunSuccess"));
+                                    that._loadWbsData();
+                                    that._computeAndPatchSiteAndProjectStatus();
+                                    oModel.refresh(true);
+                                },
+                                error: function (oError) {
+                                    that.getView().setBusy(false);
+                                    MessageBox.error(oBundle.getText("wbsRunError"));
+                                }
+                            });
+                        }
                     }
-                }
-            });
+                });
+            };
+
+            if (typeof that.validateDependencyOnRun === "function") {
+                that.validateDependencyOnRun(oData.WbsId).then(fnRun).catch(function (sMsg) {
+                    MessageBox.error(sMsg, { title: oBundle.getText("depDependencyViolationTitle") || "Dependency Constraint" });
+                });
+            } else {
+                fnRun();
+            }
         },
 
         // ── WBS: PENDING APPROVAL LOGIC ───────────────────────────────────────
@@ -642,36 +743,143 @@ sap.ui.define([
 
         _processPendingWbs: function (sDecisionCode) {
             var that = this;
-            var oTable = this.byId("pendingApprovalTable"); // Unified table for both Open & Close
+            var oTable = this.byId("pendingApprovalTable");
             var aSelectedItems = oTable.getSelectedItems();
-
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oModel = this.getOwnerComponent().getModel();
+
             if (aSelectedItems.length === 0) {
                 MessageToast.show(oBundle.getText("selectPendingWbsError"));
                 return;
             }
 
-            var aItemsToProcess = [];
-            var bError = false;
-
-            aSelectedItems.forEach(function (oItem) {
-                var oCtx = oItem.getBindingContext("viewData");
-                var oWbs = oCtx.getObject();
-
-                // Extract the EXACT active WorkItemId populated by CheckDecision
-                var sWorkItemId = oWbs.WorkItemId || "";
-
-                if (!sWorkItemId) {
-                    bError = true;
-                } else {
-                    aItemsToProcess.push({
-                        WorkItemId: sWorkItemId,
-                        WbsName: oWbs.WbsName
-                    });
-                }
+            var aWbsObjects = aSelectedItems.map(function (oItem) {
+                return oItem.getBindingContext("viewData").getObject();
             });
 
-            if (bError && aItemsToProcess.length === 0) {
+            this.getView().setBusy(true);
+
+            // Helper: extract WorkItemId from an array of ApprovalLog entries (most-recent-first in current cycle)
+            // IMPORTANT: WorkItemId may be stored on the "Gửi yêu cầu" (submit) row itself,
+            // so we capture it BEFORE breaking when we hit a cycle-reset action.
+            var fnExtractFromLogArray = function (aLogs) {
+                if (!aLogs || aLogs.length === 0) return null;
+                var aSorted = aLogs.slice().sort(function (a, b) {
+                    var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                    var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                    return tB - tA;
+                });
+
+                var sFound = null;
+                for (var i = 0; i < aSorted.length; i++) {
+                    console.log("ROW " + i + ": Act=" + aSorted[i].Action + " Lvl=" + aSorted[i].ApprovalLevel + " WI_ID=" + aSorted[i].WorkItemId);
+                    // Grab any WorkItemId we find along the way
+                    if (aSorted[i].WorkItemId && !sFound) {
+                        sFound = aSorted[i].WorkItemId;
+                    }
+                    var sAct = (aSorted[i].Action || "").toUpperCase().trim();
+                    var bIsReset = sAct === "0000" || sAct === "SUBMITTED" || sAct === "TẠO WBS" ||
+                        (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1);
+                    // After capturing WorkItemId, stop scanning older logs
+                    if (bIsReset) break;
+                }
+                return sFound;
+            };
+
+            // Tier-2 fallback: try ToApprovalLog expand on the WBS object
+            var fnExpandFallback = function (oWbs) {
+                var aLogs = (oWbs.ToApprovalLog && oWbs.ToApprovalLog.results) ? oWbs.ToApprovalLog.results : [];
+                return fnExtractFromLogArray(aLogs);
+            };
+
+            // Tier-3 fallback: fetch /ApprovalLogSet directly if previous tiers failed
+            var fnDirectFetch = function (oWbs, fnCallback) {
+                var sWbsId = oWbs.WbsId;
+                var sType = oWbs.Status && oWbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
+                oModel.read("/ApprovalLogSet", {
+                    filters: [
+                        new Filter("WbsId", FilterOperator.EQ, sWbsId),
+                        new Filter("ApprovalType", FilterOperator.EQ, sType)
+                    ],
+                    sorters: [new sap.ui.model.Sorter("CreatedTimestamp", true)],
+                    urlParameters: { "cb": new Date().getTime() },
+                    success: function (oData) {
+                        var aLogs = (oData.results || []).filter(function (l) {
+                            return l.WbsId && l.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                        });
+                        fnCallback(fnExtractFromLogArray(aLogs) || "");
+                    },
+                    error: function () { fnCallback(""); }
+                });
+            };
+
+            // Resolution counter
+            var aResolved = [];
+            var iDone = 0;
+            var fnFinalize = function () {
+                iDone++;
+                if (iDone === aWbsObjects.length) {
+                    that.getView().setBusy(false);
+                    that._openApproveDialog(aResolved, sDecisionCode, oBundle);
+                }
+            };
+            var fnAddIfValid = function (sWiId, oWbs) {
+                if (sWiId && sWiId !== "" && sWiId !== "000000000000") {
+                    aResolved.push({ WorkItemId: sWiId, WbsName: oWbs.WbsName });
+                }
+            };
+
+            aWbsObjects.forEach(function (oWbs) {
+                var sType = oWbs.Status && oWbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
+
+                // Tier-1: Call CheckDecision
+                oModel.callFunction("/CheckDecision", {
+                    method: "POST",
+                    urlParameters: { WBS_IDS: oWbs.WbsId, ApprovalType: sType },
+                    changeSetId: oWbs.WbsId,
+                    success: function (oResponse) {
+                        var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision) || oResponse;
+                        var sWiId = (oResult && oResult.WORKITEM_ID) ? oResult.WORKITEM_ID : "";
+
+                        console.log("=== CHECKDECISION SUCCESS cho " + oWbs.WbsId + " ===");
+                        console.log(oResult);
+
+                        if (!sWiId || sWiId === "" || sWiId === "000000000000") {
+                            // Tier-2: ToApprovalLog expand
+                            sWiId = fnExpandFallback(oWbs) || "";
+                        }
+
+                        if (!sWiId || sWiId === "" || sWiId === "000000000000") {
+                            // Tier-3: Direct fetch from ApprovalLogSet
+                            fnDirectFetch(oWbs, function (sResolved) {
+                                fnAddIfValid(sResolved, oWbs);
+                                fnFinalize();
+                            });
+                        } else {
+                            fnAddIfValid(sWiId, oWbs);
+                            fnFinalize();
+                        }
+                    },
+                    error: function () {
+                        // Tier-2 on CheckDecision error
+                        var sWiId = fnExpandFallback(oWbs) || "";
+                        if (!sWiId || sWiId === "" || sWiId === "000000000000") {
+                            // Tier-3
+                            fnDirectFetch(oWbs, function (sResolved) {
+                                fnAddIfValid(sResolved, oWbs);
+                                fnFinalize();
+                            });
+                        } else {
+                            fnAddIfValid(sWiId, oWbs);
+                            fnFinalize();
+                        }
+                    }
+                });
+            });
+        },
+
+        _openApproveDialog: function (aItemsToProcess, sDecisionCode, oBundle) {
+            if (!aItemsToProcess || aItemsToProcess.length === 0) {
                 MessageBox.error(oBundle.getText("workItemIdNotFoundError"));
                 return;
             }
@@ -711,11 +919,12 @@ sap.ui.define([
                 this.getView().addDependent(this._oApproveDialog);
             }
 
-            this._sPendingDecision = sDecisionCode; // "0001" or "0002"
+            this._sPendingDecision = sDecisionCode;
             this._aPendingItems = aItemsToProcess;
             sap.ui.getCore().byId("approveNote").setValue("");
             this._oApproveDialog.open();
         },
+
 
         _submitDecisionBatch: function (aItems, sDecision, sUserNote) {
             var that = this;
@@ -735,6 +944,7 @@ sap.ui.define([
                         MessageBox.warning(oBundle.getText("submitPartialError", [iError]));
                     }
                     that._loadWbsData();
+                    that._computeAndPatchSiteAndProjectStatus();
                     oModel.refresh(true);
                     return;
                 }
@@ -786,8 +996,21 @@ sap.ui.define([
                 }
             });
             var oInputName = new Input({ placeholder: oBundle.getText("workItemName") });
-            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
-            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd" });
+            var dToday = new Date();
+            dToday.setHours(0, 0, 0, 0);
+
+            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+
+            oPickerStart.attachChange(function (oEvent) {
+                var dNewStart = oEvent.getSource().getDateValue();
+                if (dNewStart) {
+                    var dMinEnd = new Date(Math.max(dToday.getTime(), dNewStart.getTime()));
+                    dMinEnd.setDate(dMinEnd.getDate() + 1); // End date should be > Start date
+                    oPickerEnd.setMinDate(dMinEnd);
+                }
+            });
+
             var oInputQty = new Input({ type: "Number", placeholder: "0" });
 
             var oSelectUnit = new Select({
@@ -820,8 +1043,36 @@ sap.ui.define([
                 oInputName.setValue(oContext.getProperty("WbsName"));
                 var oStart = oContext.getProperty("StartDate");
                 var oEnd = oContext.getProperty("EndDate");
-                if (oStart) oPickerStart.setDateValue(oStart);
-                if (oEnd) oPickerEnd.setDateValue(oEnd);
+                
+                if (oStart) {
+                    oPickerStart.setDateValue(oStart);
+                    // Prevent error state if existing date is in the past
+                    var dStartMin = new Date(dToday);
+                    if (oStart < dToday) {
+                        dStartMin = new Date(oStart);
+                        dStartMin.setHours(0, 0, 0, 0);
+                    }
+                    oPickerStart.setMinDate(dStartMin);
+                }
+                
+                if (oEnd) {
+                    oPickerEnd.setDateValue(oEnd);
+                    var dEndMin = new Date(dToday);
+                    if (oEnd < dToday) {
+                        dEndMin = new Date(oEnd);
+                        dEndMin.setHours(0, 0, 0, 0);
+                    }
+                    if (oStart && oStart >= dStartMin) {
+                        var dMinEndFromStart = new Date(oStart);
+                        dMinEndFromStart.setHours(0, 0, 0, 0);
+                        dMinEndFromStart.setDate(dMinEndFromStart.getDate() + 1);
+                        if (dMinEndFromStart > dEndMin) {
+                            dEndMin = dMinEndFromStart;
+                        }
+                    }
+                    oPickerEnd.setMinDate(dEndMin);
+                }
+
                 var sQty = oContext.getProperty("Quantity");
                 if (sQty) oInputQty.setValue(parseFloat(sQty));
                 oSelectUnit.setSelectedKey(oContext.getProperty("UnitCode"));
@@ -990,6 +1241,7 @@ sap.ui.define([
                                         oDialog.close();
                                         oModel.refresh(true);
                                         that._loadWbsData();
+                                        that._computeAndPatchSiteAndProjectStatus();
                                     });
                                 },
                                 error: function () { MessageBox.error(oBundle.getText("errorUpdatingWbs")); }

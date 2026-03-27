@@ -352,6 +352,10 @@ sap.ui.define([
                             }.bind(this)
                         });
                         this._loadWorkSummary(sWbsId);
+                        // Cascade status recomputation: WBS→Site→Project (only available in SiteDetail context)
+                        if (typeof this._computeAndPatchSiteAndProjectStatus === "function") {
+                            this._computeAndPatchSiteAndProjectStatus();
+                        }
                         var oBinding = oView.getElementBinding();
                         if (oBinding) { oBinding.refresh(); }
                     }.bind(this),
@@ -367,6 +371,17 @@ sap.ui.define([
                 });
             }.bind(this);
 
+            var fnRunWithDependencyCheck = function () {
+                if (typeof this.validateDependencyOnClose === "function") {
+                    this.validateDependencyOnClose(sWbsId).then(fnCallAction).catch(function (sMsg) {
+                        var oBundle2 = oView.getModel("i18n").getResourceBundle();
+                        sap.m.MessageBox.error(sMsg, { title: oBundle2.getText("depDependencyViolationTitle") || "Dependency Constraint" });
+                    });
+                } else {
+                    fnCallAction();
+                }
+            }.bind(this);
+
             if (fTotalDone < fTargetQty) {
                 sap.m.MessageBox.confirm(
                     oBundle.getText("submitCloseConfirmQty"),
@@ -374,13 +389,13 @@ sap.ui.define([
                         title: oBundle.getText("confirmSubmission"),
                         onClose: function (sAction) {
                             if (sAction === sap.m.MessageBox.Action.OK) {
-                                fnCallAction();
+                                fnRunWithDependencyCheck();
                             }
                         }
                     }
                 );
             } else {
-                fnCallAction();
+                fnRunWithDependencyCheck();
             }
         }
     };
