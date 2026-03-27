@@ -770,11 +770,13 @@ sap.ui.define([
         },
 
         onApproveOpenWorkSummary: function () {
-            this._submitOpenDecision("0001", "Ký duyệt Mở");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            this._submitOpenDecision("0001", oBundle.getText("approveOpen"));
         },
 
         onRejectOpenWorkSummary: function () {
-            this._submitOpenDecision("0002", "Từ chối Mở");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            this._submitOpenDecision("0002", oBundle.getText("rejectOpen"));
         },
 
         _submitOpenDecision: function (sDecisionCode, sTitle) {
@@ -799,12 +801,24 @@ sap.ui.define([
                                 },
                                 success: function (oData) {
                                     oView.setBusy(false);
-                                    sap.m.MessageBox.success(oBundle.getText("processSuccess", ["1"]));
-                                    that.getOwnerComponent().getModel().refresh(true, true);
+                                    var oResult = oData.PostDecision || oData;
+                                    if (oResult && oResult.SUCCESS === false) {
+                                        sap.m.MessageBox.error(oResult.MESSAGE || "Lưu quyết định thất bại.");
+                                    } else {
+                                        sap.m.MessageBox.success(oBundle.getText("processSuccess", ["1"]));
+                                        // Clear the WorkItemId so subsequent clicks force a new CheckDecision
+                                        oViewData.setProperty("/activeWorkItemId", null);
+                                        that.getOwnerComponent().getModel().refresh(true, true);
+                                    }
                                 },
                                 error: function (oError) {
                                     oView.setBusy(false);
-                                    sap.m.MessageBox.error(oBundle.getText("processError") || "Error processing decision.");
+                                    var sMsg = oBundle.getText("processError") || "Error processing decision.";
+                                    try {
+                                        var oErr = JSON.parse(oError.responseText);
+                                        sMsg = oErr.error.message.value || sMsg;
+                                    } catch (e) { }
+                                    sap.m.MessageBox.error(sMsg);
                                 }
                             });
                         }
@@ -835,7 +849,14 @@ sap.ui.define([
                             oViewData.setProperty("/activeWorkItemId", oResult.WORKITEM_ID);
                             fnSubmit(oResult.WORKITEM_ID);
                         } else {
-                            sap.m.MessageBox.error(oBundle.getText("workItemIdNotFoundError"));
+                            var sFallbackMsg = oBundle.getText("workItemIdNotFoundError") || "Hạng mục này đã được xử lý hoặc bạn không có quyền duyệt.";
+                            // Optional: Extract specific dynamic content (like "LEARN-552") from backend message if possible
+                            var sBackendMsg = (oResult && oResult.MESSAGE) ? oResult.MESSAGE : "";
+                            var aMatches = sBackendMsg.match(/(LEARN-\d+)/);
+                            if (aMatches && aMatches.length > 1) {
+                                sFallbackMsg += " (" + aMatches[1] + ")";
+                            }
+                            sap.m.MessageBox.information(sFallbackMsg);
                         }
                     },
                     error: function () {
@@ -1139,11 +1160,13 @@ sap.ui.define([
         },
 
         onApproveFromReport: function () {
-            this._submitDecisionFromReport("0001", "Ký duyệt (Approve)");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            this._submitDecisionFromReport("0001", oBundle.getText("approve"));
         },
 
         onRejectFromReport: function () {
-            this._submitDecisionFromReport("0002", "Từ chối (Reject)");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            this._submitDecisionFromReport("0002", oBundle.getText("reject"));
         },
 
         _submitDecisionFromReport: function (sDecisionCode, sTitle) {
@@ -1153,12 +1176,13 @@ sap.ui.define([
             var oViewData = oView.getModel("viewData");
             var oActiveWbs = oViewData.getProperty("/activeWbs");
 
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!oActiveWbs || !oActiveWbs.WorkItemId) {
-                MessageBox.error("Không tìm thấy mã công việc (WorkItemId) để xử lý.");
+                MessageBox.error(oBundle.getText("workItemIdNotFoundError") || "Không tìm thấy mã công việc (WorkItemId) để xử lý.");
                 return;
             }
 
-            MessageBox.confirm("Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
+            MessageBox.confirm(oBundle.getText("decisionConfirm", [sTitle]) || "Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         oView.setBusy(true);
@@ -1174,7 +1198,7 @@ sap.ui.define([
                                 if (typeof that.onCloseAcceptanceDialog === "function") {
                                     that.onCloseAcceptanceDialog();
                                 }
-                                MessageBox.success("Đã xử lý quyết định thành công.");
+                                MessageBox.success(oBundle.getText("processSuccess", ["1"]) || "Đã xử lý quyết định thành công.");
                                 oModel.refresh(true); // Force cache invalidation to prevent signing loops
                                 that._bindApprovalLogList(oActiveWbs.WbsId);
 

@@ -313,8 +313,10 @@ sap.ui.define([
 
                     aGlobalPending.forEach(function (wbs) {
                         var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
+                        var sChangeSetId = "CheckDecision_" + wbs.WbsId.replace(/-/g, ""); // Force split into standalone changesets to satisfy SAP Gateway restrictions
                         oModel.callFunction("/CheckDecision", {
                             method: "POST",
+                            changeSetId: sChangeSetId,
                             urlParameters: { WBS_IDS: wbs.WbsId, ApprovalType: sType },
                             success: function (oResponse) {
                                 var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision) || oResponse;
@@ -337,114 +339,7 @@ sap.ui.define([
             });
         },
 
-        /**
-         * Compute Site status from its WBS items and PATCH if changed.
-         * Rules:
-         *   - ANY WBS is IN_PROGRESS  → Site = IN_PROGRESS
-         *   - ALL WBS are CLOSED      → Site = CLOSED
-         *   - Otherwise               → Site = PLANNING
-         * Then read all Sites for the project and apply the same logic to patch Project status.
-         */
-        _computeAndPatchSiteAndProjectStatus: function () {
-            var that = this;
-            var oModel = this.getOwnerComponent().getModel();
-            if (!this._sCurrentSiteId) { return; }
-
-            // 1. Read all WBS for this site (flat, no expand needed)
-            oModel.read("/SiteSet(guid'" + this._sCurrentSiteId + "')/ToWbs", {
-                success: function (oData) {
-                    var aWbs = (oData && oData.results) ? oData.results : [];
-
-                    // Compute new site status
-                    var sNewSiteStatus = "PLANNING";
-                    if (aWbs.length > 0) {
-                        var bAnyInProgress = aWbs.some(function (w) {
-                            return w.Status === "IN_PROGRESS";
-                        });
-                        var bAllClosed = aWbs.every(function (w) {
-                            return w.Status === "CLOSED";
-                        });
-                        if (bAnyInProgress) {
-                            sNewSiteStatus = "IN_PROGRESS";
-                        } else if (bAllClosed) {
-                            sNewSiteStatus = "CLOSED";
-                        }
-                    }
-
-                    // 2. Read current site to know its ProjectId and current status
-                    oModel.read("/SiteSet(guid'" + that._sCurrentSiteId + "')", {
-                        success: function (oSite) {
-                            var sProjectId = oSite.ProjectId;
-                            var sCurrentSiteStatus = oSite.Status;
-
-                            var fnComputeProject = function () {
-                                if (!sProjectId) { return; }
-                                // 4. Read all sites for project and compute project status
-                                oModel.read("/ProjectSet(guid'" + sProjectId + "')/ToSites", {
-                                    success: function (oProjData) {
-                                        var aSites = (oProjData && oProjData.results) ? oProjData.results : [];
-                                        var sNewProjStatus = "PLANNING";
-                                        if (aSites.length > 0) {
-                                            var bSiteInProgress = aSites.some(function (s) {
-                                                return s.Status === "IN_PROGRESS";
-                                            });
-                                            var bSiteAllClosed = aSites.every(function (s) {
-                                                return s.Status === "CLOSED";
-                                            });
-                                            if (bSiteInProgress) {
-                                                sNewProjStatus = "IN_PROGRESS";
-                                            } else if (bSiteAllClosed) {
-                                                sNewProjStatus = "CLOSED";
-                                            }
-                                        }
-
-                                        // Read current project status to avoid unnecessary PATCH
-                                        oModel.read("/ProjectSet(guid'" + sProjectId + "')", {
-                                            success: function (oProj) {
-                                                if (oProj.Status !== sNewProjStatus) {
-                                                    oModel.update("/ProjectSet(guid'" + sProjectId + "')", { Status: sNewProjStatus }, {
-                                                        success: function () { oModel.refresh(true); },
-                                                        error: function (e) { console.error("Error patching project status", e); }
-                                                    });
-                                                }
-                                            },
-                                            error: function () { }
-                                        });
-                                    },
-                                    error: function () { }
-                                });
-                            };
-
-                            // 3. Patch site status if changed
-                            if (sCurrentSiteStatus !== sNewSiteStatus) {
-                                var oSitePayload = {
-                                    SiteCode: oSite.SiteCode,
-                                    SiteName: oSite.SiteName,
-                                    Address: oSite.Address || "",
-                                    Status: sNewSiteStatus,
-                                    ProjectId: oSite.ProjectId,
-                                    Client: oSite.Client
-                                };
-                                oModel.update("/SiteSet(guid'" + that._sCurrentSiteId + "')", oSitePayload, {
-                                    success: function () {
-                                        oModel.refresh(true);
-                                        fnComputeProject();
-                                    },
-                                    error: function (e) {
-                                        console.error("Error patching site status", e);
-                                        fnComputeProject();
-                                    }
-                                });
-                            } else {
-                                fnComputeProject();
-                            }
-                        },
-                        error: function () { }
-                    });
-                },
-                error: function () { }
-            });
-        },
+        // _computeAndPatchSiteAndProjectStatus function has been removed as Backend now handles it
 
         onNavBack: function () {
             var oCtx = this.getView().getBindingContext();
@@ -710,7 +605,7 @@ sap.ui.define([
                                     that.getView().setBusy(false);
                                     MessageToast.show(oBundle.getText("wbsRunSuccess"));
                                     that._loadWbsData();
-                                    that._computeAndPatchSiteAndProjectStatus();
+                                    // Status computation is now handled by Backend
                                     oModel.refresh(true);
                                 },
                                 error: function (oError) {
@@ -944,7 +839,7 @@ sap.ui.define([
                         MessageBox.warning(oBundle.getText("submitPartialError", [iError]));
                     }
                     that._loadWbsData();
-                    that._computeAndPatchSiteAndProjectStatus();
+                    // Status computation is now handled by Backend
                     oModel.refresh(true);
                     return;
                 }
@@ -1241,7 +1136,7 @@ sap.ui.define([
                                         oDialog.close();
                                         oModel.refresh(true);
                                         that._loadWbsData();
-                                        that._computeAndPatchSiteAndProjectStatus();
+                                        // Backend will handle Status calculation
                                     });
                                 },
                                 error: function () { MessageBox.error(oBundle.getText("errorUpdatingWbs")); }

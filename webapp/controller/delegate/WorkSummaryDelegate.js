@@ -352,10 +352,7 @@ sap.ui.define([
                             }.bind(this)
                         });
                         this._loadWorkSummary(sWbsId);
-                        // Cascade status recomputation: WBS→Site→Project (only available in SiteDetail context)
-                        if (typeof this._computeAndPatchSiteAndProjectStatus === "function") {
-                            this._computeAndPatchSiteAndProjectStatus();
-                        }
+                        // Cascade status recomputation handled by DB
                         var oBinding = oView.getElementBinding();
                         if (oBinding) { oBinding.refresh(); }
                     }.bind(this),
