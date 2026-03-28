@@ -242,7 +242,7 @@ sap.ui.define([
                     fnFlatten(aRawResults);
 
                     // Sort aResults by StartDate before transforming to tree to ensure proper ordering at all levels
-                    aResults.sort(function(a, b) {
+                    aResults.sort(function (a, b) {
                         var tA = a.StartDate ? new Date(a.StartDate).getTime() : 0;
                         var tB = b.StartDate ? new Date(b.StartDate).getTime() : 0;
                         return tA - tB;
@@ -298,13 +298,13 @@ sap.ui.define([
                     var iPendingCount = aGlobalPending.length;
 
                     var oViewData = that.getView().getModel("viewData");
-                    
+
                     var fnCheckDone = function () {
                         iChecked++;
                         if (iChecked === iPendingCount) {
                             var aOpen = aActionablePending.filter(function (w) { return w.Status.indexOf("OPEN") !== -1; });
                             var aClose = aActionablePending.filter(function (w) { return w.Status.indexOf("CLOSE") !== -1; });
-                            
+
                             oViewData.setProperty("/pendingOpenWBS", aOpen);
                             oViewData.setProperty("/pendingCloseWBS", aClose);
                             oViewData.setProperty("/pendingWBS", aActionablePending);
@@ -320,14 +320,14 @@ sap.ui.define([
                                 var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
                                 return tB - tA;
                             });
-                            
-                            var oSenderLog = aSortedLogs.find(function(l) {
+
+                            var oSenderLog = aSortedLogs.find(function (l) {
                                 var sAct = (l.Action || "").toUpperCase();
                                 return sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "0000" || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
                             });
-                            
+
                             if (!oSenderLog) oSenderLog = aSortedLogs[aSortedLogs.length - 1]; // Fallback to oldest log
-                            
+
                             if (oSenderLog) {
                                 wbs.SenderName = oSenderLog.ActionBy || "";
                                 var sTime = oSenderLog.CreatedTimestamp;
@@ -969,7 +969,7 @@ sap.ui.define([
                 oInputName.setValue(oContext.getProperty("WbsName"));
                 var oStart = oContext.getProperty("StartDate");
                 var oEnd = oContext.getProperty("EndDate");
-                
+
                 if (oStart) {
                     oPickerStart.setDateValue(oStart);
                     // Prevent error state if existing date is in the past
@@ -980,7 +980,7 @@ sap.ui.define([
                     }
                     oPickerStart.setMinDate(dStartMin);
                 }
-                
+
                 if (oEnd) {
                     oPickerEnd.setDateValue(oEnd);
                     var dEndMin = new Date(dToday);
