@@ -312,6 +312,37 @@ sap.ui.define([
                     };
 
                     aGlobalPending.forEach(function (wbs) {
+                        // Extract SenderName and SendTime
+                        var aLogs = (wbs.ToApprovalLog && wbs.ToApprovalLog.results) ? wbs.ToApprovalLog.results : [];
+                        if (aLogs.length > 0) {
+                            var aSortedLogs = aLogs.slice().sort(function (a, b) {
+                                var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                                var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                                return tB - tA;
+                            });
+                            
+                            var oSenderLog = aSortedLogs.find(function(l) {
+                                var sAct = (l.Action || "").toUpperCase();
+                                return sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "0000" || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
+                            });
+                            
+                            if (!oSenderLog) oSenderLog = aSortedLogs[aSortedLogs.length - 1]; // Fallback to oldest log
+                            
+                            if (oSenderLog) {
+                                wbs.SenderName = oSenderLog.ActionBy || "";
+                                var sTime = oSenderLog.CreatedTimestamp;
+                                if (sTime) {
+                                    if (typeof sTime === 'string' && sTime.indexOf('/Date(') === 0) {
+                                        wbs.SendTime = new Date(parseInt(sTime.substr(6)));
+                                    } else {
+                                        wbs.SendTime = new Date(sTime);
+                                    }
+                                } else {
+                                    wbs.SendTime = null;
+                                }
+                            }
+                        }
+
                         var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
                         var sChangeSetId = "CheckDecision_" + wbs.WbsId.replace(/-/g, ""); // Force split into standalone changesets to satisfy SAP Gateway restrictions
                         oModel.callFunction("/CheckDecision", {
@@ -1291,6 +1322,23 @@ sap.ui.define([
             this.getOwnerComponent().getRouter().navTo("WBSDetail", {
                 site_id: oContext.getProperty("SiteId"),
                 wbsId: oContext.getProperty("WbsId")
+            });
+        },
+
+        onPressPendingWbs: function (oEvent) {
+            var oContext = oEvent.getSource().getBindingContext("viewData");
+            if (!oContext) return;
+
+            var sSiteId = oContext.getProperty("SiteId");
+            var sWbsId = oContext.getProperty("WbsId");
+
+            if (!sSiteId) {
+                sSiteId = this._sCurrentSiteId;
+            }
+
+            this.getOwnerComponent().getRouter().navTo("WBSDetail", {
+                site_id: sSiteId,
+                wbsId: sWbsId
             });
         }
     });

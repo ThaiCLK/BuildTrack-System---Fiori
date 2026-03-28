@@ -28,7 +28,7 @@
                 </Bar>
             </customHeader>
             <content>
-                <App id="app" appWidthLimited="false"/>
+                <App id="app"/>
             </content>
         </Page>
     </Shell>

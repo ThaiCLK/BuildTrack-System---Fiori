@@ -915,4 +915,24 @@
 
 .dashboardFilterBar .sapMComboBox {
     border-radius: 6px !important;
+}
+
+/* ── Custom Validated Filter Classes (Replaces Inline Styles) ── */
+.customDashboardFilterBar {
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07) !important;
+    margin-bottom: 0.75rem !important;
+    padding: 0.4rem 1rem !important;
+}
+
+.customFilterIcon {
+    color: #5899DA !important;
+    margin-right: 0.5rem !important;
+    font-size: 1rem !important;
+}
+
+.customFilterLabel {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
 }
