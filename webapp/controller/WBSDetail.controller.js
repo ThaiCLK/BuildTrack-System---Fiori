@@ -908,6 +908,7 @@ sap.ui.define([
                     success: function (oLogData) {
                         oView.setBusy(false);
                         var aAllLogs = oLogData.results || [];
+                        var sEvalRes = "";
 
                         // Force WbsId filter natively because backend sometimes ignores the API filter
                         var aLogs = aAllLogs.filter(function (log) {
@@ -939,6 +940,10 @@ sap.ui.define([
 
                         aLogs.forEach(function (log) {
                             if (bCycleEnded) return;
+
+                            if (!sEvalRes && (log.EvaluationResult === "1" || log.EvaluationResult === "0")) {
+                                sEvalRes = log.EvaluationResult;
+                            }
 
                             var sAction = (log.Action || "").toUpperCase().trim();
                             var iLevel = parseInt(log.ApprovalLevel) || 0;
@@ -1060,6 +1065,7 @@ sap.ui.define([
 
                         oViewData.setProperty("/signStatus", oSignStatus);
                         oViewData.setProperty("/userLevel", iUserLevel);
+                        oViewData.setProperty("/evaluationResult", sEvalRes);
 
                         // When viewing, Inner 'Sign' buttons will be strictly hidden by /isApprovalMode = false
                         // We remove the strict bActionable dependency here so buttons render correctly based on logic
@@ -1185,13 +1191,18 @@ sap.ui.define([
             MessageBox.confirm(oBundle.getText("decisionConfirm", [sTitle]) || "Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
+                        var sEvalResult = "";
+                        if (sDecisionCode === "0001") sEvalResult = "1";
+                        if (sDecisionCode === "0002") sEvalResult = "0";
+
                         oView.setBusy(true);
                         oModel.callFunction("/PostDecision", {
                             method: "POST",
                             urlParameters: {
                                 WI_ID: oActiveWbs.WorkItemId,
                                 Decision: sDecisionCode,
-                                Note: "Processed from Acceptance Report"
+                                Note: "Processed from Acceptance Report",
+                                EvaluationResult: sEvalResult
                             },
                             success: function (oData) {
                                 oView.setBusy(false);

@@ -83,8 +83,8 @@
                                     <Text text="{path: 'Quantity', formatter: '.formatTotalQty'}" />
                                     <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" />
                                     <ObjectStatus 
-                                        text="{= ${workSummaryModel>/TotalQtyDone} >= ${Quantity} ? ${i18n>achieved} : ${i18n>notAchieved} }"
-                                        state="{= ${workSummaryModel>/TotalQtyDone} >= ${Quantity} ? 'Success' : 'Error' }" />
+                                        text="{= ${viewData>/evaluationResult} === '1' ? ${i18n>achieved} : (${viewData>/evaluationResult} === '0' ? ${i18n>notAchieved} : '') }"
+                                        state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '0' ? 'Error' : 'None') }" />
                                 </cells>
                             </ColumnListItem>
                         </items>

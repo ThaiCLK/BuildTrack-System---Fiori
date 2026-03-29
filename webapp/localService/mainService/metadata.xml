@@ -366,6 +366,7 @@
                     <Parameter Name="WI_ID"    Type="Edm.String" Mode="In" />
                     <Parameter Name="Decision" Type="Edm.String" Mode="In" />
                     <Parameter Name="Note"     Type="Edm.String" Mode="In" />
+                    <Parameter Name="EvaluationResult" Type="Edm.String" Mode="In" />
                 </FunctionImport>
             </EntityContainer>
         </Schema>
