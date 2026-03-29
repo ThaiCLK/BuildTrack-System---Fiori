@@ -104,7 +104,7 @@ function cosineSimilarity(vectorA, vectorB) {
 function pickRelevantChunks(question, questionEmbedding, topK) {
   const scored = _knowledgeIndex.chunks.map((chunk) => ({
     ...chunk,
-    score: (() => {answerQuestion()
+    score: (() => {
       const keywordScore = keywordSimilarity(question, chunk.text);
       const hasVector = Array.isArray(questionEmbedding) && Array.isArray(chunk.embedding);
 
