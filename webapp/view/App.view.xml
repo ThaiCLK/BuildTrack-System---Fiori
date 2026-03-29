@@ -12,6 +12,7 @@
                     </HBox>
                 </contentLeft>
                 <contentRight>
+                    <Button icon="sap-icon://discussion-2" text="Assistant" type="Transparent" press=".onOpenAssistant" class="dashboardHeaderBtn"/>
                     <Button icon="sap-icon://customer" type="Transparent" press=".onPressProfile" class="dashboardHeaderBtn"/>
                 </contentRight>
             </Bar>

@@ -2,6 +2,7 @@ node_modules/
 dist/
 .scp/
 .env
+rag-server/storage/knowledge-index.json
 Makefile*.mta
 mta_archives
 mta-*

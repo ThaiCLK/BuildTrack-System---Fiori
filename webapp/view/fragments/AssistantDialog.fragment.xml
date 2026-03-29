@@ -1,0 +1,56 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+    <Dialog
+        title="{i18n>assistantTitle}"
+        contentWidth="40rem"
+        contentHeight="36rem"
+        stretch="{device>/system/phone}"
+        draggable="true"
+        resizable="true">
+        <content>
+            <VBox class="assistantDialogContent sapUiSmallMargin">
+                <MessageStrip
+                    text="{i18n>assistantIntro}"
+                    type="Information"
+                    showIcon="true"
+                    class="sapUiSmallMarginBottom" />
+
+                <HBox wrap="Wrap" class="sapUiTinyMarginBottom">
+                    <Button text="{i18n>assistantQuick1}" type="Transparent" press=".onAssistantSuggestionPress" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+                    <Button text="{i18n>assistantQuick2}" type="Transparent" press=".onAssistantSuggestionPress" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+                    <Button text="{i18n>assistantQuick3}" type="Transparent" press=".onAssistantSuggestionPress" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+                </HBox>
+
+                <List
+                    items="{assistant>/messages}"
+                    class="assistantMessageList"
+                    busy="{assistant>/isBusy}">
+                    <FeedListItem
+                        sender="{assistant>sender}"
+                        icon="{assistant>icon}"
+                        info="{assistant>time}"
+                        text="{assistant>text}"
+                        showIcon="true" />
+                </List>
+
+                <Toolbar class="assistantComposer sapUiSmallMarginTop">
+                    <Input
+                        value="{assistant>/draft}"
+                        placeholder="{i18n>assistantPlaceholder}"
+                        submit=".onAssistantSend"
+                        width="100%"
+                        enabled="{= !${assistant>/isBusy} }" />
+                    <ToolbarSpacer />
+                    <Button
+                        text="{i18n>assistantSend}"
+                        type="Emphasized"
+                        press=".onAssistantSend"
+                        enabled="{= !${assistant>/isBusy} &amp;&amp; !!${assistant>/draft} }" />
+                </Toolbar>
+            </VBox>
+        </content>
+
+        <beginButton>
+            <Button text="{i18n>assistantClose}" press=".onCloseAssistant" />
+        </beginButton>
+    </Dialog>
+</core:FragmentDefinition>

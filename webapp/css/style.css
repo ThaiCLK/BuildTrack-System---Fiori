@@ -317,6 +317,29 @@
     padding-left: 0.25rem;
 }
 
+/* BuildTrack Assistant */
+.assistantDialogContent {
+    height: 100%;
+}
+
+.assistantMessageList {
+    flex: 1;
+    border: 1px solid #dde4ea;
+    border-radius: 8px;
+    background: #f8fbfd;
+}
+
+.assistantMessageList .sapMFeedListItem {
+    border-bottom: 1px solid #eaf0f4;
+}
+
+.assistantComposer {
+    border: 1px solid #d7e1e9;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 0.25rem;
+}
+
 /* ── WHITE TEXT (for dark cards) ── */
 .dashboardWhiteText {
     color: #fff !important;
