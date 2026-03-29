@@ -38,4 +38,65 @@ An SAP Fiori application.
 
 1. Active NodeJS LTS (Long Term Support) version and associated supported NPM version.  (See https://nodejs.org)
 
+## BuildTrack RAG Assistant (Gemini)
+
+This project now includes a production-style RAG chatbot to guide users through BuildTrack usage.
+
+### Architecture
+
+- SAPUI5 frontend dialog integrated in App header.
+- Node.js RAG service in `rag-server/`.
+- Knowledge indexing from BuildTrack docs + selected source files.
+- Retrieval by cosine similarity over Gemini embeddings.
+- Answer generation with Gemini chat model and citations.
+
+### Setup
+
+1. Install dependencies:
+
+```
+npm install
+```
+
+2. Create environment file from template:
+
+```
+copy rag-server/.env.example .env
+```
+
+3. Open `.env` and set:
+
+```
+GEMINI_API_KEY=<your_key>
+RAG_PORT=4001
+RAG_CHAT_MODEL=gemini-2.0-flash
+RAG_EMBED_MODEL=gemini-embedding-001
+RAG_ENABLE_EMBEDDINGS=false
+```
+
+`RAG_ENABLE_EMBEDDINGS=false` is recommended for fast startup and free-tier stability.
+Set it to `true` only if your quota is sufficient.
+
+### Run
+
+- Local mode with real backend proxy:
+
+```
+npm run dev:local
+```
+
+- Mock mode with mock OData + RAG:
+
+```
+npm run dev:mock
+```
+
+### Rebuild Knowledge Index
+
+```
+npm run rag:index
+```
+
+Or from UI dialog: press **"Cap nhat tri thuc"**.
+
 

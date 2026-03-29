@@ -567,7 +567,7 @@ sap.ui.define([
                 var oData = oCtx.getObject();
 
                 var sEndpoint = bIsClose ? "/CloseWbsApproval" : "/StartWSProcess";
-                var oParams = bIsClose ? { WBS_IDS: oData.WbsId } : { WS_ID: oData.WbsId };
+                var oParams = bIsClose ? { WBS_IDS: oData.WbsId } : { WBS_IDS: oData.WbsId };
 
                 oModel.callFunction(sEndpoint, {
                     method: "POST",

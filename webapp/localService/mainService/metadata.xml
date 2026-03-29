@@ -350,7 +350,7 @@
                 </AssociationSet>
 
                 <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
-                    <Parameter Name="WS_ID" Type="Edm.Guid" Mode="In" />
+                    <Parameter Name="WBS_IDS" Type="Edm.Guid" Mode="In" />
                 </FunctionImport>
 
                 <FunctionImport Name="CloseWbsApproval" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">

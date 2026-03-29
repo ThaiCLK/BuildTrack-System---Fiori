@@ -753,7 +753,7 @@ sap.ui.define([
                         oView.setBusy(true);
                         that.getOwnerComponent().getModel().callFunction("/StartWSProcess", {
                             method: "POST",
-                            urlParameters: { WS_ID: oWbsCtx.getProperty("WbsId") },
+                            urlParameters: { WBS_IDS: oWbsCtx.getProperty("WbsId") },
                             success: function () {
                                 oView.setBusy(false);
                                 sap.m.MessageToast.show(oBundle.getText("submitSuccess", ["1"]));
@@ -1293,7 +1293,7 @@ sap.ui.define([
             oModel.callFunction("/StartWSProcess", {
                 method: "POST",
                 urlParameters: {
-                    WS_ID: sWbsId
+                    WBS_IDS: sWbsId
                 },
                 success: function (oData) {
                     oView.setBusy(false);

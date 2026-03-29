@@ -18,6 +18,8 @@ server:
         backend:
           - path: /sap
             url: http://localhost
+          - path: /rag
+            url: http://localhost:4001
     - name: fiori-tools-appreload
       afterMiddleware: compression
       configuration:
