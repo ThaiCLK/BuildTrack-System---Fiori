@@ -186,6 +186,12 @@ sap.ui.define([
       onOpenUserRoleUpdateDialog: function (oEvent, sForceUserId) {
           var sId = typeof sForceUserId === "string" ? sForceUserId : 
                    (typeof oEvent === "string" ? oEvent : null);
+                   
+          var oUserModel = this.getView().getModel("userModel");
+          if (!sId && oUserModel && oUserModel.getProperty("/authLevel") !== 99) {
+              sId = oUserModel.getProperty("/userId");
+          }
+          
           this._openUserRoleDialog("Update", sId);
       },
 

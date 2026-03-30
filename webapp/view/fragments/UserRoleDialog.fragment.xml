@@ -3,8 +3,8 @@
         <content>
             <f:SimpleForm id="userRoleForm" editable="true" layout="ResponsiveGridLayout" labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0" columnsXL="1" columnsL="1" columnsM="1" singleContainerFullSize="false">
                 <f:content>
-                    <Label text="{i18n>userId}" required="true" />
-                    <HBox>
+                    <Label text="{i18n>userId}" required="true" visible="{= ${userModel>/authLevel} === 99 }" />
+                    <HBox visible="{= ${userModel>/authLevel} === 99 }">
                         <Input id="inUserId" value="{newUser>/UserId}" placeholder="{i18n>enterUserId}" maxLength="12" editable="{= ${newUser>/mode} !== 'Update' }" />
                         <Button icon="sap-icon://reset" tooltip="{i18n>fetchData}" press=".onFetchUserRole" visible="{= ${newUser>/mode} === 'Update' }" class="sapUiTinyMarginBegin" />
                     </HBox>
@@ -15,8 +15,8 @@
                     <Label text="{i18n>email}" required="true" />
                     <Input id="inEmail" value="{newUser>/Email}" type="Email" placeholder="{i18n>enterEmail}" maxLength="50" />
 
-                    <Label text="{i18n>authLevel}" required="true" />
-                    <Select id="selAuthLevel" selectedKey="{newUser>/AuthLevel}" change=".onAuthLevelChange" enabled="{= ${userModel>/authLevel} === 99 }">
+                    <Label text="{i18n>authLevel}" required="true" visible="{= ${userModel>/authLevel} === 99 }" />
+                    <Select id="selAuthLevel" selectedKey="{newUser>/AuthLevel}" change=".onAuthLevelChange" visible="{= ${userModel>/authLevel} === 99 }">
                         <core:Item key="0" text="{i18n>roleFieldEngineer} (0)" />
                         <core:Item key="1" text="{i18n>roleLeadEngineer} (1)" />
                         <core:Item key="2" text="{i18n>roleSupervisor} (2)" />
@@ -24,8 +24,8 @@
                         <core:Item key="99" text="{i18n>roleSystemAdmin} (99)" />
                     </Select>
 
-                    <Label text="{i18n>status}" visible="{= ${newUser>/mode} === 'Update' }" />
-                    <Select id="selStatus" selectedKey="{newUser>/Status}" visible="{= ${newUser>/mode} === 'Update' }" enabled="{= ${userModel>/authLevel} === 99 }">
+                    <Label text="{i18n>status}" visible="{= ${newUser>/mode} === 'Update' &amp;&amp; ${userModel>/authLevel} === 99 }" />
+                    <Select id="selStatus" selectedKey="{newUser>/Status}" visible="{= ${newUser>/mode} === 'Update' &amp;&amp; ${userModel>/authLevel} === 99 }">
                         <core:Item key="ACTIVE" text="{i18n>active}" />
                         <core:Item key="INACTIVE" text="{i18n>inactive}" />
                     </Select>
