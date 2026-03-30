@@ -1,0 +1,52 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.ui.layout.form" xmlns:l="sap.ui.layout">
+    <Dialog title="{= ${newUser>/mode} === 'Update' ? ${i18n>updateUserRole} : ${i18n>createUserRole} }" class="sapUiContentPadding" contentWidth="500px">
+        <content>
+            <f:SimpleForm id="userRoleForm" editable="true" layout="ResponsiveGridLayout" labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12" adjustLabelSpan="false" emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0" columnsXL="1" columnsL="1" columnsM="1" singleContainerFullSize="false">
+                <f:content>
+                    <Label text="{i18n>userId}" required="true" />
+                    <HBox>
+                        <Input id="inUserId" value="{newUser>/UserId}" placeholder="{i18n>enterUserId}" maxLength="12" editable="{= ${newUser>/mode} !== 'Update' }" />
+                        <Button icon="sap-icon://reset" tooltip="{i18n>fetchData}" press=".onFetchUserRole" visible="{= ${newUser>/mode} === 'Update' }" class="sapUiTinyMarginBegin" />
+                    </HBox>
+
+                    <Label text="{i18n>userName}" required="true" />
+                    <Input id="inUserName" value="{newUser>/UserName}" placeholder="{i18n>enterUserName}" maxLength="100" />
+
+                    <Label text="{i18n>email}" required="true" />
+                    <Input id="inEmail" value="{newUser>/Email}" type="Email" placeholder="{i18n>enterEmail}" maxLength="50" />
+
+                    <Label text="{i18n>authLevel}" required="true" />
+                    <Select id="selAuthLevel" selectedKey="{newUser>/AuthLevel}" change=".onAuthLevelChange" enabled="{= ${userModel>/authLevel} === 99 }">
+                        <core:Item key="0" text="{i18n>roleFieldEngineer} (0)" />
+                        <core:Item key="1" text="{i18n>roleLeadEngineer} (1)" />
+                        <core:Item key="2" text="{i18n>roleSupervisor} (2)" />
+                        <core:Item key="3" text="{i18n>roleInvestor} (3)" />
+                        <core:Item key="99" text="{i18n>roleSystemAdmin} (99)" />
+                    </Select>
+
+                    <Label text="{i18n>status}" visible="{= ${newUser>/mode} === 'Update' }" />
+                    <Select id="selStatus" selectedKey="{newUser>/Status}" visible="{= ${newUser>/mode} === 'Update' }" enabled="{= ${userModel>/authLevel} === 99 }">
+                        <core:Item key="ACTIVE" text="{i18n>active}" />
+                        <core:Item key="INACTIVE" text="{i18n>inactive}" />
+                    </Select>
+
+                    <Label text="{i18n>avatarUrl}" />
+                    <Input id="inAvatar" value="{newUser>/AvatarUrl}" placeholder="{i18n>enterAvatarUrl}" maxLength="100" />
+
+                    <Label id="lblSignature" text="{i18n>signatureUrl}" required="{newUser>/isSignatureRequired}" visible="{newUser>/isSignatureRequired}"/>
+                    <Input id="inSignature" value="{newUser>/SignatureUrl}" placeholder="{i18n>enterSignatureUrl}" maxLength="100" visible="{newUser>/isSignatureRequired}" />
+
+                    <Label id="lblLeadId" text="{i18n>leadId}" required="{newUser>/isLeadIdRequired}" visible="{newUser>/isLeadIdRequired}"/>
+                    <ComboBox id="cbLeadId" selectedKey="{newUser>/LeadId}" placeholder="{i18n>enterLeadId}" visible="{newUser>/isLeadIdRequired}" editable="{= ${userModel>/authLevel} === 99 }"
+                              items="{path: 'leadEngineersList>/'}">
+                        <core:Item key="{leadEngineersList>UserId}" text="{leadEngineersList>UserName} ({leadEngineersList>UserId})" />
+                    </ComboBox>
+                </f:content>
+            </f:SimpleForm>
+        </content>
+        <buttons>
+            <Button text="{= ${newUser>/mode} === 'Update' ? ${i18n>save} : ${i18n>create} }" type="Emphasized" press=".onSaveUserRole" />
+            <Button text="{i18n>cancel}" press=".onCancelUserRole" />
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>

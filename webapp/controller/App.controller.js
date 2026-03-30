@@ -1,9 +1,10 @@
-﻿sap.ui.define([
+sap.ui.define([
   "sap/ui/core/mvc/Controller",
   "sap/ui/core/Fragment",
   "sap/ui/model/json/JSONModel",
-  "sap/m/MessageToast"
-], (BaseController, Fragment, JSONModel, MessageToast) => {
+  "sap/m/MessageToast",
+  "sap/m/MessageBox"
+], (BaseController, Fragment, JSONModel, MessageToast, MessageBox) => {
   "use strict";
 
   return BaseController.extend("z.bts.buildtrack551.controller.App", {
@@ -172,6 +173,212 @@
       onCloseProfile: function () {
           if (this._oProfilePopover) {
               this._oProfilePopover.close();
+          }
+      },
+
+      /* ========================================================= */
+      /* Create User Role Methods                                  */
+      /* ========================================================= */
+      onOpenUserRoleDialog: function () {
+          this._openUserRoleDialog("Create");
+      },
+
+      onOpenUserRoleUpdateDialog: function (oEvent, sForceUserId) {
+          var sId = typeof sForceUserId === "string" ? sForceUserId : 
+                   (typeof oEvent === "string" ? oEvent : null);
+          this._openUserRoleDialog("Update", sId);
+      },
+
+      _openUserRoleDialog: function (sMode, sUserId) {
+          var bHasInitialId = !!sUserId;
+          // Initialize new User Role model
+          var oNewUserModel = new sap.ui.model.json.JSONModel({
+              UserId: sUserId || "",
+              UserName: "",
+              Email: "",
+              AuthLevel: "99",
+              AvatarUrl: "",
+              SignatureUrl: "",
+              LeadId: "",
+              Status: "ACTIVE",
+              mode: sMode,
+              isSignatureRequired: false,
+              isLeadIdRequired: false
+          });
+          this.getView().setModel(oNewUserModel, "newUser");
+
+          if (this._oUserRoleDialog) {
+              this._applyLeadIdFilter();
+              this._oUserRoleDialog.open();
+              if (bHasInitialId) {
+                  this.onFetchUserRole();
+              }
+              return;
+          }
+
+          sap.ui.core.Fragment.load({
+              name: "z.bts.buildtrack551.view.fragments.UserRoleDialog",
+              controller: this
+          }).then(function (oDialog) {
+              this._oUserRoleDialog = oDialog;
+              this.getView().addDependent(oDialog);
+              this._applyLeadIdFilter();
+              this._oUserRoleDialog.open();
+              if (bHasInitialId) {
+                  this.onFetchUserRole();
+              }
+          }.bind(this));
+      },
+
+      _applyLeadIdFilter: function () {
+          var oComboBox = sap.ui.getCore().byId("cbLeadId");
+          if (!oComboBox && this.getView()) {
+              oComboBox = this.getView().byId("cbLeadId");
+          }
+          if (!oComboBox) return;
+
+          // Fetch all users and filter client-side because backend ignores OData AuthLevel filters
+          var oModel = this.getView().getModel();
+          oModel.read("/UserRoleSet", {
+              success: function(oData) {
+                  var aUsers = oData.results || [];
+                  var aLeads = aUsers.filter(function(u) {
+                      // Loose comparison to allow string or int
+                      return u.AuthLevel == 1 && (u.Status === "ACTIVE" || u.Status === "INACTIVE");
+                  });
+                  var oLeadModel = new sap.ui.model.json.JSONModel(aLeads);
+                  this.getView().setModel(oLeadModel, "leadEngineersList");
+              }.bind(this),
+              error: function() {
+                  this.getView().setModel(new sap.ui.model.json.JSONModel([]), "leadEngineersList");
+              }.bind(this)
+          });
+      },
+
+      onFetchUserRole: function () {
+          var oNewUserModel = this.getView().getModel("newUser");
+          var sUserId = oNewUserModel.getProperty("/UserId");
+          var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+          if (!sUserId) return;
+
+          this.getView().setBusy(true);
+          var oModel = this.getView().getModel();
+          oModel.read("/UserRoleSet('" + sUserId + "')", {
+              success: function (oData) {
+                  this.getView().setBusy(false);
+                  oNewUserModel.setProperty("/UserName", oData.UserName);
+                  oNewUserModel.setProperty("/Email", oData.Email);
+                  oNewUserModel.setProperty("/AuthLevel", String(oData.AuthLevel));
+                  oNewUserModel.setProperty("/AvatarUrl", oData.AvatarUrl);
+                  oNewUserModel.setProperty("/SignatureUrl", oData.SignatureUrl);
+                  oNewUserModel.setProperty("/LeadId", oData.LeadId);
+                  oNewUserModel.setProperty("/Status", oData.Status || "ACTIVE");
+                  
+                  // Trigger requirement update
+                  this.onAuthLevelChange({ getSource: function() { return { getSelectedKey: function() { return String(oData.AuthLevel); } }; } });
+              }.bind(this),
+              error: function () {
+                  this.getView().setBusy(false);
+                  sap.m.MessageBox.error(oBundle.getText("errorUserNotFound"));
+              }.bind(this)
+          });
+      },
+
+      onAuthLevelChange: function (oEvent) {
+          var sKey = oEvent.getSource().getSelectedKey();
+          var oNewUserModel = this.getView().getModel("newUser");
+
+          var bSigRequired = (sKey === "1" || sKey === "2" || sKey === "3");
+          var bLeadRequired = (sKey === "0");
+
+          oNewUserModel.setProperty("/isSignatureRequired", bSigRequired);
+          oNewUserModel.setProperty("/isLeadIdRequired", bLeadRequired);
+
+          if (bLeadRequired) {
+              // Ensure ComboBox is properly filtered when it becomes visible
+              setTimeout(function() {
+                  this._applyLeadIdFilter();
+              }.bind(this), 100);
+          }
+          
+          if (!bSigRequired) oNewUserModel.setProperty("/SignatureUrl", "");
+          if (!bLeadRequired) oNewUserModel.setProperty("/LeadId", "");
+      },
+
+      onSaveUserRole: function () {
+          var oNewUserModel = this.getView().getModel("newUser");
+          var oData = oNewUserModel.getData();
+          var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+          // Frontend validation
+          if (!oData.UserId || !oData.UserName || !oData.Email || !oData.AuthLevel) {
+              sap.m.MessageBox.error(oBundle.getText("errorFillRequiredFields"));
+              return;
+          }
+          if (oData.isSignatureRequired && !oData.SignatureUrl) {
+              sap.m.MessageBox.error(oBundle.getText("errorFillSignatureUrl"));
+              return;
+          }
+          if (oData.isLeadIdRequired && !oData.LeadId) {
+              sap.m.MessageBox.error(oBundle.getText("errorFillLeadId"));
+              return;
+          }
+
+          var oPayload = {
+              UserId: oData.UserId,
+              UserName: oData.UserName,
+              Email: oData.Email,
+              AuthLevel: parseInt(oData.AuthLevel, 10),
+              AvatarUrl: oData.AvatarUrl,
+              SignatureUrl: oData.SignatureUrl,
+              LeadId: oData.LeadId,
+              Status: oData.Status
+          };
+
+          this.getView().setBusy(true);
+          var oModel = this.getView().getModel();
+          
+          if (oData.mode === "Update") {
+              oModel.update("/UserRoleSet('" + oData.UserId + "')", oPayload, {
+                  success: function () {
+                      this.getView().setBusy(false);
+                      sap.m.MessageToast.show(oBundle.getText("userRoleUpdatedSuccess"));
+                      this._oUserRoleDialog.close();
+                  }.bind(this),
+                  error: function (oError) {
+                      this.getView().setBusy(false);
+                      this._handleError(oError, "userRoleUpdatedError");
+                  }.bind(this)
+              });
+          } else {
+              oModel.create("/UserRoleSet", oPayload, {
+                  success: function () {
+                      this.getView().setBusy(false);
+                      sap.m.MessageToast.show(oBundle.getText("userRoleCreatedSuccess"));
+                      this._oUserRoleDialog.close();
+                  }.bind(this),
+                  error: function (oError) {
+                      this.getView().setBusy(false);
+                      this._handleError(oError, "userRoleCreatedError");
+                  }.bind(this)
+              });
+          }
+      },
+
+      _handleError: function (oError, sDefaultI18nKey) {
+          var oBundle = this.getView().getModel("i18n").getResourceBundle();
+          try {
+              var sMsg = JSON.parse(oError.responseText).error.message.value;
+              sap.m.MessageBox.error(sMsg);
+          } catch (e) {
+              sap.m.MessageBox.error(oBundle.getText(sDefaultI18nKey));
+          }
+      },
+
+      onCancelUserRole: function () {
+          if (this._oUserRoleDialog) {
+              this._oUserRoleDialog.close();
           }
       },
       onCloseAssistant: function () {

@@ -58,6 +58,20 @@
                                 </HBox>
                             </Panel>
                         </HBox>
+
+                        <HBox class="dashboardCardRow" visible="{= ${userModel>/authLevel} === 99 }">
+                            <Panel id="cardUserMgmt" class="dashboardCard dashboardCardClickable"
+                                   headerText="" expandable="false">
+                                <layoutData><FlexItemData growFactor="0" baseSize="30rem"/></layoutData>
+                                <HBox alignItems="Center" class="dashboardCardHeader">
+                                    <core:Icon src="sap-icon://user-settings" class="dashboardCardIcon iconTeal"/>
+                                    <VBox class="sapUiTinyMarginBegin">
+                                        <Title text="{i18n>userMgmtTitle}" level="H5"/>
+                                        <Text text="{i18n>userMgmtDesc}" class="dashboardSubLabel"/>
+                                    </VBox>
+                                </HBox>
+                            </Panel>
+                        </HBox>
                     </VBox>
 
                     <!-- RIGHT COLUMN — Daily Operations -->
@@ -91,6 +105,7 @@
                                 </HBox>
                             </Panel>
                         </HBox>
+
                     </VBox>
 
                 </HBox>

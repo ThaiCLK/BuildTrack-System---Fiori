@@ -49,6 +49,25 @@ sap.ui.define([
             this.getOwnerComponent().getRouter()
                 .getRoute("Dashboard")
                 .attachPatternMatched(this._onDashboardMatched, this);
+
+            // Card click events via UI5 Delegates (handles re-rendering correctly)
+            var aCardActions = [
+                { id: "cardMyProjects", fn: "onGoToProjects" },
+                { id: "cardProjectSites", fn: "onGoToProjects" },
+                { id: "cardUserMgmt", fn: "onPressUserManagement" }
+            ];
+            var that = this;
+            aCardActions.forEach(function (cfg) {
+                var oCard = that.byId(cfg.id);
+                if (oCard) {
+                    oCard.addEventDelegate({
+                        onclick: function (oEvent) {
+                            if (oEvent.target && oEvent.target.closest && oEvent.target.closest(".sapMBtn")) { return; }
+                            that[cfg.fn]();
+                        }
+                    });
+                }
+            });
         },
 
         // ── onAfterRendering ───────────────────────────────────────────────
@@ -66,21 +85,6 @@ sap.ui.define([
                         },
                         legend: { visible: true },
                         interaction: { selectability: { mode: "EXCLUSIVE" } }
-                    });
-                }
-            });
-
-            // Card click events
-            var aCardActions = [
-                { id: "cardMyProjects", fn: "onGoToProjects" },
-                { id: "cardProjectSites", fn: "onGoToProjects" }
-            ];
-            aCardActions.forEach(function (cfg) {
-                var oCard = that.byId(cfg.id);
-                if (oCard && oCard.getDomRef()) {
-                    oCard.getDomRef().addEventListener("click", function (e) {
-                        if (e.target.closest(".sapMBtn")) { return; }
-                        that[cfg.fn]();
                     });
                 }
             });
@@ -538,6 +542,10 @@ sap.ui.define([
         // ── Navigation ────────────────────────────────────────────────────
         onGoToProjects: function () {
             this.getOwnerComponent().getRouter().navTo("RouteMain");
+        },
+
+        onPressUserManagement: function () {
+            this.getOwnerComponent().getRouter().navTo("UserManagement");
         },
 
         onFeatureUnderdevelopment: function () {

@@ -21,6 +21,11 @@
                     <Text text="{i18n>authLevelLabel}"/>
                     <Text text="{userModel>/authLevel}" class="sapUiTinyMarginStart"/>
                 </HBox>
+
+                <!-- Management Buttons moved to content -->
+                <VBox class="sapUiSmallMarginTop">
+                    <Button id="btnUpdateUser" icon="sap-icon://edit" text="{i18n>updateUserRole}" press=".onOpenUserRoleUpdateDialog" width="100%" visible="true" />
+                </VBox>
             </VBox>
         </content>
         <endButton>

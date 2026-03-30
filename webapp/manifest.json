@@ -129,6 +129,13 @@
           "target": [
             "TargetWBSDetail"
           ]
+        },
+        {
+          "name": "UserManagement",
+          "pattern": "users",
+          "target": [
+            "TargetUserManagement"
+          ]
         }
       ],
       "targets": {
@@ -166,6 +173,13 @@
           "clearControlAggregation": false,
           "viewId": "WBSDetail",
           "viewName": "WBSDetail"
+        },
+        "TargetUserManagement": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "UserManagement",
+          "viewName": "UserManagement"
         }
       }
     },

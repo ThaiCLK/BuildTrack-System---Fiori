@@ -1,0 +1,66 @@
+<mvc:View
+    controllerName="z.bts.buildtrack551.controller.UserManagement"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+
+    <Page id="pageUserManagement" title="{i18n>userMgmtTitle}" showNavButton="true" navButtonPress=".onNavBack" class="sapUiContentPadding">
+        <content>
+            <Table id="userTable"
+                   items="{
+                       path: '/UserRoleSet',
+                       sorter: { path: 'UserId' }
+                   }"
+                   mode="None"
+                   growing="true"
+                   growingThreshold="20">
+                <headerToolbar>
+                    <OverflowToolbar>
+                        <Title text="{i18n>userList}" level="H2"/>
+                        <ToolbarSpacer/>
+                        <Button text="{i18n>createUserRole}" icon="sap-icon://add" press=".onAddUser" type="Emphasized" visible="{= ${userModel>/authLevel} === 99 }" />
+                    </OverflowToolbar>
+                </headerToolbar>
+                <columns>
+                    <Column>
+                        <Text text="{i18n>userId}" />
+                    </Column>
+                    <Column>
+                        <Text text="{i18n>userName}" />
+                    </Column>
+                    <Column minScreenWidth="Tablet" demandPopin="true">
+                        <Text text="{i18n>email}" />
+                    </Column>
+                    <Column minScreenWidth="Tablet" demandPopin="true">
+                        <Text text="{i18n>authLevel}" />
+                    </Column>
+                    <Column hAlign="Center">
+                        <Text text="{i18n>status}" />
+                    </Column>
+                </columns>
+                <items>
+                    <ColumnListItem type="Navigation" press=".onEditUser">
+                        <cells>
+                            <ObjectIdentifier title="{UserId}" text="{LeadId}" />
+                            <Text text="{UserName}" />
+                            <Text text="{Email}" />
+                            <Text text="{
+                                path: 'AuthLevel',
+                                formatter: '.formatAuthLevel'
+                            }" />
+                            <ObjectStatus 
+                                text="{
+                                    path: 'Status',
+                                    formatter: '.formatStatusText'
+                                }"
+                                state="{
+                                    path: 'Status',
+                                    formatter: '.formatStatusState'
+                                }" />
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </content>
+    </Page>
+</mvc:View>
