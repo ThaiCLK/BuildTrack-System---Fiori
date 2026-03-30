@@ -657,10 +657,11 @@ sap.ui.define([
                 oInputCode.setValue(oContext.getProperty("ProjectCode"));
                 oInputName.setValue(oContext.getProperty("ProjectName"));
                 // For ComboBox: set the selected key first; if it doesn't match a preset, set the value text directly
-                var sType = oContext.getProperty("ProjectType") || "";
-                oComboType.setSelectedKey(sType);
+                var sRawType = oContext.getProperty("ProjectType") || "";
+                var sTypeUpper = sRawType.toUpperCase();
+                oComboType.setSelectedKey(sTypeUpper);
                 if (!oComboType.getSelectedKey()) {
-                    oComboType.setValue(sType); // custom / unknown value
+                    oComboType.setValue(sRawType); // custom / unknown value
                 }
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
                 var oStart = oContext.getProperty("StartDate");
@@ -734,10 +735,20 @@ sap.ui.define([
                             return;
                         }
 
+                        if (!oPickerStart.isValidValue() || !oPickerStart.getDateValue()) {
+                            MessageBox.error(oBundle.getText("startDatePastError"));
+                            return;
+                        }
+
+                        if (!oPickerEnd.isValidValue() || !oPickerEnd.getDateValue()) {
+                            MessageBox.error(oBundle.getText("endDateBeforeStartError"));
+                            return;
+                        }
+
                         var dStart = oPickerStart.getDateValue();
                         var dEnd = oPickerEnd.getDateValue();
 
-                        if (dStart) {
+                        if (!bEdit) {
                             var dToday = new Date();
                             dToday.setHours(0, 0, 0, 0);
                             var dStartCompare = new Date(dStart.getTime());
@@ -761,12 +772,17 @@ sap.ui.define([
                             }
                         }
 
+                        var toUTC = function (d) {
+                            if (!d) return null;
+                            return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                        };
+
                         var oPayload = {
                             ProjectCode: sCode,
                             ProjectName: sName,
                             ProjectType: oComboType.getValue().trim() || oComboType.getSelectedKey(),
-                            StartDate: oPickerStart.getDateValue(),
-                            EndDate: oPickerEnd.getDateValue(),
+                            StartDate: toUTC(oPickerStart.getDateValue()),
+                            EndDate: toUTC(oPickerEnd.getDateValue()),
                             Status: oSelectStatus.getSelectedKey()
                         };
                         if (bEdit) {

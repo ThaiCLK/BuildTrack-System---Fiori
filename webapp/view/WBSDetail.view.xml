@@ -6,7 +6,7 @@
     xmlns:form="sap.ui.layout.form">
     <Page title="{parts: [{path: 'WbsName'}], formatter: '.formatWbsDetailTitle'}" showNavButton="true" navButtonPress="onNavBack">
         <content>
-            <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding">
+            <IconTabBar id="idIconTabBarWBS" class="sapUiResponsiveContentPadding" select=".onTabSelect">
                 <items>
                     <IconTabFilter icon="sap-icon://hint" text="{i18n>siteInfoTab}" key="infoTab">
                         
@@ -81,16 +81,8 @@
 
                                 <Label text="{i18n>status}" />
                                 <VBox width="100%">
-                                    <Select id="inWbsStatus" selectedKey="{Status}" visible="{viewData>/editMode}" width="100%">
-                                        <core:Item key="PLANNING" text="{i18n>planningStatus}" />
-                                        <core:Item key="PENDING_OPEN" text="{i18n>pendingOpenStatus}" />
-                                        <core:Item key="OPENED" text="{i18n>openedStatus}" />
-                                        <core:Item key="IN_PROGRESS" text="{i18n>inProgressStatus}" />
-                                        <core:Item key="PENDING_CLOSE" text="{i18n>pendingCloseStatus}" />
-                                        <core:Item key="CLOSED" text="{i18n>closedStatus}" />
-                                    </Select>
                                     <ObjectStatus 
-                                        visible="{= !${viewData>/editMode} }"
+                                        class="sapUiTinyMarginTop"
                                         text="{path: 'Status', formatter: '.formatWbsStatusText'}"
                                         state="{path: 'Status', formatter: '.formatWbsStatusState'}"
                                         icon="{path: 'Status', formatter: '.formatWbsStatusIcon'}" />

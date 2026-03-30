@@ -162,7 +162,7 @@
             </VBox>
         </content>
         <buttons>
-             <Button text="{i18n>submitForCloseApproval}" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS') }" />
+             <Button text="{i18n>submitForCloseApproval}" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
              <Button text="{i18n>reject}" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
              <Button text="{i18n>close}" press=".onCloseAcceptanceDialog" />
         </buttons>

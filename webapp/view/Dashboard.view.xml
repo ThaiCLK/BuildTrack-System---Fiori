@@ -214,13 +214,13 @@
                                         <vizdata:DimensionDefinition name="Date" value="{dashboard>date}"/>
                                     </vizdata:dimensions>
                                     <vizdata:measures>
-                                        <vizdata:MeasureDefinition name="Quantity" value="{dashboard>quantity}"/>
+                                        <vizdata:MeasureDefinition name="Progress (%)" value="{dashboard>quantity}"/>
                                     </vizdata:measures>
                                 </vizdata:FlattenedDataset>
                             </viz:dataset>
                             <viz:feeds>
                                 <feeds:FeedItem uid="categoryAxis" type="Dimension" values="Date"/>
-                                <feeds:FeedItem uid="valueAxis" type="Measure" values="Quantity"/>
+                                <feeds:FeedItem uid="valueAxis" type="Measure" values="Progress (%)"/>
                             </viz:feeds>
                         </viz:VizFrame>
                     </Panel>

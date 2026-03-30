@@ -156,7 +156,7 @@
                                                                     'sap-icon://status-inactive' }"
                                 state="{= ${pm>Status} === 'IN_PROGRESS' ? 'Success'     :
                                      ${pm>Status} === 'PLANNING' ? 'Warning'     :
-                                     ${pm>Status} === 'CLOSED'   ? 'Error'       :
+                                     ${pm>Status} === 'CLOSED'   ? 'None'        :
                                                                     'None' }"
                                 inverted="true"/>
 

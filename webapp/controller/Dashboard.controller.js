@@ -1,4 +1,4 @@
-﻿sap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageToast",
@@ -220,7 +220,9 @@
                     "OPENED": oBundle.getText("opened"),
                     "IN_PROGRESS": oBundle.getText("inProgress"),
                     "CLOSED": oBundle.getText("closed"),
-                    "REJECTED": oBundle.getText("rejected")
+                    "REJECTED": oBundle.getText("rejected"),
+                    "OPEN_REJECTED": oBundle.getText("openRejectedStatus") || "Open Rejected",
+                    "CLOSE_REJECTED": oBundle.getText("closeRejectedStatus") || "Close Rejected"
                 };
                 return m[s] || s;
             };
@@ -230,7 +232,9 @@
                 oBundle.getText("opened"),
                 oBundle.getText("inProgress"),
                 oBundle.getText("closed"),
-                oBundle.getText("rejected")
+                oBundle.getText("rejected"),
+                oBundle.getText("openRejectedStatus") || "Open Rejected",
+                oBundle.getText("closeRejectedStatus") || "Close Rejected"
             ];
 
             // Filter sites by project
@@ -303,6 +307,9 @@
             oCutoff.setDate(oCutoff.getDate() - 14);
             var oDayMap = {};
 
+            var sUnit = this.byId("cbWbsUnit") ? this.byId("cbWbsUnit").getSelectedKey() : "ALL";
+            if (!sUnit) sUnit = "ALL";
+
             aFilteredLogs.forEach(function (l) {
                 if (!l.LogDate) { return; }
                 // OData DateTime: "/Date(ms)/"
@@ -311,8 +318,17 @@
                 if (oDate < oCutoff) { return; }
                 var sDay = oDate.getDate().toString().padStart(2, "0") + "/" +
                     (oDate.getMonth() + 1).toString().padStart(2, "0");
-                var fQty = parseFloat(l.QuantityDone) || 0;
-                oDayMap[sDay] = (oDayMap[sDay] || 0) + fQty;
+                
+                var oMatchWbs = aFilteredWbs.find(function(w) { return w.WbsId === l.WbsId; });
+                if (oMatchWbs) {
+                    var bMatchUnit = (sUnit === "ALL") || (oMatchWbs.UnitCode === sUnit);
+                    if (bMatchUnit) {
+                        var fLogQty = parseFloat(l.QuantityDone) || 0;
+                        var fWbsQty = parseFloat(oMatchWbs.Quantity) || 1; 
+                        var fPct = (fLogQty / fWbsQty) * 100;
+                        oDayMap[sDay] = (oDayMap[sDay] || 0) + fPct;
+                    }
+                }
             });
 
             // Sort by date
@@ -326,8 +342,6 @@
             oDash.setProperty("/dailyOutputChart", aDailyChart);
 
             // ── Chart 4: Top WBS Progress (Stacked Done vs Remaining) ─────
-            var sUnit = this.byId("cbWbsUnit") ? this.byId("cbWbsUnit").getSelectedKey() : "ALL";
-            if (!sUnit) sUnit = "ALL";
 
             // Only leaf WBS with Quantity > 0 and TotalQuantityDone > 0, matching Unit, top 10
             var aLeafWbs = aFilteredWbs.filter(function (w) {
@@ -335,23 +349,29 @@
                 var bMatchUnit = (sUnit === "ALL") || (w.UnitCode === sUnit);
                 return bHasQuantity && bMatchUnit;
             });
-            aLeafWbs.sort(function (a, b) { return parseFloat(b.Quantity) - parseFloat(a.Quantity); });
+            aLeafWbs.sort(function (a, b) { 
+                var pctA = (parseFloat(a.TotalQuantityDone) || 0) / (parseFloat(a.Quantity) || 1);
+                var pctB = (parseFloat(b.TotalQuantityDone) || 0) / (parseFloat(b.Quantity) || 1);
+                return pctB - pctA; 
+            });
             var aTopWbs = aLeafWbs.slice(0, 10);
 
             var aProgressChart = [];
             aTopWbs.forEach(function (w) {
-                var fTotal = parseFloat(w.Quantity) || 0;
+                var fTotal = parseFloat(w.Quantity) || 1;
                 var fDone = Math.min(parseFloat(w.TotalQuantityDone) || 0, fTotal);
-                var fRem = Math.max(fTotal - fDone, 0);
+                
+                var fDonePct = (fDone / fTotal) * 100;
+                var fRemPct = 100 - fDonePct;
 
                 // Ensure full name to prevent category grouping issues in VizFrame
                 var sName = w.WbsName || w.WbsCode || "WBS";
 
-                aProgressChart.push({ wbsName: sName, type: oBundle.getText("done"), value: Math.round(fDone * 100) / 100 });
-                aProgressChart.push({ wbsName: sName, type: oBundle.getText("remaining"), value: Math.round(fRem * 100) / 100 });
+                aProgressChart.push({ wbsName: sName, type: oBundle.getText("done") + " (%)", value: Math.round(fDonePct * 100) / 100 });
+                aProgressChart.push({ wbsName: sName, type: oBundle.getText("remaining") + " (%)", value: Math.round(fRemPct * 100) / 100 });
             });
             if (aProgressChart.length === 0) {
-                aProgressChart = [{ wbsName: "No Data", type: "Done", value: 0 }];
+                aProgressChart = [{ wbsName: "No Data", type: "Done (%)", value: 0 }];
             }
             oDash.setProperty("/wbsProgressChart", aProgressChart);
 
@@ -399,7 +419,7 @@
                     title: { visible: false },
                     legend: { visible: false },
                     categoryAxis: { title: { visible: false } },
-                    valueAxis: { title: { text: "Qty" } }
+                    valueAxis: { title: { text: "Progress (%)" } }
                 });
             }
 

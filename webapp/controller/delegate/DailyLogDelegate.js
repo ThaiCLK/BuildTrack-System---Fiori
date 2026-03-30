@@ -214,18 +214,19 @@ sap.ui.define([
 
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var sStatus = oCtx.getProperty("Status");
-            var aAllowed = ["IN_PROGRESS"];
+            var aAllowed = ["IN_PROGRESS", "CLOSE_REJECTED"];
             
             // Allow deletion in PENDING_OPEN for cleanup
             if (bIsDelete) {
                 aAllowed.push("PENDING_OPEN");
                 aAllowed.push("PLANNING");
+                aAllowed.push("OPEN_REJECTED");
             }
 
             if (aAllowed.indexOf(sStatus) === -1) {
                 var sStatusText = this.formatWbsStatusText(sStatus);
                 var sActionText = bIsDelete ? oBundle.getText("verifyStatusActionDelete") : oBundle.getText("verifyStatusActionWrite");
-                var sAllowedText = bIsDelete ? "'In Progress', 'Pending Open' hoặc 'Planning'" : "'In Progress'";
+                var sAllowedText = bIsDelete ? "'In Progress', 'Close Rejected', 'Pending Open', 'Open Rejected' hoặc 'Planning'" : "'In Progress' hoặc 'Close Rejected'";
 
                 MessageBox.warning(
                     oBundle.getText("verifyStatusError", [sActionText, sStatusText, sAllowedText])

@@ -38,6 +38,13 @@ sap.ui.define([
             }
         },
 
+        onTabSelect: function (oEvent) {
+            var oViewData = this.getView().getModel("viewData");
+            if (oViewData && oViewData.getProperty("/editMode")) {
+                this.onCancelWbs();
+            }
+        },
+
         /* =========================================================== */
         /* INLINE EDIT MODE - WBS DETAIL INFO                            */
         /* =========================================================== */
@@ -124,7 +131,7 @@ sap.ui.define([
                         WbsCode: that.byId("inWbsCode").getValue(),
                         Quantity: String(that.byId("inWbsQuantity").getValue() || "0"),
                         UnitCode: oModel.getProperty(sPath + "/UnitCode") || "M",
-                        Status: that.byId("inWbsStatus").getSelectedKey(),
+                        Status: oModel.getProperty(sPath + "/Status"),
                         StartDate: dStart ? toUTC(dStart) : oModel.getProperty(sPath + "/StartDate"),
                         EndDate: dEnd ? toUTC(dEnd) : oModel.getProperty(sPath + "/EndDate"),
                         StartActual: oModel.getProperty(sPath + "/StartActual"),
@@ -527,9 +534,11 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return oBundle.getText("planningStatus");
                 case "PENDING_OPEN": return oBundle.getText("pendingOpenStatus") || "Pending Open";
+                case "OPEN_REJECTED": return oBundle.getText("openRejectedStatus") || "Open Rejected";
                 case "OPENED": return oBundle.getText("openedStatus") || "Opened";
                 case "IN_PROGRESS": return oBundle.getText("inProgressStatus");
                 case "PENDING_CLOSE": return oBundle.getText("pendingCloseStatus") || "Pending Close";
+                case "CLOSE_REJECTED": return oBundle.getText("closeRejectedStatus") || "Close Rejected";
                 case "CLOSED": return oBundle.getText("closedStatus") || "Closed";
                 default: return sStatus || "";
             }
@@ -539,9 +548,11 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "None";
                 case "PENDING_OPEN": return "Information";
+                case "OPEN_REJECTED": return "Error";
                 case "OPENED": return "Success";
                 case "IN_PROGRESS": return "Warning";
                 case "PENDING_CLOSE": return "Information";
+                case "CLOSE_REJECTED": return "Error";
                 case "CLOSED": return "None";
                 // Legacy
                 case "NEW": return "None";
@@ -554,9 +565,11 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "sap-icon://status-in-process";
                 case "PENDING_OPEN": return "sap-icon://paper-plane";
+                case "OPEN_REJECTED": return "sap-icon://decline";
                 case "OPENED": return "sap-icon://accept";
                 case "IN_PROGRESS": return "sap-icon://machine";
                 case "PENDING_CLOSE": return "sap-icon://paper-plane";
+                case "CLOSE_REJECTED": return "sap-icon://decline";
                 case "CLOSED": return "sap-icon://locked";
                 // Legacy
                 case "NEW": return "sap-icon://status-in-process";
@@ -724,9 +737,9 @@ sap.ui.define([
             if (!oWbsCtx) return;
 
             var sStatus = oWbsCtx.getProperty("Status");
-            if (sStatus !== "IN_PROGRESS") {
+            if (sStatus !== "IN_PROGRESS" && sStatus !== "CLOSE_REJECTED") {
                 var oBundle = this.getView().getModel("i18n").getResourceBundle();
-                sap.m.MessageBox.error(oBundle.getText("inProgressOnlyCloseApprovalError", [""]));
+                sap.m.MessageBox.error(oBundle.getText("inProgressOnlyCloseApprovalError", [""]) || "Hạng mục phải ở trạng thái 'In Progress' hoặc 'Close Rejected' mới có thể gửi phê duyệt đóng.");
                 return;
             }
 
@@ -742,8 +755,8 @@ sap.ui.define([
 
             var sStatus = oWbsCtx.getProperty("Status");
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            if (sStatus !== "PLANNING") {
-                sap.m.MessageBox.error(oBundle.getText("planningOnlyOpenApprovalError", [""]));
+            if (sStatus !== "PLANNING" && sStatus !== "OPEN_REJECTED") {
+                sap.m.MessageBox.error(oBundle.getText("planningOnlyOpenApprovalError", [""]) || "Hạng mục phải ở trạng thái 'Planning' hoặc 'Open Rejected' mới có thể gửi phê duyệt mở.");
                 return;
             }
 
@@ -751,6 +764,9 @@ sap.ui.define([
                 onClose: function (sAction) {
                     if (sAction === sap.m.MessageBox.Action.OK) {
                         oView.setBusy(true);
+
+                        // --- OLD API CODE (COMMENTED) ---
+                        /*
                         that.getOwnerComponent().getModel().callFunction("/StartWSProcess", {
                             method: "POST",
                             urlParameters: { WBS_IDS: oWbsCtx.getProperty("WbsId") },
@@ -764,6 +780,42 @@ sap.ui.define([
                                 sap.m.MessageBox.error(oBundle.getText("wbsSubmitError") || "Error on submission.");
                             }
                         });
+                        */
+                        // --- END OLD API CODE ---
+
+                        // --- NEW API CODE ---
+                        that.getOwnerComponent().getModel().callFunction("/ApproveWbs", {
+                            method: "POST",
+                            urlParameters: { WbsIds: oWbsCtx.getProperty("WbsId"), ApprovalType: "OPEN" },
+                            success: function (oData) {
+                                oView.setBusy(false);
+                                that.getOwnerComponent().getModel().refresh(true, true);
+
+                                var aResults = oData.results || (oData.ApproveWbs && oData.ApproveWbs.results) || [];
+                                if (aResults && aResults.length > 0) {
+                                    var oFirstResult = aResults[0];
+                                    if (oFirstResult.ReturnType === "E") {
+                                        sap.m.MessageBox.error(oFirstResult.Message || "Error on submission.");
+                                    } else if (oFirstResult.ReturnType === "W") {
+                                        sap.m.MessageBox.warning(oFirstResult.Message || "Warning on submission.");
+                                    } else {
+                                        sap.m.MessageToast.show(oFirstResult.Message || oBundle.getText("submitSuccess", ["1"]));
+                                    }
+                                } else {
+                                    sap.m.MessageToast.show(oBundle.getText("submitSuccess", ["1"]));
+                                }
+                            },
+                            error: function (oError) {
+                                oView.setBusy(false);
+                                var sMsg = oBundle.getText("wbsSubmitError") || "Error on submission.";
+                                try {
+                                    var oErr = JSON.parse(oError.responseText);
+                                    sMsg = oErr.error.message.value || sMsg;
+                                } catch (e) { }
+                                sap.m.MessageBox.error(sMsg);
+                            }
+                        });
+                        // --- END NEW API CODE ---
                     }
                 }
             });
@@ -1253,8 +1305,8 @@ sap.ui.define([
                 return;
             }
 
-            if (sStatus !== "IN_PROGRESS") {
-                sap.m.MessageBox.warning("Hạng mục phải ở trạng thái 'In Progress' (Đang thi công) mới có thể gửi phê duyệt đóng.");
+            if (sStatus !== "IN_PROGRESS" && sStatus !== "CLOSE_REJECTED") {
+                sap.m.MessageBox.warning("Hạng mục phải ở trạng thái 'In Progress' (Đang thi công) hoặc bị từ chối đóng mới có thể gửi phê duyệt đóng.");
                 return;
             }
 
@@ -1279,8 +1331,8 @@ sap.ui.define([
                 return;
             }
 
-            if (sStatus !== "PLANNING") {
-                sap.m.MessageBox.warning(oBundle.getText("planningOnlyOpenApprovalError", [""]));
+            if (sStatus !== "PLANNING" && sStatus !== "OPEN_REJECTED") {
+                sap.m.MessageBox.warning(oBundle.getText("planningOnlyOpenApprovalError", [""]) || "Chỉ những hạng mục ở trạng thái 'Planning' hoặc bị từ chối mở mới có thể gửi phê duyệt mở.");
                 return;
             }
 
@@ -1290,6 +1342,8 @@ sap.ui.define([
             this.onCloseWbsInfoDialog();
             oView.setBusy(true);
 
+            // --- OLD API CODE (COMMENTED) ---
+            /*
             oModel.callFunction("/StartWSProcess", {
                 method: "POST",
                 urlParameters: {
@@ -1304,12 +1358,12 @@ sap.ui.define([
                         sap.m.MessageBox.error(sErrorMsg);
                         return;
                     }
-
-                    sap.m.MessageBox.success(sSuccessMsg);
-                    this._loadWorkSummary(sWbsId);
-                    var oBinding = oView.getElementBinding();
-                    if (oBinding) { oBinding.refresh(); }
-                }.bind(this),
+                    sap.m.MessageBox.success(sSuccessMsg, {
+                        onClose: function () { // reload if needed
+                        }
+                    });
+                    oModel.refresh(true, true);
+                },
                 error: function (oError) {
                     oView.setBusy(false);
                     var sMsg = oBundle.getText("wbsSubmitError");
@@ -1320,6 +1374,42 @@ sap.ui.define([
                     sap.m.MessageBox.error(sMsg);
                 }
             });
+            */
+            // --- END OLD API CODE ---
+
+            // --- NEW API CODE ---
+            oModel.callFunction("/ApproveWbs", {
+                method: "POST",
+                urlParameters: { WbsIds: sWbsId, ApprovalType: "OPEN" },
+                success: function (oData) {
+                    oView.setBusy(false);
+                    oModel.refresh(true, true);
+
+                    var aResults = oData.results || (oData.ApproveWbs && oData.ApproveWbs.results) || [];
+                    if (aResults && aResults.length > 0) {
+                        var oFirstResult = aResults[0];
+                        if (oFirstResult.ReturnType === "E") {
+                            sap.m.MessageBox.error(oFirstResult.Message || oBundle.getText("wbsSubmitError"));
+                        } else if (oFirstResult.ReturnType === "W") {
+                            sap.m.MessageBox.warning(oFirstResult.Message || oBundle.getText("wbsSubmitError"));
+                        } else {
+                            sap.m.MessageBox.success(oFirstResult.Message || oBundle.getText("submitSuccess", ["1"]));
+                        }
+                    } else {
+                        sap.m.MessageBox.success(oBundle.getText("submitSuccess", ["1"]));
+                    }
+                },
+                error: function (oError) {
+                    oView.setBusy(false);
+                    var sMsg = oBundle.getText("wbsSubmitError") || "Error on submission.";
+                    try {
+                        var oErr = JSON.parse(oError.responseText);
+                        sMsg = oErr.error.message.value || sMsg;
+                    } catch (e) { }
+                    sap.m.MessageBox.error(sMsg);
+                }
+            });
+            // --- END NEW API CODE ---
         }
     });
 

@@ -62,7 +62,9 @@ sap.ui.define([
                 "IN_PROGRESS": oBundle.getText("inProgressStatus"),
                 "COMPLETED": oBundle.getText("completedStatus"),
                 "PENDING_OPEN": oBundle.getText("pendingOpenStatus") || "Pending Open",
+                "OPEN_REJECTED": oBundle.getText("openRejectedStatus") || "Open Rejected",
                 "PENDING_CLOSE": oBundle.getText("pendingCloseStatus") || "Pending Close",
+                "CLOSE_REJECTED": oBundle.getText("closeRejectedStatus") || "Close Rejected",
                 "OPENED": oBundle.getText("openedStatus") || "Opened",
                 "CLOSED": oBundle.getText("closedStatus") || "Closed"
             };
@@ -243,9 +245,24 @@ sap.ui.define([
 
                     // Sort aResults by StartDate before transforming to tree to ensure proper ordering at all levels
                     aResults.sort(function (a, b) {
-                        var tA = a.StartDate ? new Date(a.StartDate).getTime() : 0;
-                        var tB = b.StartDate ? new Date(b.StartDate).getTime() : 0;
-                        return tA - tB;
+                        var parseDate = function(val) {
+                            if (!val) return 0;
+                            if (typeof val === "string" && val.indexOf("/Date(") === 0) {
+                                return parseInt(val.replace(/[^0-9]/g, ""), 10);
+                            }
+                            return new Date(val).getTime() || 0;
+                        };
+
+                        var tA = parseDate(a.StartDate);
+                        var tB = parseDate(b.StartDate);
+
+                        if (tA !== tB) {
+                            return tA - tB;
+                        }
+                        
+                        var sNameA = a.WbsName || "";
+                        var sNameB = b.WbsName || "";
+                        return sNameA.localeCompare(sNameB);
                     });
 
                     var aTreeData = that._transformToTree(aResults);
@@ -481,12 +498,11 @@ sap.ui.define([
                 return;
             }
 
-            // Check if all selected items are in PLANNING status
             var aInvalidItems = [];
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
-                if (oData.Status !== "PLANNING") {
+                if (oData.Status !== "PLANNING" && oData.Status !== "OPEN_REJECTED") {
                     aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
                 }
             });
@@ -516,12 +532,12 @@ sap.ui.define([
                 return;
             }
 
-            // Check if all selected items are in IN_PROGRESS status
+            // Check if all selected items are in IN_PROGRESS or CLOSE_REJECTED status
             var aInvalidItems = [];
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
-                if (oData.Status !== "IN_PROGRESS") {
+                if (oData.Status !== "IN_PROGRESS" && oData.Status !== "CLOSE_REJECTED") {
                     aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
                 }
             });
@@ -544,47 +560,147 @@ sap.ui.define([
             var that = this;
             var oTable = this.byId("wbsTreeTable");
             var oModel = this.getOwnerComponent().getModel();
-            var iDone = 0;
-            var iError = 0;
 
             this.getView().setBusy(true);
 
-            var fnNext = function () {
-                var oBundle = that.getView().getModel("i18n").getResourceBundle();
-                if (iDone + iError === aIndices.length) {
-                    that.getView().setBusy(false);
-                    if (iError === 0) {
-                        MessageToast.show(oBundle.getText("submitSuccess", [iDone]));
-                    } else {
-                        MessageBox.warning(oBundle.getText("submitPartialError", [iError]));
-                    }
-                    that._loadWbsData();
-                    return;
-                }
+            var aWbsIds = [];
 
-                var iIdx = aIndices[iDone + iError];
+            // Sort indices ascending to ensure top-down processing order
+            aIndices.sort(function(a, b) { return a - b; });
+
+            aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
+                if (oData && oData.WbsId) {
+                    aWbsIds.push(oData.WbsId);
+                }
+            });
 
-                var sEndpoint = bIsClose ? "/CloseWbsApproval" : "/StartWSProcess";
-                var oParams = bIsClose ? { WBS_IDS: oData.WbsId } : { WBS_IDS: oData.WbsId };
+            var sWbsIdsStr = aWbsIds.join(",");
 
-                oModel.callFunction(sEndpoint, {
-                    method: "POST",
-                    urlParameters: oParams,
-                    changeSetId: oData.WbsId, // Ensure separate changeset per item
-                    success: function () {
-                        iDone++;
-                        fnNext();
-                    },
-                    error: function (oError) {
-                        iError++;
-                        fnNext();
+            // --- OLD API CODE (COMMENTED) ---
+            /*
+            var sEndpoint = bIsClose ? "/CloseWbsApproval" : "/StartWSProcess";
+            var oParams = { WBS_IDS: sWbsIdsStr };
+
+            oModel.callFunction(sEndpoint, {
+                method: "POST",
+                urlParameters: oParams,
+                success: function (oData) {
+                    that.getView().setBusy(false);
+                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
+                    
+                    // Handle OData response variations
+                    var sEndpKey = sEndpoint.replace("/", "");
+                    var oResult = (oData && oData[sEndpKey]) ? oData[sEndpKey] : oData;
+                    
+                    if (oResult && oResult.SUCCESS === false) {
+                        var sErrMsg = oResult.MESSAGE || oBundle.getText("wbsSubmitError");
+                        MessageBox.warning(sErrMsg);
+                    } else {
+                        MessageToast.show(oBundle.getText("submitSuccess", [aWbsIds.length]));
                     }
-                });
-            };
+                    
+                    that._loadWbsData();
+                    oModel.refresh(true, true);
+                },
+                error: function (oError) {
+                    that.getView().setBusy(false);
+                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
+                    var sMsg = oBundle.getText("wbsSubmitError") || "Error on submission.";
+                    try {
+                        var oErr = JSON.parse(oError.responseText);
+                        sMsg = oErr.error.message.value || sMsg;
+                    } catch (e) { }
+                    MessageBox.error(sMsg);
+                }
+            });
+            */
+            // --- END OLD API CODE ---
 
-            fnNext();
+            // --- NEW API CODE ---
+            var sApprovalType = bIsClose ? "CLOSE" : "OPEN";
+            var oParamsNew = { WbsIds: sWbsIdsStr, ApprovalType: sApprovalType };
+
+            oModel.callFunction("/ApproveWbs", {
+                method: "POST",
+                urlParameters: oParamsNew,
+                success: function (oData) {
+                    that.getView().setBusy(false);
+                    that._loadWbsData();
+                    oModel.refresh(true, true);
+                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
+
+                    var aResults = oData.results || (oData.ApproveWbs && oData.ApproveWbs.results) || [];
+                    if (!aResults || aResults.length === 0) {
+                        sap.m.MessageToast.show(oBundle.getText("submissionExecutedOk"));
+                        return;
+                    }
+
+                    // Ưu tiên đọc WbsName từ Backend (nếu BE thêm field mới), hoặc đọc luôn nội dung ở trường WbsCode
+                    aResults.forEach(function(oRes) {
+                        oRes.WbsNameDisplay = oRes.WbsName || oRes.WbsCode || "Unknown";
+                    });
+
+                    var sSuccessTxt = oBundle.getText("successStatus");
+                    var sErrorTxt = oBundle.getText("errorStatus");
+                    var sWarnTxt = oBundle.getText("warningStatus");
+
+                    // Dynamically create the result table dialog
+                    var oResultModel = new sap.ui.model.json.JSONModel({ items: aResults });
+                    var oTableDialog = new sap.m.Table({
+                        columns: [
+                            new sap.m.Column({ header: new sap.m.Label({ text: oBundle.getText("wbsNameCol") }) }),
+                            new sap.m.Column({ header: new sap.m.Label({ text: oBundle.getText("statusCol") }), width: "120px" }),
+                            new sap.m.Column({ header: new sap.m.Label({ text: oBundle.getText("detailCol") }) })
+                        ]
+                    });
+
+                    oTableDialog.setModel(oResultModel);
+                    oTableDialog.bindItems({
+                        path: "/items",
+                        template: new sap.m.ColumnListItem({
+                            cells: [
+                                new sap.m.Text({ text: "{WbsNameDisplay}" }),
+                                new sap.m.ObjectStatus({
+                                    text: "{= ${ReturnType} === 'S' ? '" + sSuccessTxt + "' : (${ReturnType} === 'E' ? '" + sErrorTxt + "' : '" + sWarnTxt + "') }",
+                                    state: "{= ${ReturnType} === 'S' ? 'Success' : (${ReturnType} === 'E' ? 'Error' : 'Warning') }"
+                                }),
+                                new sap.m.Text({ text: "{Message}" })
+                            ]
+                        })
+                    });
+
+                    var oDialog = new sap.m.Dialog({
+                        title: oBundle.getText("batchApprovalResultTitle"),
+                        contentWidth: "750px",
+                        content: [oTableDialog],
+                        endButton: new sap.m.Button({
+                            text: oBundle.getText("closeBtn"),
+                            press: function () {
+                                oDialog.close();
+                            }
+                        }),
+                        afterClose: function () {
+                            oDialog.destroy();
+                        }
+                    });
+
+                    that.getView().addDependent(oDialog);
+                    oDialog.open();
+                },
+                error: function (oError) {
+                    that.getView().setBusy(false);
+                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
+                    var sMsg = oBundle.getText("wbsSubmitError") || "Error on submission.";
+                    try {
+                        var oErr = JSON.parse(oError.responseText);
+                        sMsg = oErr.error.message.value || sMsg;
+                    } catch (e) { }
+                    sap.m.MessageBox.error(sMsg);
+                }
+            });
+            // --- END NEW API CODE ---
         },
 
         // ── WBS: RUN (Switch from OPENED to IN_PROGRESS) ─────────────────────
@@ -739,24 +855,27 @@ sap.ui.define([
                 });
             };
 
-            // Resolution counter
+            // Resolution list
             var aResolved = [];
             var iDone = 0;
-            var fnFinalize = function () {
-                iDone++;
+
+            var fnCheckNext = function () {
                 if (iDone === aWbsObjects.length) {
                     that.getView().setBusy(false);
                     that._openApproveDialog(aResolved, sDecisionCode, oBundle);
+                    return;
                 }
-            };
-            var fnAddIfValid = function (sWiId, oWbs) {
-                if (sWiId && sWiId !== "" && sWiId !== "000000000000") {
-                    aResolved.push({ WorkItemId: sWiId, WbsName: oWbs.WbsName });
-                }
-            };
 
-            aWbsObjects.forEach(function (oWbs) {
+                var oWbs = aWbsObjects[iDone];
                 var sType = oWbs.Status && oWbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
+
+                var fnOnChecked = function (sWiId) {
+                    if (sWiId && sWiId !== "" && sWiId !== "000000000000") {
+                        aResolved.push({ WorkItemId: sWiId, WbsName: oWbs.WbsName });
+                    }
+                    iDone++;
+                    fnCheckNext();
+                };
 
                 // Tier-1: Call CheckDecision
                 oModel.callFunction("/CheckDecision", {
@@ -767,9 +886,6 @@ sap.ui.define([
                         var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision) || oResponse;
                         var sWiId = (oResult && oResult.WORKITEM_ID) ? oResult.WORKITEM_ID : "";
 
-                        console.log("=== CHECKDECISION SUCCESS cho " + oWbs.WbsId + " ===");
-                        console.log(oResult);
-
                         if (!sWiId || sWiId === "" || sWiId === "000000000000") {
                             // Tier-2: ToApprovalLog expand
                             sWiId = fnExpandFallback(oWbs) || "";
@@ -778,12 +894,10 @@ sap.ui.define([
                         if (!sWiId || sWiId === "" || sWiId === "000000000000") {
                             // Tier-3: Direct fetch from ApprovalLogSet
                             fnDirectFetch(oWbs, function (sResolved) {
-                                fnAddIfValid(sResolved, oWbs);
-                                fnFinalize();
+                                fnOnChecked(sResolved);
                             });
                         } else {
-                            fnAddIfValid(sWiId, oWbs);
-                            fnFinalize();
+                            fnOnChecked(sWiId);
                         }
                     },
                     error: function () {
@@ -792,16 +906,17 @@ sap.ui.define([
                         if (!sWiId || sWiId === "" || sWiId === "000000000000") {
                             // Tier-3
                             fnDirectFetch(oWbs, function (sResolved) {
-                                fnAddIfValid(sResolved, oWbs);
-                                fnFinalize();
+                                fnOnChecked(sResolved);
                             });
                         } else {
-                            fnAddIfValid(sWiId, oWbs);
-                            fnFinalize();
+                            fnOnChecked(sWiId);
                         }
                     }
                 });
-            });
+            };
+
+            // Start sequential Tiered Check
+            fnCheckNext();
         },
 
         _openApproveDialog: function (aItemsToProcess, sDecisionCode, oBundle) {
@@ -857,6 +972,7 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var iDone = 0;
             var iError = 0;
+            var aTableResults = [];
 
             this.getView().setBusy(true);
 
@@ -864,14 +980,56 @@ sap.ui.define([
                 var oBundle = that.getView().getModel("i18n").getResourceBundle();
                 if (iDone + iError === aItems.length) {
                     that.getView().setBusy(false);
-                    if (iError === 0) {
-                        MessageToast.show(oBundle.getText("processSuccess", [iDone]));
-                    } else {
-                        MessageBox.warning(oBundle.getText("submitPartialError", [iError]));
-                    }
                     that._loadWbsData();
                     // Status computation is now handled by Backend
                     oModel.refresh(true);
+
+                    // Dynamically create the result table dialog specifically for Approval
+                    var sSuccessTxt = oBundle.getText("successStatus");
+                    var sErrorTxt = oBundle.getText("errorStatus");
+                    var sWarnTxt = oBundle.getText("warningStatus");
+
+                    var oResultModel = new sap.ui.model.json.JSONModel({ items: aTableResults });
+                    var oTableDialog = new sap.m.Table({
+                        columns: [
+                            new sap.m.Column({ header: new sap.m.Label({ text: oBundle.getText("wbsNameCol") }) }),
+                            new sap.m.Column({ header: new sap.m.Label({ text: oBundle.getText("statusCol") }), width: "120px" }),
+                            new sap.m.Column({ header: new sap.m.Label({ text: oBundle.getText("detailCol") }) })
+                        ]
+                    });
+
+                    oTableDialog.setModel(oResultModel);
+                    oTableDialog.bindItems({
+                        path: "/items",
+                        template: new sap.m.ColumnListItem({
+                            cells: [
+                                new sap.m.Text({ text: "{WbsNameDisplay}" }),
+                                new sap.m.ObjectStatus({
+                                    text: "{= ${ReturnType} === 'S' ? '" + sSuccessTxt + "' : (${ReturnType} === 'E' ? '" + sErrorTxt + "' : '" + sWarnTxt + "') }",
+                                    state: "{= ${ReturnType} === 'S' ? 'Success' : (${ReturnType} === 'E' ? 'Error' : 'Warning') }"
+                                }),
+                                new sap.m.Text({ text: "{Message}" })
+                            ]
+                        })
+                    });
+
+                    var oDialog = new sap.m.Dialog({
+                        title: oBundle.getText("batchApprovalResultTitle"),
+                        contentWidth: "750px",
+                        content: [oTableDialog],
+                        endButton: new sap.m.Button({
+                            text: oBundle.getText("closeBtn"),
+                            press: function () {
+                                oDialog.close();
+                            }
+                        }),
+                        afterClose: function () {
+                            oDialog.destroy();
+                        }
+                    });
+
+                    that.getView().addDependent(oDialog);
+                    oDialog.open();
                     return;
                 }
 
@@ -887,15 +1045,36 @@ sap.ui.define([
                     changeSetId: oItem.WorkItemId,
                     success: function (oData) {
                         var oResult = oData.PostDecision || oData;
+                        var sMsg = (oResult && oResult.MESSAGE) ? oResult.MESSAGE : "";
                         if (oResult && oResult.SUCCESS === false) {
                             iError++;
+                            aTableResults.push({
+                                WbsNameDisplay: oItem.WbsName,
+                                ReturnType: "E",
+                                Message: sMsg || oBundle.getText("processError")
+                            });
                         } else {
                             iDone++;
+                            aTableResults.push({
+                                WbsNameDisplay: oItem.WbsName,
+                                ReturnType: "S",
+                                Message: sMsg || oBundle.getText("processSuccess", ["1"])
+                            });
                         }
                         fnNext();
                     },
                     error: function (oError) {
                         iError++;
+                        var sMsg = oBundle.getText("processError");
+                        try {
+                            var oErr = JSON.parse(oError.responseText);
+                            sMsg = oErr.error.message.value || sMsg;
+                        } catch (e) { }
+                        aTableResults.push({
+                            WbsNameDisplay: oItem.WbsName,
+                            ReturnType: "E",
+                            Message: sMsg
+                        });
                         fnNext();
                     }
                 });
@@ -951,12 +1130,15 @@ sap.ui.define([
             });
             var oSelectStatus = new Select({
                 width: "100%",
+                enabled: false,
                 items: [
                     new Item({ key: "PLANNING", text: oBundle.getText("planningStatus") }),
                     new Item({ key: "PENDING_OPEN", text: oBundle.getText("pendingOpenStatus") || "Pending Open" }),
+                    new Item({ key: "OPEN_REJECTED", text: oBundle.getText("openRejectedStatus") || "Open Rejected" }),
                     new Item({ key: "OPENED", text: oBundle.getText("openedStatus") || "Opened" }),
                     new Item({ key: "IN_PROGRESS", text: oBundle.getText("inProgressStatus") }),
                     new Item({ key: "PENDING_CLOSE", text: oBundle.getText("pendingCloseStatus") || "Pending Close" }),
+                    new Item({ key: "CLOSE_REJECTED", text: oBundle.getText("closeRejectedStatus") || "Close Rejected" }),
                     new Item({ key: "CLOSED", text: oBundle.getText("closedStatus") || "Closed" })
                 ],
                 visible: false
@@ -1246,9 +1428,11 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "None";
                 case "PENDING_OPEN": return "Information";
+                case "OPEN_REJECTED": return "Error";
                 case "OPENED": return "Success";
                 case "IN_PROGRESS": return "Warning";
                 case "PENDING_CLOSE": return "Information";
+                case "CLOSE_REJECTED": return "Error";
                 case "CLOSED": return "None";
                 default: return "None";
             }
@@ -1258,9 +1442,11 @@ sap.ui.define([
             switch (sStatus) {
                 case "PLANNING": return "sap-icon://status-in-process";
                 case "PENDING_OPEN": return "sap-icon://paper-plane";
+                case "OPEN_REJECTED": return "sap-icon://decline";
                 case "OPENED": return "sap-icon://accept";
                 case "IN_PROGRESS": return "sap-icon://machine";
                 case "PENDING_CLOSE": return "sap-icon://paper-plane";
+                case "CLOSE_REJECTED": return "sap-icon://decline";
                 case "CLOSED": return "sap-icon://locked";
                 default: return "sap-icon://status-in-process";
             }

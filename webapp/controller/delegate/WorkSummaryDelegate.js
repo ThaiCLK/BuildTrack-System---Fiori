@@ -243,9 +243,11 @@ sap.ui.define([
             var m = {
                 "PLANNING": 1,
                 "PENDING_OPEN": 2,
+                "OPEN_REJECTED": 2,
                 "OPENED": 3,
                 "IN_PROGRESS": 4,
                 "PENDING_CLOSE": 5,
+                "CLOSE_REJECTED": 5,
                 "CLOSED": 6
             };
             return m[sStatus] || 0;
@@ -253,6 +255,8 @@ sap.ui.define([
 
         formatStepClass: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
+            if (iStep === 2 && sStatus === "OPEN_REJECTED") return "wbsStepCircle stepRejected";
+            if (iStep === 5 && sStatus === "CLOSE_REJECTED") return "wbsStepCircle stepRejected";
             if (iCurrent > iStep) return "wbsStepCircle stepCompleted";
             if (iCurrent === iStep) return "wbsStepCircle stepActive";
             return "wbsStepCircle stepPending";
@@ -260,6 +264,8 @@ sap.ui.define([
 
         formatStepLabelClass: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
+            if (iStep === 3 && sStatus === "OPEN_REJECTED") return "labelRejected";
+            if (iStep === 6 && sStatus === "CLOSE_REJECTED") return "labelRejected";
             if (iCurrent === iStep) return "labelActive";
             return "";
         },
@@ -272,6 +278,9 @@ sap.ui.define([
 
         formatStepIcon: function (sStatus, iStep) {
             var iCurrent = this.formatStepNumber(sStatus);
+            if (iStep === 2 && sStatus === "OPEN_REJECTED") return "sap-icon://decline";
+            if (iStep === 5 && sStatus === "CLOSE_REJECTED") return "sap-icon://decline";
+
             // Success icon for completed steps
             if (iCurrent > iStep) return "sap-icon://accept";
 
@@ -300,7 +309,12 @@ sap.ui.define([
                 oBundle.getText("pendingCloseStepLabel"),
                 oBundle.getText("closedStepLabel")
             ];
-            return aLabels[iStepNum - 1] || "";
+            var sLabel = aLabels[iStepNum - 1];
+
+            if (iStepNum === 3 && sStatus === "OPEN_REJECTED") return oBundle.getText("openRejectedStatus") || "Open Rejected";
+            if (iStepNum === 6 && sStatus === "CLOSE_REJECTED") return oBundle.getText("closeRejectedStatus") || "Close Rejected";
+
+            return sLabel || "";
         },
 
         onSubmitForApproval: function () {
@@ -324,13 +338,15 @@ sap.ui.define([
                 var sStatus = oWbsCtx ? oWbsCtx.getProperty("Status") : "";
 
                 // Strict status guard for Closing flow
-                if (sStatus !== "IN_PROGRESS") {
+                if (sStatus !== "IN_PROGRESS" && sStatus !== "CLOSE_REJECTED") {
                     sap.m.MessageBox.error(oBundle.getText("submitCloseStatusError"));
                     return;
                 }
 
                 oView.setBusy(true);
 
+                // --- OLD API CODE (COMMENTED) ---
+                /*
                 // Official API for Closing flow
                 oModel.callFunction("/CloseWbsApproval", {
                     method: "POST",
@@ -366,6 +382,56 @@ sap.ui.define([
                         sap.m.MessageBox.error(sMsg);
                     }
                 });
+                */
+                // --- END OLD API CODE ---
+
+                // --- NEW API CODE ---
+                oModel.callFunction("/ApproveWbs", {
+                    method: "POST",
+                    urlParameters: { WbsIds: sWbsId, ApprovalType: "CLOSE" },
+                    success: function (oData) {
+                        oView.setBusy(false);
+                        this._loadWorkSummary(sWbsId);
+                        var oBinding = oView.getElementBinding();
+                        if (oBinding) { oBinding.refresh(); }
+
+                        var aResults = oData.results || (oData.ApproveWbs && oData.ApproveWbs.results) || [];
+                        if (aResults && aResults.length > 0) {
+                            var oFirstResult = aResults[0];
+                            if (oFirstResult.ReturnType === "E") {
+                                sap.m.MessageBox.error(oFirstResult.Message || oBundle.getText("submitForApprovalError"));
+                            } else if (oFirstResult.ReturnType === "W") {
+                                sap.m.MessageBox.warning(oFirstResult.Message || oBundle.getText("submitForApprovalError"));
+                            } else {
+                                sap.m.MessageBox.success(oFirstResult.Message || oBundle.getText("submitForApprovalSuccess"), {
+                                    onClose: function () {
+                                        if (typeof this.onCloseAcceptanceDialog === "function") {
+                                            this.onCloseAcceptanceDialog();
+                                        }
+                                    }.bind(this)
+                                });
+                            }
+                        } else {
+                            sap.m.MessageBox.success(oBundle.getText("submitForApprovalSuccess"), {
+                                onClose: function () {
+                                    if (typeof this.onCloseAcceptanceDialog === "function") {
+                                        this.onCloseAcceptanceDialog();
+                                    }
+                                }.bind(this)
+                            });
+                        }
+                    }.bind(this),
+                    error: function (oError) {
+                        oView.setBusy(false);
+                        var sMsg = oBundle.getText("submitForApprovalError");
+                        try {
+                            var oErr = JSON.parse(oError.responseText);
+                            sMsg = oErr.error.message.value || sMsg;
+                        } catch (e) { }
+                        sap.m.MessageBox.error(sMsg);
+                    }
+                });
+                // --- END NEW API CODE ---
             }.bind(this);
 
             var fnRunWithDependencyCheck = function () {

@@ -307,6 +307,10 @@ sap.ui.define([
                 case "PLANNING":
                     state0 = "Positive"; text0 = oBundle.getText("nodePublished");
                     break;
+                case "OPEN_REJECTED":
+                    state0 = "Positive"; text0 = oBundle.getText("nodePublished");
+                    state1 = "Negative"; text1 = oBundle.getText("nodeRejected") || "Rejected";
+                    break;
                 case "PENDING_OPEN":
                     state0 = "Positive"; text0 = oBundle.getText("nodePublished");
                     state1 = "Neutral"; text1 = oBundle.getText("nodeInReview");
@@ -321,6 +325,11 @@ sap.ui.define([
                     state1 = "Positive"; text1 = oBundle.getText("nodePublished");
                     state2 = "Positive"; text2 = oBundle.getText("nodeActived");
                     state3 = "Positive"; text3 = oBundle.getText("nodeStarted");
+                    break;
+                case "CLOSE_REJECTED":
+                    state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
+                    text0 = oBundle.getText("nodePublished"); text1 = oBundle.getText("nodePublished"); text2 = oBundle.getText("nodeActived"); text3 = oBundle.getText("nodeStarted");
+                    state4 = "Negative"; text4 = oBundle.getText("nodeRejected") || "Rejected";
                     break;
                 case "PENDING_CLOSE":
                     state0 = "Positive"; state1 = "Positive"; state2 = "Positive"; state3 = "Positive";
