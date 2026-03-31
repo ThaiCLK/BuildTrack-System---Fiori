@@ -116,7 +116,7 @@
 
             <!-- ── Section III: Children Summary Table (Parent Nodes Only) ────────────────────────── -->
             <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
-                <Table items="{workSummaryModel>/Children}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
+                <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
                     <columns>
                         <Column width="4.5rem">
                             <Text text="{i18n>wbsCode}" />

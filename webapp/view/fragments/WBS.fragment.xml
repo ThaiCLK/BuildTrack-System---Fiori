@@ -98,7 +98,7 @@
             <t:Column width="{viewConfig>/totalWidth}" resizable="false">
                 <t:label>
                     <VBox width="{viewConfig>/totalWidth}" renderType="Bare">
-                        <HBox items="{path: 'viewConfig>/timeScale'}" renderType="Bare" height="25px">
+                        <HBox items="{path: 'viewConfig>/timeScale', templateShareable: false}" renderType="Bare" height="25px">
                             <items>
                                 <FlexBox width="{viewConfig>monthWidth}" 
                                          justifyContent="Center" alignItems="Center" 
@@ -108,9 +108,9 @@
                             </items>
                         </HBox>
                         
-                        <HBox items="{path: 'viewConfig>/timeScale'}" renderType="Bare" height="20px">
+                        <HBox items="{path: 'viewConfig>/timeScale', templateShareable: false}" renderType="Bare" height="20px">
                             <items>
-                                <HBox items="{path: 'viewConfig>days'}" renderType="Bare" class="gantt-no-shrink">
+                                <HBox items="{path: 'viewConfig>days', templateShareable: false}" renderType="Bare" class="gantt-no-shrink">
                                     <items>
                                         <FlexBox width="{viewConfig>dayWidth}" 
                                                  justifyContent="Center" alignItems="Center"

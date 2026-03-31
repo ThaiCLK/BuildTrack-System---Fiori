@@ -15,7 +15,7 @@
                     text="{i18n>depAddButton}"
                     type="Emphasized"
                     press=".onAddDependency"
-                    enabled="{= ${Status} === 'PLANNING' || ${Status} === 'OPENED' }" />
+                    enabled="true" />
             </Toolbar>
 
             <Table

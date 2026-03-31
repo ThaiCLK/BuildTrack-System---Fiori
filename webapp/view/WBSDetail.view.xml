@@ -67,7 +67,10 @@
 
                                 <Label text="{i18n>quantity}" />
                                 <VBox width="100%">
-                                    <Input id="inWbsQuantity" value="{Quantity}" description="{UnitCode}" visible="{viewData>/editMode}" type="Number"/>
+                                    <Input id="inWbsQuantity" 
+                                           value="{path: 'Quantity', formatter: '.formatQuantityInt'}" 
+                                           description="{UnitCode}" 
+                                           visible="{viewData>/editMode}" />
                                     <ObjectNumber
                                         visible="{= !${viewData>/editMode} }"
                                         number="{

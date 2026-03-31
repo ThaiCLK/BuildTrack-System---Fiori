@@ -479,22 +479,37 @@ sap.ui.define([
         },
 
         formatTypeState: function (sType) {
-            var mStates = {
-                "ROAD": "Warning",
-                "BRIDGE": "Information",
-                "BUILDING": "Success",
-                "TUNNEL": "None"
+            return "None";
+        },
+
+        formatTypeText: function (sType) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var mLabels = {
+                "ROAD": oBundle.getText("typeRoad"),
+                "BRIDGE": oBundle.getText("typeBridge"),
+                "BUILDING": oBundle.getText("typeBuilding"),
+                "TUNNEL": oBundle.getText("typeTunnel"),
+                "OTHER": oBundle.getText("typeOther")
             };
-            return mStates[(sType || "").toUpperCase()] || "None";
+            return mLabels[(sType || "").toUpperCase()] || sType;
         },
 
         formatStatusText: function (sStatus) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var mLabels = {
-                "PLANNING": "Planning",
-                "IN_PROGRESS": "In Progress",
-                "CLOSED": "Closed"
+                "PLANNING": oBundle.getText("planningStatus"),
+                "IN_PROGRESS": oBundle.getText("inProgressStatus"),
+                "CLOSED": oBundle.getText("closedStatus")
             };
             return mLabels[(sStatus || "").toUpperCase()] || sStatus;
+        },
+
+        onDatePickerAfterRendering: function(oEvent) {
+            var $input = oEvent.getSource().$().find("input");
+            if ($input.length > 0) {
+                $input.attr("readonly", true);
+                $input.css("cursor", "pointer");
+            }
         },
 
         // ── NAVIGATE BACK TO DASHBOARD ────────────────────────────────────────
@@ -629,6 +644,17 @@ sap.ui.define([
 
             var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
             var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+
+            // Ensure no typing/cursor by making internal input readonly
+            var fnSetReadOnly = function () {
+                var $input = this.$().find("input");
+                if ($input.length > 0) {
+                    $input.attr("readonly", true);
+                    $input.css("cursor", "pointer"); // Make it look clickable
+                }
+            };
+            oPickerStart.addEventDelegate({ onAfterRendering: fnSetReadOnly }, oPickerStart);
+            oPickerEnd.addEventDelegate({ onAfterRendering: fnSetReadOnly }, oPickerEnd);
 
             oPickerStart.attachChange(function (oEvent) {
                 var dNewStart = oEvent.getSource().getDateValue();
@@ -798,7 +824,7 @@ sap.ui.define([
                                     that._loadProjectValueHelps();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error(oBundle.getText("errorUpdatingProject")); }
+                                error: function (oError) { that._showError(oError, "errorUpdatingProject"); }
                             });
                         } else {
                             oModel.create("/ProjectSet", oPayload, {
@@ -808,7 +834,7 @@ sap.ui.define([
                                     that._loadProjectValueHelps();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error(oBundle.getText("errorCreatingProject")); }
+                                error: function (oError) { that._showError(oError, "errorCreatingProject"); }
                             });
                         }
                     }
@@ -822,6 +848,28 @@ sap.ui.define([
 
             oDialog.addStyleClass("sapUiContentPadding");
             oDialog.open();
+        },
+
+        _showError: function (oError, sDefaultI18nKey) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var sMsg = sDefaultI18nKey ? (oBundle.getText(sDefaultI18nKey) || "Action failed.") : "System error occurred.";
+
+            try {
+                if (oError && oError.responseText) {
+                    var oErr = JSON.parse(oError.responseText);
+                    if (oErr.error && oErr.error.message && oErr.error.message.value) {
+                        sMsg = oErr.error.message.value;
+                    } else if (oErr.error && oErr.error.innererror && oErr.error.innererror.errordetails && oErr.error.innererror.errordetails.length > 0) {
+                        sMsg = oErr.error.innererror.errordetails[0].message;
+                    }
+                } else if (oError && oError.message) {
+                    sMsg = oError.message;
+                }
+            } catch (e) {
+                // Keep default
+            }
+
+            MessageBox.error(sMsg);
         }
     });
 });

@@ -66,15 +66,8 @@
 
                 <Label text="{i18n>status}" />
                 <VBox width="100%">
-                    <Select id="inSiteStatus" selectedKey="{Status}" visible="{viewData>/editMode}" width="100%">
-                        <core:Item key="PLANNING" text="{i18n>planningStatus}" />
-                        <core:Item key="READY" text="{i18n>readyStatus}" />
-                        <core:Item key="IN_PROGRESS" text="{i18n>inProgressStatus}" />
-                        <core:Item key="COMPLETED" text="{i18n>completedStatus}" />
-                    </Select>
                     <ObjectStatus 
                         class="sapUiNoMargin"
-                        visible="{= !${viewData>/editMode} }"
                         text="{path: 'Status', formatter: '.formatStatusText'}" 
                         state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }" />
                 </VBox>

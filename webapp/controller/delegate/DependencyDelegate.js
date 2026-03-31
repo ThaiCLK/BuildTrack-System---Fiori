@@ -122,21 +122,36 @@ sap.ui.define([
                 success: function (oData) {
                     var aAll = oData.results || [];
 
-                    var aFiltered;
-                    if (!sNormParent) {
-                        // Root-level WBS → show only other root-level WBS
-                        aFiltered = aAll.filter(function (w) {
-                            return !w.ParentId && fnNorm(w.WbsId) !== sNormCurrent;
-                        });
-                    } else {
-                        // Child WBS → show only siblings with the same ParentId
-                        aFiltered = aAll.filter(function (w) {
-                            return fnNorm(w.ParentId) === sNormParent && fnNorm(w.WbsId) !== sNormCurrent;
-                        });
-                    }
+                    var isRoot = function (id) {
+                        if (!id) return true;
+                        var sClean = id.replace(/-/g, "");
+                        return /^0+$/.test(sClean);
+                    };
+
+                    var bCurrentIsRoot = isRoot(sParentId);
+
+                    var aFiltered = aAll.filter(function (w) {
+                        var bSelf = fnNorm(w.WbsId) === sNormCurrent;
+                        var bSameSite = fnNorm(w.SiteId) === fnNorm(sSiteId);
+                        
+                        if (bSelf || !bSameSite) return false;
+
+                        if (bCurrentIsRoot) {
+                            // Current is Root -> Show only other Root WBS (in same site)
+                            return isRoot(w.ParentId);
+                        } else {
+                            // Current is Child -> Show only siblings (same ParentId)
+                            return fnNorm(w.ParentId) === sNormParent;
+                        }
+                    });
 
                     oDepModel.setProperty("/allWbs", aFiltered);
-                    oDepModel.setProperty("/newDep", { DepWbsId: "", DepType: "FS", DepDescription: "" });
+                    
+                    var sInitialWbsId = (aFiltered && aFiltered.length > 0) ? aFiltered[0].WbsId : "";
+                    oDepModel.setProperty("/newDep", { 
+                        DepWbsId: sInitialWbsId, 
+                        DepType: "FS"
+                    });
 
                     if (!that._pAddDepDialog) {
                         that._pAddDepDialog = sap.ui.core.Fragment.load({
@@ -186,8 +201,7 @@ sap.ui.define([
             var oPayload = {
                 WbsId:          sCurrentWbsId,
                 DepWbsId:       oNewDep.DepWbsId,
-                DepType:        oNewDep.DepType,
-                DepDescription: oNewDep.DepDescription || ""
+                DepType:        oNewDep.DepType
             };
 
             oView.setBusy(true);
@@ -227,15 +241,6 @@ sap.ui.define([
             var oDep = oCtx.getObject();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var oModel = this.getOwnerComponent().getModel();
-
-            // Guard: only allow delete when successor WBS is PLANNING or OPENED
-            var sCurrentStatus = this.getView().getBindingContext()
-                ? this.getView().getBindingContext().getProperty("Status") : "";
-
-            if (sCurrentStatus !== "PLANNING" && sCurrentStatus !== "OPENED") {
-                sap.m.MessageBox.error(oBundle.getText("depDeleteNotAllowedError"));
-                return;
-            }
 
             sap.m.MessageBox.confirm(
                 oBundle.getText("depDeleteConfirm", [oDep.PredWbsCode || oDep.DepWbsId]),

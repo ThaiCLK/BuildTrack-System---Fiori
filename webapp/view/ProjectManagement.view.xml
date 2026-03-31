@@ -50,12 +50,12 @@
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="StartDate" label="{i18n>startDate}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
+                                <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd" afterRendering=".onDatePickerAfterRendering"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="EndDate" label="{i18n>endDate}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
+                                <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd" afterRendering=".onDatePickerAfterRendering"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                     </fb:filterGroupItems>
@@ -66,7 +66,7 @@
                     growing="true"
                     growingThreshold="20"
                     alternateRowColors="true"
-                    items="{ path: 'pm>/projects' }">
+                    items="{ path: 'pm>/projects', sorter: { path: 'ProjectCode', descending: false } }">
 
                 <headerToolbar>
                     <OverflowToolbar id="otbSubheader" style="Clear">
@@ -81,8 +81,8 @@
                             type="Emphasized"
                             icon="sap-icon://add"
                             press=".onPressCreate"/>
-                        <Button id="btnSortProject" icon="sap-icon://sort" type="Transparent"
-                                tooltip="{i18n>sort}"/>
+                        <!-- <Button id="btnSortProject" icon="sap-icon://sort" type="Transparent"
+                                tooltip="{i18n>sort}"/> -->
                     </OverflowToolbar>
                 </headerToolbar>
 
@@ -126,7 +126,7 @@
 
                             <!-- Type badge — icon & colour via formatter (avoids XML whitespace issues) -->
                             <ObjectStatus id="objProjectType"
-                                text="{pm>ProjectType}"
+                                text="{ path: 'pm>ProjectType', formatter: '.formatTypeText' }"
                                 icon="{ path: 'pm>ProjectType', formatter: '.formatTypeIcon' }"
                                 state="{ path: 'pm>ProjectType', formatter: '.formatTypeState' }"
                                 inverted="true"/>

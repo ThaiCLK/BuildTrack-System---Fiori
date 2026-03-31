@@ -649,7 +649,7 @@ sap.ui.define([
                                     that._refreshSiteAfterMutation();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error(oBundle.getText("siteUpdateError")); }
+                                error: function (oError) { that._showError(oError, "siteUpdateError"); }
                             });
                         } else {
                             oModel.create("/SiteSet", oPayload, {
@@ -658,7 +658,7 @@ sap.ui.define([
                                     that._refreshSiteAfterMutation();
                                     oDialog.close();
                                 },
-                                error: function () { MessageBox.error(oBundle.getText("siteCreateError")); }
+                                error: function (oError) { that._showError(oError, "siteCreateError"); }
                             });
                         }
                     }
@@ -672,6 +672,28 @@ sap.ui.define([
 
             oDialog.addStyleClass("sapUiContentPadding");
             oDialog.open();
+        },
+
+        _showError: function (oError, sDefaultI18nKey) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var sMsg = sDefaultI18nKey ? (oBundle.getText(sDefaultI18nKey) || "Action failed.") : "System error occurred.";
+
+            try {
+                if (oError && oError.responseText) {
+                    var oErr = JSON.parse(oError.responseText);
+                    if (oErr.error && oErr.error.message && oErr.error.message.value) {
+                        sMsg = oErr.error.message.value;
+                    } else if (oErr.error && oErr.error.innererror && oErr.error.innererror.errordetails && oErr.error.innererror.errordetails.length > 0) {
+                        sMsg = oErr.error.innererror.errordetails[0].message;
+                    }
+                } else if (oError && oError.message) {
+                    sMsg = oError.message;
+                }
+            } catch (e) {
+                // Keep default
+            }
+
+            MessageBox.error(sMsg);
         }
     });
 });

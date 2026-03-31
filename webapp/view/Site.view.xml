@@ -62,7 +62,7 @@
 
             <Table 
                 id="siteTable"
-                items="{ToSites}"
+                items="{path: 'ToSites', sorter: {path: 'SiteCode', descending: false}}"
                 noDataText="{i18n>noSitesFound}">
                 <headerToolbar>
                     <OverflowToolbar>

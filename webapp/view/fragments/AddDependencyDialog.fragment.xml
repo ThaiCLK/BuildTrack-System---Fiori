@@ -16,7 +16,7 @@
                     items="{dependencyModel>/allWbs}"
                     class="sapUiSmallMarginBottom">
                     <core:Item key="{dependencyModel>WbsId}"
-                               text="{dependencyModel>WbsCode} — {dependencyModel>WbsName}" />
+                               text="{dependencyModel>WbsName}" />
                 </Select>
 
                 <!-- Dep Type -->
@@ -32,14 +32,6 @@
                     <core:Item key="SF" text="{i18n>depTypeSF}" />
                 </Select>
 
-                <!-- Description -->
-                <Label text="{i18n>depDescription}" class="sapUiTinyMarginBottom" />
-                <TextArea
-                    id="txaDepDescription"
-                    value="{dependencyModel>/newDep/DepDescription}"
-                    width="100%"
-                    rows="2"
-                    placeholder="{i18n>depDescriptionPlaceholder}" />
             </VBox>
         </content>
         <beginButton>

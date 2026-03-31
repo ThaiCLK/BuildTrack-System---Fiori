@@ -27,6 +27,7 @@ sap.ui.define([
         /* LIFECYCLE                                                    */
         /* =========================================================== */
         onNavBack: function () {
+            this.onCancelWbs();
             var oHistory = History.getInstance();
             var sPreviousHash = oHistory.getPreviousHash();
 
@@ -39,10 +40,7 @@ sap.ui.define([
         },
 
         onTabSelect: function (oEvent) {
-            var oViewData = this.getView().getModel("viewData");
-            if (oViewData && oViewData.getProperty("/editMode")) {
-                this.onCancelWbs();
-            }
+            this.onCancelWbs();
         },
 
         /* =========================================================== */
@@ -129,7 +127,7 @@ sap.ui.define([
                     var oPayloadWbs = {
                         WbsName: that.byId("inWbsName").getValue(),
                         WbsCode: that.byId("inWbsCode").getValue(),
-                        Quantity: String(that.byId("inWbsQuantity").getValue() || "0"),
+                        Quantity: String(Math.floor(parseFloat(that.byId("inWbsQuantity").getValue() || "0")) || "0"),
                         UnitCode: oModel.getProperty(sPath + "/UnitCode") || "M",
                         Status: oModel.getProperty(sPath + "/Status"),
                         StartDate: dStart ? toUTC(dStart) : oModel.getProperty(sPath + "/StartDate"),
@@ -161,7 +159,7 @@ sap.ui.define([
                     // Force refresh to update display text mappings seamlessly
                     oModel.refresh(true);
                 }).catch(function (oError) {
-                    MessageBox.error(oBundle.getText("updateError") || "Update failed. Please check the data.");
+                    that._showError(oError, "updateError");
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     if (oModel.hasPendingChanges()) {
                         oModel.resetChanges();
@@ -255,6 +253,15 @@ sap.ui.define([
                 }
             }.bind(this);
             window.addEventListener("focus", this._fnFocusHandler);
+
+            // --- DATE PICKER RESTRICTIONS ---
+            var oDelegate = {
+                onAfterRendering: function (oEvent) {
+                    oEvent.srcControl.$().find("input").attr("readonly", "readonly");
+                }
+            };
+            this.byId("inWbsStartDate").addEventDelegate(oDelegate);
+            this.byId("inWbsEndDate").addEventDelegate(oDelegate);
         },
 
         onExit: function () {
@@ -275,7 +282,8 @@ sap.ui.define([
             this._sWbsId = sWbsId;
             this._sSiteId = sSiteId;   // remember for onNavBack
 
-            // Reset models immediately to avoid stale data during navigation
+            // Reset edit mode and models immediately to avoid stale data during navigation
+            this.onCancelWbs();
             var oWSModel = this.getView().getModel("workSummaryModel");
             if (oWSModel) {
                 oWSModel.setData({
@@ -345,7 +353,43 @@ sap.ui.define([
                 oApprovalModel.setProperty("/ui/isSelected", false);
             }
 
+            var oToday = new Date();
+            oToday.setHours(0, 0, 0, 0);
+
+            var sPath = "/WBSSet(guid'" + this._sWbsId + "')";
+            var dStart = oModel.getProperty(sPath + "/StartDate");
+            var dEnd = oModel.getProperty(sPath + "/EndDate");
+
+            // Avoid console errors by allowing existing past dates as minDate
+            var oMinStart = (dStart && dStart < oToday) ? dStart : oToday;
+            var oMinEnd = (dEnd && dEnd < oToday) ? dEnd : oToday;
+
+            this.byId("inWbsStartDate").setMinDate(oMinStart);
+            this.byId("inWbsEndDate").setMinDate(oMinEnd);
+
             this._startPolling();
+        },
+
+        _showError: function (oError, sDefaultI18nKey) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var sMsg = sDefaultI18nKey ? (oBundle.getText(sDefaultI18nKey) || "Action failed.") : "System error occurred.";
+
+            try {
+                if (oError && oError.responseText) {
+                    var oErr = JSON.parse(oError.responseText);
+                    if (oErr.error && oErr.error.message && oErr.error.message.value) {
+                        sMsg = oErr.error.message.value;
+                    } else if (oErr.error && oErr.error.innererror && oErr.error.innererror.errordetails && oErr.error.innererror.errordetails.length > 0) {
+                        sMsg = oErr.error.innererror.errordetails[0].message;
+                    }
+                } else if (oError && oError.message) {
+                    sMsg = oError.message;
+                }
+            } catch (e) {
+                // Keep default
+            }
+
+            MessageBox.error(sMsg);
         },
 
         _startPolling: function () {
@@ -591,9 +635,12 @@ sap.ui.define([
             return /^0+$/.test(sClean);
         },
 
-
-
-
+        formatQuantityInt: function (sValue) {
+            if (!sValue) return "0";
+            var f = parseFloat(sValue);
+            if (isNaN(f)) return sValue;
+            return String(Math.floor(f));
+        },
     });
 
     // Mix in DependencyDelegate functions

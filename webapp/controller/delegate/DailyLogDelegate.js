@@ -550,8 +550,8 @@ sap.ui.define([
                             that._loadWorkSummary(that._sWbsId);
                             MessageToast.show(oBundle.getText("logDeletedSuccess"));
                         },
-                        error: function () {
-                            MessageBox.error(oBundle.getText("deleteLogError"));
+                        error: function (oError) {
+                            MessageBox.error(DailyLogDelegate._parseError(oError, oBundle.getText("deleteLogError")));
                         }
                     });
                 }
@@ -743,9 +743,9 @@ sap.ui.define([
                         success: function (oCreated) {
                             fnAfterLog(oCreated.LogId);
                         },
-                        error: function () {
+                        error: function (oError) {
                             oUIModel.setProperty("/ui/busy", false);
-                            MessageBox.error(oBundle.getText("dailyLogSaveError"));
+                            MessageBox.error(that._parseError(oError, oBundle.getText("dailyLogSaveError")));
                         }
                     });
                 } else {
@@ -753,9 +753,9 @@ sap.ui.define([
                         success: function () {
                             fnAfterLog(oLog.LogId);
                         },
-                        error: function () {
+                        error: function (oError) {
                             oUIModel.setProperty("/ui/busy", false);
-                            MessageBox.error(oBundle.getText("dailyLogSaveError"));
+                            MessageBox.error(that._parseError(oError, oBundle.getText("dailyLogSaveError")));
                         }
                     });
                 }
@@ -788,9 +788,9 @@ sap.ui.define([
                         fnContinueSave();
                     }
                 },
-                error: function () {
+                error: function (oError) {
                     oUIModel.setProperty("/ui/busy", false);
-                    MessageBox.error(oBundle.getText("logDateValidationError"));
+                    MessageBox.error(DailyLogDelegate._parseError(oError, oBundle.getText("logDateValidationError")));
                 }
             });
         },
@@ -888,6 +888,25 @@ sap.ui.define([
                     console.error("Failed to read DailyLogs for actual date calc:", oErr);
                 }
             });
+        },
+
+        _parseError: function (oError, sDefaultMsg) {
+            var sMsg = sDefaultMsg || "Action failed.";
+            try {
+                if (oError && oError.responseText) {
+                    var oErr = JSON.parse(oError.responseText);
+                    if (oErr.error && oErr.error.message && oErr.error.message.value) {
+                        sMsg = oErr.error.message.value;
+                    } else if (oErr.error && oErr.error.innererror && oErr.error.innererror.errordetails && oErr.error.innererror.errordetails.length > 0) {
+                        sMsg = oErr.error.innererror.errordetails[0].message;
+                    }
+                } else if (oError && oError.message) {
+                    sMsg = oError.message;
+                }
+            } catch (e) {
+                // Keep default
+            }
+            return sMsg;
         }
     };
 });

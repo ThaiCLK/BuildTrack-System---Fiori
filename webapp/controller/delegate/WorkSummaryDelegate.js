@@ -425,8 +425,14 @@ sap.ui.define([
                         oView.setBusy(false);
                         var sMsg = oBundle.getText("submitForApprovalError");
                         try {
-                            var oErr = JSON.parse(oError.responseText);
-                            sMsg = oErr.error.message.value || sMsg;
+                            if (oError && oError.responseText) {
+                                var oErr = JSON.parse(oError.responseText);
+                                if (oErr.error && oErr.error.message && oErr.error.message.value) {
+                                    sMsg = oErr.error.message.value;
+                                } else if (oErr.error && oErr.error.innererror && oErr.error.innererror.errordetails && oErr.error.innererror.errordetails.length > 0) {
+                                    sMsg = oErr.error.innererror.errordetails[0].message;
+                                }
+                            }
                         } catch (e) { }
                         sap.m.MessageBox.error(sMsg);
                     }
