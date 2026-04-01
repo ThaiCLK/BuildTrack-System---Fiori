@@ -469,13 +469,19 @@ sap.ui.define([
 
         // ── FORMATTERS ────────────────────────────────────────────────────────
         formatTypeIcon: function (sType) {
+            var sKey = (sType || "").toUpperCase();
             var mIcons = {
                 "ROAD": "sap-icon://car-rental",
+                "ĐƯỜNG BỘ": "sap-icon://car-rental",
                 "BRIDGE": "sap-icon://functional-location",
+                "CẦU": "sap-icon://functional-location",
                 "BUILDING": "sap-icon://building",
-                "TUNNEL": "sap-icon://passenger-train"
+                "TÒA NHÀ": "sap-icon://building",
+                "TOÀ NHÀ": "sap-icon://building",
+                "TUNNEL": "sap-icon://passenger-train",
+                "HẦM": "sap-icon://passenger-train"
             };
-            return mIcons[(sType || "").toUpperCase()] || "sap-icon://tag";
+            return mIcons[sKey] || "sap-icon://tag";
         },
 
         formatTypeState: function (sType) {
@@ -484,14 +490,22 @@ sap.ui.define([
 
         formatTypeText: function (sType) {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var sKey = (sType || "").toUpperCase();
             var mLabels = {
                 "ROAD": oBundle.getText("typeRoad"),
+                "ĐƯỜNG BỘ": oBundle.getText("typeRoad"),
                 "BRIDGE": oBundle.getText("typeBridge"),
+                "CẦU": oBundle.getText("typeBridge"),
                 "BUILDING": oBundle.getText("typeBuilding"),
+                "TÒA NHÀ": oBundle.getText("typeBuilding"),
+                "TOÀ NHÀ": oBundle.getText("typeBuilding"),
                 "TUNNEL": oBundle.getText("typeTunnel"),
-                "OTHER": oBundle.getText("typeOther")
+                "HẦM": oBundle.getText("typeTunnel"),
+                "OTHER": oBundle.getText("typeOther"),
+                "LOẠI KHÁC": oBundle.getText("typeOther"),
+                "KHÁC": oBundle.getText("typeOther")
             };
-            return mLabels[(sType || "").toUpperCase()] || sType;
+            return mLabels[sKey] || sType;
         },
 
         formatStatusText: function (sStatus) {
@@ -523,6 +537,18 @@ sap.ui.define([
             var sProjectName = (this.byId("fbProjectName").getValue() || "").trim();
             var sStatus = (this.byId("fbStatus").getValue() || "").trim();
             var sType = (this.byId("fbType").getValue() || "").trim();
+            // Map localized text or common labels to standard keys for precise OData filtering
+            var sTypeUpper = sType.toUpperCase();
+            var mFilterMap = {
+                "ROAD": "ROAD", "ĐƯỜNG BỘ": "ROAD",
+                "BRIDGE": "BRIDGE", "CẦU": "BRIDGE",
+                "BUILDING": "BUILDING", "TÒA NHÀ": "BUILDING", "TOÀ NHÀ": "BUILDING",
+                "TUNNEL": "TUNNEL", "HẦM": "TUNNEL",
+                "OTHER": "OTHER", "LOẠI KHÁC": "OTHER", "KHÁC": "OTHER"
+            };
+            if (mFilterMap[sTypeUpper]) {
+                sType = mFilterMap[sTypeUpper];
+            }
 
             var dStart = this.byId("fbStartDate").getDateValue();
             var dEnd = this.byId("fbEndDate").getDateValue();
@@ -576,6 +602,14 @@ sap.ui.define([
         // ── EDIT ──────────────────────────────────────────────────────────────
         onEditProject: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
+            var sStatus = oContext.getProperty("Status");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (sStatus !== "PLANNING") {
+                MessageBox.error(oBundle.getText("editOnlyPlanningError"));
+                return;
+            }
+
             this._openProjectDialog(oContext);
         },
 
@@ -583,11 +617,18 @@ sap.ui.define([
         onDeleteProject: function (oEvent) {
             var that = this;
             var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
+            var sStatus = oContext.getProperty("Status");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (sStatus !== "PLANNING") {
+                MessageBox.error(oBundle.getText("deleteOnlyPlanningError"));
+                return;
+            }
+
             var sName = oContext.getProperty("ProjectName");
             var sPath = this._getProjectEntityPath(oContext);
             var oModel = this.getOwnerComponent().getModel();
 
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!sPath) {
                 MessageBox.error(oBundle.getText("projectPathError"));
                 return;
@@ -682,12 +723,25 @@ sap.ui.define([
             if (bEdit) {
                 oInputCode.setValue(oContext.getProperty("ProjectCode"));
                 oInputName.setValue(oContext.getProperty("ProjectName"));
-                // For ComboBox: set the selected key first; if it doesn't match a preset, set the value text directly
                 var sRawType = oContext.getProperty("ProjectType") || "";
                 var sTypeUpper = sRawType.toUpperCase();
-                oComboType.setSelectedKey(sTypeUpper);
-                if (!oComboType.getSelectedKey()) {
-                    oComboType.setValue(sRawType); // custom / unknown value
+                // Map labels/keys to standard keys for the ComboBox selection
+                var mLabelToKey = {
+                    "ROAD": "ROAD", "ĐƯỜNG BỘ": "ROAD",
+                    "BRIDGE": "BRIDGE", "CẦU": "BRIDGE",
+                    "BUILDING": "BUILDING", "TÒA NHÀ": "BUILDING", "TOÀ NHÀ": "BUILDING",
+                    "TUNNEL": "TUNNEL", "HẦM": "TUNNEL",
+                    "OTHER": "OTHER", "LOẠI KHÁC": "OTHER", "KHÁC": "OTHER"
+                };
+                var sKey = mLabelToKey[sTypeUpper];
+                
+                if (sKey) {
+                    // Standard type found: set selected key to get translation
+                    oComboType.setSelectedKey(sKey);
+                } else {
+                    // Custom type: ensure no key is selected and set raw value text
+                    oComboType.setSelectedKey(null);
+                    oComboType.setValue(sRawType);
                 }
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
                 var oStart = oContext.getProperty("StartDate");
@@ -726,9 +780,9 @@ sap.ui.define([
             var aFormContent = [
                 new Label({ text: oBundle.getText("projectCode"), required: true }), oInputCode,
                 new Label({ text: oBundle.getText("projectName"), required: true }), oInputName,
-                new Label({ text: oBundle.getText("projectType") }), oComboType,
-                new Label({ text: oBundle.getText("startDate") }), oPickerStart,
-                new Label({ text: oBundle.getText("estEndDate") }), oPickerEnd
+                new Label({ text: oBundle.getText("projectType"), required: true }), oComboType,
+                new Label({ text: oBundle.getText("startDate"), required: true }), oPickerStart,
+                new Label({ text: oBundle.getText("estEndDate"), required: true }), oPickerEnd
             ];
 
             var oForm = new SimpleForm({
@@ -754,20 +808,46 @@ sap.ui.define([
                             return;
                         }
 
+                        // Duplicate Name Check
+                        var aProjects = that.getView().getModel("pm").getProperty("/projects") || [];
+                        var bNameExists = aProjects.some(function (p) {
+                            // Check if name matches (excluding properties with no name)
+                            // and ignore the project itself when editing (match by ProjectCode)
+                            return p.ProjectName && p.ProjectName.trim().toLowerCase() === sName.toLowerCase() && p.ProjectCode !== sCode;
+                        });
+                        if (bNameExists) {
+                            MessageBox.error(oBundle.getText("projectNameExistsError"));
+                            return;
+                        }
+
                         // Validate Project Code format: PRJ-YYYY-XXX
                         var rCodePattern = /^PRJ-\d{4}-\d{3}$/;
                         if (!rCodePattern.test(sCode)) {
                             MessageBox.error(oBundle.getText("invalidProjectCodeFormat"));
                             return;
                         }
-
-                        if (!oPickerStart.isValidValue() || !oPickerStart.getDateValue()) {
-                            MessageBox.error(oBundle.getText("startDatePastError"));
+                        
+                        var sType = oComboType.getSelectedKey() || oComboType.getValue().trim();
+                        if (!sType) {
+                            MessageBox.error(oBundle.getText("missingProjectType"));
                             return;
                         }
 
-                        if (!oPickerEnd.isValidValue() || !oPickerEnd.getDateValue()) {
-                            MessageBox.error(oBundle.getText("endDateBeforeStartError"));
+                        if (!oPickerStart.getDateValue()) {
+                            MessageBox.error(oBundle.getText("missingStartDate"));
+                            return;
+                        }
+                        if (!oPickerStart.isValidValue()) {
+                            MessageBox.error(oBundle.getText("invalidDateError"));
+                            return;
+                        }
+
+                        if (!oPickerEnd.getDateValue()) {
+                            MessageBox.error(oBundle.getText("missingEndDate"));
+                            return;
+                        }
+                        if (!oPickerEnd.isValidValue()) {
+                            MessageBox.error(oBundle.getText("invalidDateError"));
                             return;
                         }
 
@@ -806,36 +886,56 @@ sap.ui.define([
                         var oPayload = {
                             ProjectCode: sCode,
                             ProjectName: sName,
-                            ProjectType: oComboType.getValue().trim() || oComboType.getSelectedKey(),
+                            ProjectType: oComboType.getSelectedKey() || oComboType.getValue().trim(),
                             StartDate: toUTC(oPickerStart.getDateValue()),
                             EndDate: toUTC(oPickerEnd.getDateValue()),
                             Status: oSelectStatus.getSelectedKey()
                         };
-                        if (bEdit) {
-                            var sUpdatePath = that._getProjectEntityPath(oContext);
-                            if (!sUpdatePath) {
-                                MessageBox.error(oBundle.getText("projectPathError"));
-                                return;
+
+                        var fnDoSave = function () {
+                            if (bEdit) {
+                                var sUpdatePath = that._getProjectEntityPath(oContext);
+                                if (!sUpdatePath) {
+                                    MessageBox.error(oBundle.getText("projectPathError"));
+                                    return;
+                                }
+                                oModel.update(sUpdatePath, oPayload, {
+                                    success: function () {
+                                        MessageToast.show(oBundle.getText("projectUpdatedSuccess"));
+                                        that._readProjects("");
+                                        that._loadProjectValueHelps();
+                                        oDialog.close();
+                                    },
+                                    error: function (oError) { that._showError(oError, "errorUpdatingProject"); }
+                                });
+                            } else {
+                                oModel.create("/ProjectSet", oPayload, {
+                                    success: function () {
+                                        MessageToast.show(oBundle.getText("projectCreatedSuccess"));
+                                        that._readProjects("");
+                                        that._loadProjectValueHelps();
+                                        oDialog.close();
+                                    },
+                                    error: function (oError) { that._showError(oError, "errorCreatingProject"); }
+                                });
                             }
-                            oModel.update(sUpdatePath, oPayload, {
-                                success: function () {
-                                    MessageToast.show(oBundle.getText("projectUpdatedSuccess"));
-                                    that._readProjects("");
-                                    that._loadProjectValueHelps();
-                                    oDialog.close();
-                                },
-                                error: function (oError) { that._showError(oError, "errorUpdatingProject"); }
+                        };
+
+                        var sTypeKey = oComboType.getSelectedKey() || "";
+                        var sTypeValue = oComboType.getValue().trim();
+                        var aStandardKeys = ["ROAD", "BRIDGE", "BUILDING", "TUNNEL"];
+                        
+                        if (aStandardKeys.indexOf(sTypeKey.toUpperCase()) === -1 && sTypeValue) {
+                            MessageBox.confirm(oBundle.getText("customTypeConfirm", [sTypeValue]), {
+                                title: oBundle.getText("confirmSaveTitle"),
+                                onClose: function (oAction) {
+                                    if (oAction === MessageBox.Action.OK) {
+                                        fnDoSave();
+                                    }
+                                }
                             });
                         } else {
-                            oModel.create("/ProjectSet", oPayload, {
-                                success: function () {
-                                    MessageToast.show(oBundle.getText("projectCreatedSuccess"));
-                                    that._readProjects("");
-                                    that._loadProjectValueHelps();
-                                    oDialog.close();
-                                },
-                                error: function (oError) { that._showError(oError, "errorCreatingProject"); }
-                            });
+                            fnDoSave();
                         }
                     }
                 }),

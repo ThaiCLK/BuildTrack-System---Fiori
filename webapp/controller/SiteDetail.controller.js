@@ -90,6 +90,7 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({}), "locationModel");
             this.getView().setModel(new JSONModel({}), "workSummaryModel");
             this.getView().setModel(new JSONModel({}), "projectModel");
+            this.getView().setModel(new JSONModel({}), "editModel");
 
             // --- AUTO REFRESH LOGIC ---
             this._fnFocusHandler = function () {
@@ -141,21 +142,30 @@ sap.ui.define([
         /* INLINE EDIT MODE - SITE GENERAL INFO                        */
         /* =========================================================== */
         onEditSite: function () {
+            var oCtx = this.getView().getBindingContext();
+            var oData = oCtx ? oCtx.getObject() : {};
+            // Create a deep copy for editing to isolate from header
+            this.getView().getModel("editModel").setData(JSON.parse(JSON.stringify(oData)));
             this.getView().getModel("viewData").setProperty("/editMode", true);
         },
 
         onCancelSite: function () {
             this.getView().getModel("viewData").setProperty("/editMode", false);
-            // Revert unsaved UI field changes synced into the local shadow context of Two-Way Model
-            var oModel = this.getOwnerComponent().getModel();
-            if (oModel.hasPendingChanges()) {
-                oModel.resetChanges();
-            }
         },
 
         onSaveSite: function () {
             var oModel = this.getOwnerComponent().getModel();
+            var oEditModel = this.getView().getModel("editModel");
+            var oData = oEditModel.getData();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var that = this;
+
+            // 1. Validation
+            if (!oData.SiteName || !oData.Address || oData.SiteName.trim() === "" || oData.Address.trim() === "") {
+                MessageBox.error(oBundle.getText("siteNameAddressRequired"));
+                return;
+            }
+
             var sPath = "/SiteSet(guid'" + this._sCurrentSiteId + "')";
             var bIsEditMode = this.getView().getModel("viewData").getProperty("/editMode");
 
@@ -163,27 +173,27 @@ sap.ui.define([
                 return;
             }
 
+            // 2. Payload from editModel (isolates from UI control specifics and fixes TypeError)
             var oPayload = {
-                SiteCode: this.byId("inSiteCode").getValue(),
-                Address: this.byId("inSiteAddress").getValue(),
-                Status: oModel.getProperty(sPath + "/Status"),
-                SiteName: this.byId("inSiteName").getValue(),
-                Client: oModel.getProperty(sPath + "/Client"),
-                ProjectId: oModel.getProperty(sPath + "/ProjectId")
+                SiteCode: oData.SiteCode,
+                Address: oData.Address,
+                Status: oData.Status,
+                SiteName: oData.SiteName,
+                Client: oData.Client,
+                ProjectId: oData.ProjectId
             };
 
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            this.getView().setBusy(true);
             oModel.update(sPath, oPayload, {
                 success: function () {
+                    that.getView().setBusy(false);
                     MessageToast.show(oBundle.getText("siteUpdateSuccess"));
                     that.getView().getModel("viewData").setProperty("/editMode", false);
-                    if (oModel.hasPendingChanges()) { oModel.resetChanges(); }
                     oModel.refresh(true);
                 },
-                error: function () {
-                    MessageBox.error(oBundle.getText("siteUpdateError"));
-                    that.getView().getModel("viewData").setProperty("/editMode", false);
-                    if (oModel.hasPendingChanges()) { oModel.resetChanges(); }
+                error: function (oError) {
+                    that.getView().setBusy(false);
+                    that._showError(oError, "siteUpdateError");
                 }
             });
         },
@@ -456,35 +466,75 @@ sap.ui.define([
         onDeleteWbs: function () {
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
-
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
             if (aIndices.length === 0) {
                 MessageToast.show(oBundle.getText("selectWbsToDeleteError"));
                 return;
-            } else if (aIndices.length > 1) {
-                MessageToast.show(oBundle.getText("selectOneWbsToDeleteError"));
-                return;
             }
 
-            var oCtx = oTable.getContextByIndex(aIndices[0]);
-            var sName = oCtx.getProperty("WbsName");
-            var sWbsId = oCtx.getProperty("WbsId");
-            var oModel = this.getOwnerComponent().getModel();
             var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            
+            // Collect all selected WBS details
+            var aSelectedItems = aIndices.map(function(iIdx) {
+                var oCtx = oTable.getContextByIndex(iIdx);
+                return {
+                    id: oCtx.getProperty("WbsId"),
+                    name: oCtx.getProperty("WbsName")
+                };
+            });
 
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            MessageBox.confirm(oBundle.getText("deleteWbsConfirm", [sName]), {
+            var sConfirmMsg = aSelectedItems.length === 1 ? 
+                oBundle.getText("deleteWbsConfirm", [aSelectedItems[0].name]) :
+                oBundle.getText("deleteMultipleWbsConfirm", [aSelectedItems.length]);
+
+            MessageBox.confirm(sConfirmMsg, {
                 title: oBundle.getText("confirmDeleteWbs"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
-                        oModel.remove("/WBSSet(guid'" + sWbsId + "')", {
-                            success: function () {
-                                MessageToast.show(oBundle.getText("wbsDeletedSuccess", [sName]));
+                        that.getView().setBusy(true);
+                        
+                        var iCount = aSelectedItems.length;
+                        var iSuccess = 0;
+                        var iError = 0;
+
+                        // Function to perform deletion sequentially (one by one)
+                        // This avoids "one operation per changeset" issues on the backend.
+                        var fnDeleteNext = function(iIndex) {
+                            if (iIndex >= iCount) {
+                                // All items processed
+                                that.getView().setBusy(false);
+                                if (iError === 0) {
+                                    var sSuccessMsg = iCount === 1 ?
+                                        oBundle.getText("wbsDeletedSuccess", [aSelectedItems[0].name]) :
+                                        oBundle.getText("wbsMultipleDeletedSuccess", [iCount]);
+                                    MessageToast.show(sSuccessMsg);
+                                } else {
+                                    // Use partial error message if some failed
+                                    MessageBox.error(oBundle.getText("submitPartialError", [iError]));
+                                }
                                 oTable.clearSelection();
                                 that._loadWbsData();
-                            },
-                            error: function (oError) { that._showError(oError, "wbsDeleteError"); }
-                        });
+                                return;
+                            }
+
+                            var item = aSelectedItems[iIndex];
+                            oModel.remove("/WBSSet(guid'" + item.id + "')", {
+                                success: function() {
+                                    iSuccess++;
+                                    fnDeleteNext(iIndex + 1);
+                                },
+                                error: function(oError) {
+                                    iError++;
+                                    console.error("Error deleting WBS: " + item.id, oError);
+                                    fnDeleteNext(iIndex + 1);
+                                }
+                            });
+                        };
+
+                        // Start sequential deletion from the first item
+                        fnDeleteNext(0);
                     }
                 }
             });
@@ -1326,7 +1376,7 @@ sap.ui.define([
                         }
 
                         // FE Validation: End Date after Start Date
-                        if (dEnd < dStart) {
+                        if (dEnd <= dStart) {
                             oPickerEnd.setValueState("Error");
                             MessageBox.error(oBundle.getText("wbsEndDateBeforeStartDateError"));
                             return;
@@ -1454,12 +1504,20 @@ sap.ui.define([
                             if (!bEdit) {
                                 that.getView().setBusy(true);
                                 oModel.read("/WBSSet", {
-                                    filters: [new sap.ui.model.Filter("WbsCode", sap.ui.model.FilterOperator.EQ, sWbsCode)],
+                                    filters: [
+                                        new sap.ui.model.Filter("WbsCode", sap.ui.model.FilterOperator.EQ, sWbsCode),
+                                        new sap.ui.model.Filter("SiteId", sap.ui.model.FilterOperator.EQ, that._sCurrentSiteId)
+                                    ],
                                     success: function (oData) {
                                         that.getView().setBusy(false);
-                                        if (oData.results && oData.results.length > 0) {
+                                        var aResults = oData.results || [];
+                                        // Case-insensitive exact match check on the returned results for the current site
+                                        var bExists = aResults.some(function (w) {
+                                            return (w.WbsCode || "").trim().toLowerCase() === sWbsCode.toLowerCase();
+                                        });
+
+                                        if (bExists) {
                                             var sMsg = oBundle.getText("wbsCodeDuplicateError", [sWbsCode]);
-                                            // Fallback if parameter replacement fails in some UI5 environments
                                             if (sMsg.indexOf("{0}") !== -1) {
                                                 sMsg = sMsg.replace("{0}", sWbsCode);
                                             }

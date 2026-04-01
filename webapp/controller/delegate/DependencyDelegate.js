@@ -247,7 +247,7 @@ sap.ui.define([
                 {
                     onClose: function (sAction) {
                         if (sAction !== sap.m.MessageBox.Action.OK) { return; }
-                        var sPath = "/DependencySet(DepWbsId=guid'" + oDep.DepWbsId + "',WbsId=guid'" + oDep.WbsId + "')";
+                        var sPath = oModel.createKey("/DependencySet", oDep);
                         that.getView().setBusy(true);
                         oModel.remove(sPath, {
                             success: function () {

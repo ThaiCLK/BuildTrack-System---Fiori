@@ -181,7 +181,7 @@ sap.ui.define([
 
             oModel.read("/ApprovalLogSet", {
                 filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", false)], // Newest first
+                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", true)], // Newest first
                 urlParameters: {
                     "cb": new Date().getTime() // Cache buster
                 },

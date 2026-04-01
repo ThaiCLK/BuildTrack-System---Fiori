@@ -281,6 +281,7 @@ sap.ui.define([
             var sSiteId = oArgs.site_id;
             this._sWbsId = sWbsId;
             this._sSiteId = sSiteId;   // remember for onNavBack
+            var oModel = this.getOwnerComponent().getModel();
 
             // Reset edit mode and models immediately to avoid stale data during navigation
             this.onCancelWbs();

@@ -12,13 +12,13 @@
             <Toolbar design="Transparent">
                 <Title text="{i18n>approvalLogTitle}" level="H5" />
                 <ToolbarSpacer />
-
-                <Button icon="sap-icon://sort" type="Transparent" />
+<!-- 
+                <Button icon="sap-icon://sort" type="Transparent" /> -->
             </Toolbar>
             <ScrollContainer height="calc(100vh - 250px)" vertical="true" horizontal="false">
                 <List id="idApprovalLogList" 
                     mode="None" 
-                    items="{logListModel>/}"
+                    items="{path: 'logListModel>/', sorter: {path: 'CreatedTimestamp', descending: true}}"
                     noDataText="{i18n>noApprovalLogsFound}">
                     <StandardListItem
                         title="{logListModel>Action} - {logListModel>WorkItemId}"

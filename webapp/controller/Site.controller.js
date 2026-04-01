@@ -633,6 +633,20 @@ sap.ui.define([
                             MessageToast.show(oBundle.getText("enterSiteCodeNameError"));
                             return;
                         }
+
+                        // Duplicate Name Check (within the current project)
+                        // Use the siteVh model which is already loaded with all sites for this project
+                        var oVhModel = that.getView().getModel("siteVh");
+                        var aSiteNames = (oVhModel && oVhModel.getProperty("/siteNameItems")) || [];
+                        var bNameExists = aSiteNames.some(function (item) {
+                            // item.key is the SiteName, item.additionalText is the SiteCode
+                            return item.key.trim().toLowerCase() === sName.toLowerCase() && item.additionalText !== sCode;
+                        });
+
+                        if (bNameExists) {
+                            MessageBox.error(oBundle.getText("siteNameExistsError"));
+                            return;
+                        }
                         var oPayload = {
                             SiteCode: sCode,
                             SiteName: sName,

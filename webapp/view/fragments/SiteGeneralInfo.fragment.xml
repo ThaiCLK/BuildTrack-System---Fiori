@@ -7,21 +7,8 @@
     <VBox class="sapUiSmallMargin">
         <ObjectHeader
             title="{SiteName}"
-            intro="{SiteCode}"
             icon="sap-icon://building"
             iconActive="false">
-            <headerContainer>
-                <!-- Workaround for inline editing the title of ObjectHeader -->
-                <VBox visible="{viewData>/editMode}">
-                    <Label text="{i18n>siteName}" />
-                    <Input value="{SiteName}" />
-                </VBox>
-            </headerContainer>
-            <statuses>
-                <ObjectStatus
-                    text="{path: 'Status', formatter: '.formatStatusText'}"
-                    state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }"/>
-            </statuses>
             <attributes>
                 <ObjectAttribute text="{Address}" />
             </attributes>
@@ -48,19 +35,18 @@
             <f:content>
                 <Label text="{i18n>siteName}" />
                 <VBox width="100%">
-                    <Input id="inSiteName" value="{SiteName}" visible="{viewData>/editMode}" />
+                    <Input id="inSiteName" value="{editModel>/SiteName}" visible="{viewData>/editMode}" />
                     <Text text="{SiteName}" visible="{= !${viewData>/editMode} }" />
                 </VBox>
 
                 <Label text="{i18n>siteCode}" />
                 <VBox width="100%">
-                    <Input id="inSiteCode" value="{SiteCode}" visible="{viewData>/editMode}" />
-                    <Text text="{SiteCode}" visible="{= !${viewData>/editMode} }" />
+                    <Text id="inSiteCode" text="{SiteCode}" />
                 </VBox>
 
                 <Label text="{i18n>address}" />
                 <VBox width="100%">
-                    <Input id="inSiteAddress" value="{Address}" visible="{viewData>/editMode}" />
+                    <Input id="inSiteAddress" value="{editModel>/Address}" visible="{viewData>/editMode}" />
                     <Text text="{Address}" visible="{= !${viewData>/editMode} }" />
                 </VBox>
 
