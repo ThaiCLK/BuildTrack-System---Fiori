@@ -239,10 +239,12 @@ sap.ui.define([
             if (!dStart || !dEnd) return "0px";
 
             dStart.setHours(0, 0, 0, 0);
-            dEnd.setHours(0, 0, 0, 0);
+            dEnd.setHours(23, 59, 59, 999); // Ensure end of day
 
-            var diffDays = Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 3600 * 24));
-            return ((diffDays + 1) * this._pixelsPerDay) + "px";
+            var diffDays = Math.max(0, Math.floor((dEnd.getTime() - dStart.getTime()) / (1000 * 3600 * 24)));
+            var nWidth = (diffDays + 1) * this._pixelsPerDay;
+            if (nWidth <= 0) nWidth = 4; // Emergency minimum width for visibility
+            return nWidth + "px";
         },
 
         /* =========================================================== */

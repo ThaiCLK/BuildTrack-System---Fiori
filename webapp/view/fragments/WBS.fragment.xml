@@ -130,10 +130,11 @@
                     <FlexBox width="{viewConfig>/totalWidth}" renderType="Bare" direction="Column" class="gantt-row-container">
                         
                         <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height"
-                                 visible="{path: 'viewData>IsRoot'}">
+                                 visible="{= ${viewData>IsRoot} === true }">
                             <FlexBox width="{path: 'viewData>StartDate', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
                             <FlexBox width="{parts: ['viewData>StartDate', 'viewData>EndDate'], formatter: '.calcWidth'}" 
                                      class="gantt-bar-parent gantt-no-shrink" renderType="Bare" />
+                            <Text text="ROOT" class="sapUiTinyMarginBegin gantt-label-nc" />
                         </FlexBox>
 
                         <VBox renderType="Bare" visible="{= ${viewData>IsRoot} === false }">

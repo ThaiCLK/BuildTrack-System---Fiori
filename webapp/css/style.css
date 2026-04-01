@@ -42,13 +42,13 @@
 
 /* --- BAR STYLES --- */
 
-/* 1. NODE CHA: Màu Đen / Text Color */
+/* 1. NODE CHA: Màu Đen (Hardcoded for diagnostic) */
 .gantt-bar-parent {
-    background-color: #34495e !important; /* Fallback for deployment */
-    background-color: var(--sapTextColor) !important;
+    background-color: #333333 !important; /* Force solid color no variables */
     height: 10px;
     border-radius: 2px;
     min-width: 2px;
+    border: 1px solid #000000;
 }
 
 /* 2. NODE CON - PLAN: Màu Xanh Dương */
