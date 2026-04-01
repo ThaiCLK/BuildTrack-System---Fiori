@@ -44,10 +44,11 @@
 
 /* 1. NODE CHA: Màu Đen */
 .gantt-bar-root {
+    background-color: #34495e !important; /* Fallback for deployment */
     background-color: var(--sapTextColor) !important;
-    /* Dùng biến text color để thành màu đen ở light mode và trắng ở dark mode */
     height: 10px;
     border-radius: 2px;
+    min-width: 2px;
 }
 
 /* 2. NODE CON - PLAN: Màu Xanh Dương */

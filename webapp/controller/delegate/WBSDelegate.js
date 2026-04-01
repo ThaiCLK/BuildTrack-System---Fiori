@@ -27,12 +27,24 @@ sap.ui.define([
         _parseDate: function (value) {
             if (!value) return null;
             if (value instanceof Date) return value;
-            var timestamp = Date.parse(value);
-            if (!isNaN(timestamp)) return new Date(timestamp);
-            if (typeof value === 'string' && value.includes('/')) {
-                var parts = value.split('/');
-                if (parts.length === 3) {
-                    return new Date(parts[2], parseInt(parts[1], 10) - 1, parts[0]);
+            
+            var sVal = String(value);
+
+            // Handle OData v2 /Date(ms)/ format
+            if (sVal.indexOf("/Date(") === 0) {
+                var iMs = parseInt(sVal.replace(/[^0-9]/g, ""), 10);
+                return isNaN(iMs) ? null : new Date(iMs);
+            }
+
+            // Normal Date.parse (supports YYYY-MM-DD and others)
+            var iTimestamp = Date.parse(value);
+            if (!isNaN(iTimestamp)) return new Date(iTimestamp);
+
+            // Handle DD/MM/YYYY specifically
+            if (sVal.includes('/')) {
+                var aParts = sVal.split('/');
+                if (aParts.length === 3) {
+                    return new Date(parseInt(aParts[2], 10), parseInt(aParts[1], 10) - 1, parseInt(aParts[0], 10));
                 }
             }
             return null;
@@ -181,24 +193,17 @@ sap.ui.define([
         /* GANTT CALCULATIONS (Formatters)                             */
         /* =========================================================== */
 
-        /**
-         * Formatter: Kiểm tra có phải Node Cha (Root) không
-         * Logic: parent_id là null
-         */
         isRootNode: function (vParentId) {
-            // SAP backend returns GUID zero for root nodes instead of null
-            if (!vParentId) return true;
+            // SAP backend returns GUID zero, null, or empty string for root nodes
+            if (!vParentId || vParentId === "") return true;
+            if (typeof vParentId !== 'string') return false; 
             var sClean = vParentId.replace(/-/g, "");
             return /^0+$/.test(sClean);
         },
 
-        /**
-         * Formatter: Kiểm tra có phải Node Con không
-         * Logic: parent_id KHÁC null và không phải GUID zero
-         */
         isChildNode: function (vParentId) {
-            if (!vParentId) return false;
-            var sClean = vParentId.replace(/-/g, "");
+            if (!vParentId || vParentId === "") return false;
+            var sClean = String(vParentId).replace(/-/g, "");
             return !/^0+$/.test(sClean);
         },
         /**

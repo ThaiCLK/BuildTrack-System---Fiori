@@ -50,12 +50,12 @@
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="StartDate" label="{i18n>startDate}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd" afterRendering=".onDatePickerAfterRendering"/>
+                                <DatePicker id="fbStartDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="EndDate" label="{i18n>endDate}" groupName="Basic" visibleInFilterBar="true">
                             <fb:control>
-                                <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd" afterRendering=".onDatePickerAfterRendering"/>
+                                <DatePicker id="fbEndDate" displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"/>
                             </fb:control>
                         </fb:FilterGroupItem>
                     </fb:filterGroupItems>
