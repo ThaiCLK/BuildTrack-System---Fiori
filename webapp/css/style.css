@@ -42,8 +42,8 @@
 
 /* --- BAR STYLES --- */
 
-/* 1. NODE CHA: Màu Đen */
-.gantt-bar-root {
+/* 1. NODE CHA: Màu Đen / Text Color */
+.gantt-bar-parent {
     background-color: #34495e !important; /* Fallback for deployment */
     background-color: var(--sapTextColor) !important;
     height: 10px;

@@ -130,13 +130,13 @@
                     <FlexBox width="{viewConfig>/totalWidth}" renderType="Bare" direction="Column" class="gantt-row-container">
                         
                         <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height"
-                                 visible="{path: 'viewData>ParentId', formatter: '.isRootNode'}">
+                                 visible="{path: 'viewData>IsRoot'}">
                             <FlexBox width="{path: 'viewData>StartDate', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />
                             <FlexBox width="{parts: ['viewData>StartDate', 'viewData>EndDate'], formatter: '.calcWidth'}" 
-                                     class="gantt-bar-root gantt-no-shrink" renderType="Bare" />
+                                     class="gantt-bar-parent gantt-no-shrink" renderType="Bare" />
                         </FlexBox>
 
-                        <VBox renderType="Bare" visible="{path: 'viewData>ParentId', formatter: '.isChildNode'}">
+                        <VBox renderType="Bare" visible="{= ${viewData>IsRoot} === false }">
                             
                             <FlexBox renderType="Bare" alignItems="Center" class="gantt-line-height-half">
                                 <FlexBox width="{path: 'viewData>StartDate', formatter: '.calcMargin'}" class="gantt-no-shrink" renderType="Bare" />

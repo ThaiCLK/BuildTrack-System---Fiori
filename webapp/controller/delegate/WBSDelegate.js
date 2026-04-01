@@ -195,15 +195,23 @@ sap.ui.define([
 
         isRootNode: function (vParentId) {
             // SAP backend returns GUID zero, null, or empty string for root nodes
-            if (!vParentId || vParentId === "") return true;
-            if (typeof vParentId !== 'string') return false; 
-            var sClean = vParentId.replace(/-/g, "");
+            // We also check for literal strings "null" or "undefined" as a safety measure
+            if (vParentId === null || vParentId === undefined || vParentId === "") return true;
+            
+            var sVal = String(vParentId).toLowerCase().trim();
+            if (sVal === "null" || sVal === "undefined") return true;
+            
+            var sClean = sVal.replace(/-/g, "");
             return /^0+$/.test(sClean);
         },
 
         isChildNode: function (vParentId) {
-            if (!vParentId || vParentId === "") return false;
-            var sClean = String(vParentId).replace(/-/g, "");
+            if (vParentId === null || vParentId === undefined || vParentId === "") return false;
+            
+            var sVal = String(vParentId).toLowerCase().trim();
+            if (sVal === "null" || sVal === "undefined") return false;
+            
+            var sClean = sVal.replace(/-/g, "");
             return !/^0+$/.test(sClean);
         },
         /**

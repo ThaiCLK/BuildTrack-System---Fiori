@@ -293,12 +293,11 @@ sap.ui.define([
                     var oPendingIds = {};
                     aAllPending.forEach(function (w) { oPendingIds[w.WbsId] = true; });
 
-                    // Exclude child WBS whose PARENT is also pending — those WBS are cascade-status
-                    // changed by the backend and have no independent workflow/WorkItemId of their own.
                     var aGlobalPending = aAllPending.filter(function (item) {
                         if (!item.ParentId) return true;
-                        var sParent = item.ParentId.replace(/-/g, "").toLowerCase();
-                        if (/^0+$/.test(sParent)) return true; // zero GUID = no real parent
+                        var sPId = String(item.ParentId);
+                        var sParent = sPId.replace(/-/g, "").toLowerCase();
+                        if (/^0+$/.test(sParent) || sParent === "null" || sParent === "undefined") return true; // zero GUID or null = no real parent
                         // Check if this WBS has its own ApprovalLog entry (owns a workflow)
                         var aItemLogs = (item.ToApprovalLog && item.ToApprovalLog.results) ? item.ToApprovalLog.results : [];
                         var bHasOwnLog = aItemLogs.some(function (l) {
@@ -1567,12 +1566,15 @@ sap.ui.define([
             for (i = 0; i < aData.length; i++) {
                 map[aData[i].WbsId] = i;
                 aData[i].children = [];
+                aData[i].IsRoot = false; // Initialize explicitly
             }
             for (i = 0; i < aData.length; i++) {
                 node = aData[i];
                 if (node.ParentId && map[node.ParentId] !== undefined) {
+                    node.IsRoot = false; // It's a child
                     aData[map[node.ParentId]].children.push(node);
                 } else {
+                    node.IsRoot = true; // It's a root
                     res.push(node);
                 }
             }
