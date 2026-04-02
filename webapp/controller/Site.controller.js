@@ -38,6 +38,24 @@ sap.ui.define([
                 addressItems: []
             }), "siteVh");
 
+            this.getView().setModel(new JSONModel({
+                Approver1Id: "",
+                Approver2Id: "",
+                Approver3Id: "",
+                Approver1Name: "",
+                Approver2Name: "",
+                Approver3Name: "",
+                Approver1Email: "",
+                Approver2Email: "",
+                Approver3Email: "",
+                _exists: false
+            }), "approver");
+
+            this.getView().setModel(new JSONModel({
+                items: [],
+                count: 0
+            }), "users");
+
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("Site").attachPatternMatched(this._onObjectMatched, this);
         },
@@ -46,6 +64,30 @@ sap.ui.define([
         formatSiteListTitle: function (sProjectName) {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             return oBundle.getText("siteListTitle", [sProjectName || ""]);
+        },
+
+        formatTypeState: function (sType) {
+            return "None";
+        },
+
+        formatTypeText: function (sType) {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var sKey = (sType || "").toUpperCase();
+            var mLabels = {
+                "ROAD": oBundle.getText("typeRoad"),
+                "ĐƯỜNG BỘ": oBundle.getText("typeRoad"),
+                "BRIDGE": oBundle.getText("typeBridge"),
+                "CẦU": oBundle.getText("typeBridge"),
+                "BUILDING": oBundle.getText("typeBuilding"),
+                "TÒA NHÀ": oBundle.getText("typeBuilding"),
+                "TOÀ NHÀ": oBundle.getText("typeBuilding"),
+                "TUNNEL": oBundle.getText("typeTunnel"),
+                "HẦM": oBundle.getText("typeTunnel"),
+                "OTHER": oBundle.getText("typeOther"),
+                "LOẠI KHÁC": oBundle.getText("typeOther"),
+                "KHÁC": oBundle.getText("typeOther")
+            };
+            return mLabels[sKey] || sType;
         },
 
         formatStatusIcon: function (sStatus) {
@@ -92,7 +134,7 @@ sap.ui.define([
             }
 
             var oView = this.getView();
-            oView.bindElement({
+            this.getView().bindElement({
                 path: "/ProjectSet(guid'" + sProjectId + "')",
                 parameters: { expand: "ToSites" },
                 events: {
@@ -102,7 +144,86 @@ sap.ui.define([
                         this._loadSiteValueHelps(function () {
                             this._warmUpSiteValueHelpDialogs();
                         }.bind(this));
+
+                        // Load both users and approvers
+                        this._fetchUserRoles(function () {
+                            this._loadApproverData(sProjectId);
+                        }.bind(this));
                     }.bind(this)
+                }
+            });
+        },
+
+        _fetchUserRoles: function (fnSuccess) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oUsersModel = this.getView().getModel("users");
+
+            oModel.read("/UserRoleSet", {
+                success: function (oData) {
+                    var aItems = oData.results || [];
+                    oUsersModel.setProperty("/items", aItems);
+                    oUsersModel.setProperty("/count", aItems.length);
+                    if (fnSuccess) fnSuccess();
+                },
+                error: function () {
+                    oUsersModel.setProperty("/items", []);
+                    if (fnSuccess) fnSuccess();
+                }
+            });
+        },
+
+        _enrichApproverData: function (oApproverData) {
+            var aUsers = this.getView().getModel("users").getProperty("/items") || [];
+            var findUser = function (id) {
+                return aUsers.find(function (u) { return u.UserId === id; }) || null;
+            };
+
+            var u1 = findUser(oApproverData.Approver1Id);
+            var u2 = findUser(oApproverData.Approver2Id);
+            var u3 = findUser(oApproverData.Approver3Id);
+
+            oApproverData.Approver1Name = u1 ? u1.UserName : "";
+            oApproverData.Approver1Email = u1 ? u1.Email : "";
+            oApproverData.Approver2Name = u2 ? u2.UserName : "";
+            oApproverData.Approver2Email = u2 ? u2.Email : "";
+            oApproverData.Approver3Name = u3 ? u3.UserName : "";
+            oApproverData.Approver3Email = u3 ? u3.Email : "";
+
+            return oApproverData;
+        },
+
+        _loadApproverData: function (sProjectId) {
+            var oModel = this.getOwnerComponent().getModel();
+            var oApproverModel = this.getView().getModel("approver");
+            var that = this;
+
+            oModel.read("/ApproverSet(guid'" + sProjectId + "')", {
+                success: function (oData) {
+                    var oPayload = {
+                        Approver1Id: oData.Approver1Id || "",
+                        Approver2Id: oData.Approver2Id || "",
+                        Approver3Id: oData.Approver3Id || "",
+                        _exists: true
+                    };
+                    that._enrichApproverData(oPayload);
+                    oApproverModel.setData(oPayload);
+                },
+                error: function (oError) {
+                    // 404 = approver not configured yet
+                    // No need to show error message box here as it's an expected state
+                    var oPayload = {
+                        Approver1Id: "",
+                        Approver2Id: "",
+                        Approver3Id: "",
+                        _exists: false
+                    };
+                    that._enrichApproverData(oPayload);
+                    oApproverModel.setData(oPayload);
+
+                    // Log to console only if it's NOT a 404 to avoid confusing debug logs
+                    if (oError && oError.statusCode !== "404") {
+                        console.error("Error loading ApproverSet:", oError);
+                    }
                 }
             });
         },
@@ -536,12 +657,161 @@ sap.ui.define([
             this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
         },
 
+        // ── APPROVERS ──────────────────────────────────────────────────────
+        // ── APPROVERS ──────────────────────────────────────────────────────
+        onEditApprovers: function () {
+            var oView = this.getView();
+            var oCtx = oView.getBindingContext();
+            var sProjectId = oCtx.getProperty("ProjectId");
+            var sProjectStatus = (oCtx.getProperty("Status") || "").toUpperCase();
+            var oApproverModel = oView.getModel("approver");
+            var oApproverData = oApproverModel.getData();
+            var bExists = oApproverData._exists;
+            var oBundle = oView.getModel("i18n").getResourceBundle();
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+
+            // 1. Check Project Status
+            if (bExists && sProjectStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("projectClosedError"));
+                return;
+            }
+
+            var fnCreateSelect = function (sSelectedKey) {
+                return new Select({
+                    width: "100%",
+                    selectedKey: sSelectedKey || "",
+                    forceSelection: false,
+                    items: {
+                        path: "users>/items",
+                        template: new Item({
+                            key: "{users>UserId}",
+                            text: "{users>UserName} ({users>UserId})"
+                        }),
+                        templateShareable: false
+                    }
+                });
+            };
+
+            var oSelect1 = fnCreateSelect(oApproverData.Approver1Id);
+            var oSelect2 = fnCreateSelect(oApproverData.Approver2Id);
+            var oSelect3 = fnCreateSelect(oApproverData.Approver3Id);
+
+            var oDialog = new Dialog({
+                title: oBundle.getText("editApprovers"),
+                contentWidth: "450px",
+                content: [
+                    new SimpleForm({
+                        editable: true,
+                        layout: "ResponsiveGridLayout",
+                        content: [
+                            new Label({ text: oBundle.getText("approver1"), required: true }), oSelect1,
+                            new Label({ text: oBundle.getText("approver2"), required: true }), oSelect2,
+                            new Label({ text: oBundle.getText("approver3"), required: true }), oSelect3
+                        ]
+                    })
+                ],
+                beginButton: new Button({
+                    text: oBundle.getText("saveApprovers"),
+                    type: "Emphasized",
+                    press: function () {
+                        var sId1 = oSelect1.getSelectedKey();
+                        var sId2 = oSelect2.getSelectedKey();
+                        var sId3 = oSelect3.getSelectedKey();
+
+                        // 2. Validation
+                        var bValid = true;
+                        if (!sId1) { oSelect1.setValueState("Error"); bValid = false; }
+                        if (!sId2) { oSelect2.setValueState("Error"); bValid = false; }
+                        if (!sId3) { oSelect3.setValueState("Error"); bValid = false; }
+
+                        if (!bValid) {
+                            MessageToast.show(oBundle.getText("approverFieldsRequired"));
+                            return;
+                        }
+
+                        var oPayload = {
+                            ProjectId: sProjectId,
+                            Approver1Id: sId1,
+                            Approver2Id: sId2,
+                            Approver3Id: sId3
+                        };
+
+                        oDialog.setBusy(true);
+
+                        if (bExists) {
+                            oModel.update("/ApproverSet(guid'" + sProjectId + "')", oPayload, {
+                                success: function () {
+                                    MessageToast.show(oBundle.getText("approverUpdatedSuccess"));
+                                    that._loadApproverData(sProjectId);
+                                    oDialog.close();
+                                },
+                                error: function (e) {
+                                    oDialog.setBusy(false);
+                                    that._showError(e, "approverUpdateError");
+                                }
+                            });
+                        } else {
+                            oModel.create("/ApproverSet", oPayload, {
+                                success: function () {
+                                    MessageToast.show(oBundle.getText("approverUpdatedSuccess"));
+                                    that._loadApproverData(sProjectId);
+                                    oDialog.close();
+                                },
+                                error: function (e) {
+                                    oDialog.setBusy(false);
+                                    that._showError(e, "approverUpdateError");
+                                }
+                            });
+                        }
+                    }
+                }),
+                endButton: new Button({
+                    text: oBundle.getText("cancel"),
+                    press: function () { oDialog.close(); }
+                }),
+                afterClose: function () { oDialog.destroy(); }
+            });
+
+            // IMPORTANT: Add dialog as dependent so it can access 'users' model from view
+            oView.addDependent(oDialog);
+            oDialog.open();
+        },
+
         onAddSite: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oCtx = this.getView().getBindingContext();
+            var sStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
+
+            // 1. Check Status
+            if (sStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("projectClosedSiteError"));
+                return;
+            }
+
+            // 2. Check Permission
+            if (!this._checkSiteActionPermission()) {
+                MessageBox.error(oBundle.getText("createSitePermissionError"));
+                return;
+            }
             this._openSiteDialog(null);
         },
 
         onEditSite: function (oEvent) {
             oEvent.cancelBubble && oEvent.cancelBubble();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oCtx = this.getView().getBindingContext();
+            var sStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
+
+            if (sStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("projectClosedSiteError"));
+                return;
+            }
+
+            if (!this._checkSiteActionPermission()) {
+                MessageBox.error(oBundle.getText("createSitePermissionError"));
+                return;
+            }
             var oContext = oEvent.getSource().getBindingContext();
             this._openSiteDialog(oContext);
         },
@@ -554,6 +824,18 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oCtx = this.getView().getBindingContext();
+            var sStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
+
+            if (sStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("projectClosedSiteError"));
+                return;
+            }
+
+            if (!this._checkSiteActionPermission()) {
+                MessageBox.error(oBundle.getText("createSitePermissionError"));
+                return;
+            }
 
             MessageBox.confirm(oBundle.getText("deleteSiteConfirm", [sName]), {
                 title: oBundle.getText("confirmDelete"),
@@ -586,6 +868,24 @@ sap.ui.define([
             this._loadSiteValueHelps();
         },
 
+        _checkSiteActionPermission: function () {
+            var oUserModel = this.getView().getModel("userModel");
+            if (!oUserModel) return false;
+
+            var sCurrentUser = oUserModel.getProperty("/userId");
+            var iAuthLevel = oUserModel.getProperty("/authLevel");
+
+            // 1. Allow if System Admin (99)
+            if (iAuthLevel === 99) return true;
+
+            // 2. Allow if Project Creator
+            var oCtx = this.getView().getBindingContext();
+            if (!oCtx) return false;
+
+            var sProjectCreator = oCtx.getProperty("CreatedBy");
+            return sCurrentUser === sProjectCreator;
+        },
+
         _openSiteDialog: function (oContext) {
             var that = this;
             var bEdit = !!oContext;
@@ -594,6 +894,9 @@ sap.ui.define([
 
             var oInputCode = new Input({
                 placeholder: "e.g. SITE-001",
+                visible: bEdit,
+                editable: false,
+                value: bEdit ? oContext.getProperty("SiteCode") : "",
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValue(oSource.getValue().toUpperCase());
@@ -603,6 +906,7 @@ sap.ui.define([
             });
             var oInputName = new Input({
                 placeholder: oBundle.getText("siteName"),
+                maxLength: 100,
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValueState("None");
@@ -611,6 +915,7 @@ sap.ui.define([
             });
             var oInputAddress = new Input({
                 placeholder: oBundle.getText("address"),
+                maxLength: 100,
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValueState("None");
@@ -618,7 +923,6 @@ sap.ui.define([
                 }
             });
             if (bEdit) {
-                oInputCode.setValue(oContext.getProperty("SiteCode"));
                 oInputName.setValue(oContext.getProperty("SiteName"));
                 oInputAddress.setValue(oContext.getProperty("Address"));
             }
@@ -629,7 +933,7 @@ sap.ui.define([
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
                 content: [
-                    new Label({ text: oBundle.getText("siteCode"), required: true }), oInputCode,
+                    new Label({ text: oBundle.getText("siteCode"), required: true, visible: bEdit }), oInputCode,
                     new Label({ text: oBundle.getText("siteName"), required: true }), oInputName,
                     new Label({ text: oBundle.getText("address"), required: true }), oInputAddress
                 ]
@@ -655,7 +959,7 @@ sap.ui.define([
                         var sName = oInputName.getValue().trim();
                         var sAddress = oInputAddress.getValue().trim();
 
-                        if (!sCode) {
+                        if (bEdit && !sCode) {
                             oInputCode.setValueState("Error");
                             oInputCode.setValueStateText(oBundle.getText("requireSiteCode"));
                             bHasError = true;
@@ -665,11 +969,19 @@ sap.ui.define([
                             oInputName.setValueState("Error");
                             oInputName.setValueStateText(oBundle.getText("requireSiteName"));
                             bHasError = true;
+                        } else if (sName.length > 100) {
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("maxLength100Error"));
+                            bHasError = true;
                         }
 
                         if (!sAddress) {
                             oInputAddress.setValueState("Error");
                             oInputAddress.setValueStateText(oBundle.getText("requireAddress"));
+                            bHasError = true;
+                        } else if (sAddress.length > 100) {
+                            oInputAddress.setValueState("Error");
+                            oInputAddress.setValueStateText(oBundle.getText("maxLength100Error"));
                             bHasError = true;
                         }
 
@@ -687,15 +999,18 @@ sap.ui.define([
                         });
 
                         if (bNameExists) {
-                            MessageBox.error(oBundle.getText("siteNameExistsError"));
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("siteNameExistsError"));
                             return;
                         }
                         var oPayload = {
-                            SiteCode: sCode,
                             SiteName: sName,
                             Address: oInputAddress.getValue().trim(),
                             Status: bEdit ? oContext.getProperty("Status") : "PLANNING"
                         };
+                        if (bEdit) {
+                            oPayload.SiteCode = sCode;
+                        }
                         if (!bEdit) {
                             oPayload.ProjectId = that._sCurrentProjectId;
                         }

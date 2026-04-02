@@ -3,12 +3,89 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:f="sap.f"
+    xmlns:form="sap.ui.layout.form"
+    xmlns:core="sap.ui.core"
+    xmlns:cards="sap.f.cards"
     xmlns:fb="sap.ui.comp.filterbar">
     <Page 
         title="{parts: [{path: 'ProjectName'}], formatter: '.formatSiteListTitle'}" 
         showNavButton="true" 
         navButtonPress="onNavBack">
         <content>
+            <IconTabBar id="idIconTabBarSite" expanded="true" class="sapUiResponsiveContentPadding">
+                <items>
+                    <IconTabFilter text="{i18n>siteInfoTab}" key="info" icon="sap-icon://hint">
+                        <VBox class="sapUiResponsiveMargin">
+                            <f:Card class="sapUiSmallMarginBottom">
+                                <f:header>
+                                    <cards:Header title="{i18n>overviewInfo}" subtitle="{ProjectCode}" iconSrc="sap-icon://project-definition" />
+                                </f:header>
+                                <f:content>
+                                    <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="2" columnsM="2">
+                                        <form:content>
+                                            <core:Title text="{i18n>identification}" />
+                                            <Label text="{i18n>projectName}" />
+                                            <Text text="{ProjectName}" />
+                                            <Label text="{i18n>projectType}" />
+                                            <ObjectStatus text="{path: 'ProjectType', formatter: '.formatTypeText'}" 
+                                                state="{path: 'ProjectType', formatter: '.formatTypeState'}" 
+                                                inverted="true" />
+                                            <Label text="{i18n>status}" />
+                                            <ObjectStatus text="{path: 'Status', formatter: '.formatStatusText'}" state="{path: 'Status', formatter: '.formatStatusState'}" inverted="true" />
+
+                                            <core:Title text="{i18n>schedulePlannedVsActual}" />
+                                            <Label text="{i18n>startDate}" />
+                                            <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }}" />
+                                            <Label text="{i18n>endDate}" />
+                                            <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }}" />
+                                        </form:content>
+                                    </form:SimpleForm>
+                                </f:content>
+                            </f:Card>
+
+                            <f:Card>
+                                <f:header>
+                                    <cards:Header title="{i18n>approverInfo}" subtitle="{i18n>approverSectionSubtitle}" iconSrc="sap-icon://manager" />
+                                </f:header>
+                                <f:content>
+                                    <VBox>
+                                        <MessageStrip
+                                            text="{i18n>approverNotConfigured}"
+                                            type="Warning"
+                                            showIcon="true"
+                                            visible="{= !${approver>/Approver1Id} &amp;&amp; !${approver>/Approver2Id} &amp;&amp; !${approver>/Approver3Id} }"
+                                            class="sapUiSmallMargin" />
+                                        <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4"
+                                            visible="{= !!${approver>/Approver1Id} || !!${approver>/Approver2Id} || !!${approver>/Approver3Id} }">
+                                            <form:content>
+                                                <Label text="{i18n>approver1}" />
+                                                <VBox>
+                                                    <Label text="{= ${approver>/Approver1Name} || '---' }" design="Bold" class="sapUiTinyMarginBottom" />
+                                                    <Text text="{approver>/Approver1Email}" class="sapUiTinyMarginBottom" />
+                                                </VBox>
+                                                <Label text="{i18n>approver2}" />
+                                                <VBox>
+                                                    <Label text="{= ${approver>/Approver2Name} || '---' }" design="Bold" class="sapUiTinyMarginBottom" />
+                                                    <Text text="{approver>/Approver2Email}" class="sapUiTinyMarginBottom" />
+                                                </VBox>
+                                                <Label text="{i18n>approver3}" />
+                                                <VBox>
+                                                    <Label text="{= ${approver>/Approver3Name} || '---' }" design="Bold" class="sapUiTinyMarginBottom" />
+                                                    <Text text="{approver>/Approver3Email}" class="sapUiTinyMarginBottom" />
+                                                </VBox>
+                                            </form:content>
+                                        </form:SimpleForm>
+                                        <Toolbar style="Clear">
+                                            <Button text="{i18n>editApprovers}" icon="sap-icon://edit" press=".onEditApprovers" type="Ghost" 
+                                                visible="{= ${userModel>/authLevel} === 99 }"
+                                                enabled="{= ${Status} !== 'CLOSED' }" />
+                                        </Toolbar>
+                                    </VBox>
+                                </f:content>
+                            </f:Card>
+                        </VBox>
+                    </IconTabFilter>
+                    <IconTabFilter text="{i18n>siteList}" key="sites" icon="sap-icon://list">
             <fb:FilterBar id="siteFilterBar"
                 useToolbar="false"
                 showGoOnFB="true"
@@ -108,6 +185,9 @@
                     </ColumnListItem>
                 </items>
             </Table>
+                    </IconTabFilter>
+                </items>
+            </IconTabBar>
         </content>
     </Page>
 </mvc:View>

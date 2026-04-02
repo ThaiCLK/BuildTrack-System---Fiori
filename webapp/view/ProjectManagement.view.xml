@@ -96,6 +96,9 @@
                     <Column id="colProjectType" width="9rem" minScreenWidth="Tablet" demandPopin="true" hAlign="Center">
                         <Text id="txtColProjectType" text="{i18n>type}"/>
                     </Column>
+                    <Column id="colCreatedBy" width="8rem" minScreenWidth="Desktop" demandPopin="true">
+                        <Text id="txtColCreatedBy" text="{i18n>createBy}"/>
+                    </Column>
                     <Column id="colStartDate" width="8rem" hAlign="End">
                         <Text id="txtColStartDate" text="{i18n>startDate}"/>
                     </Column>
@@ -130,6 +133,9 @@
                                 icon="{ path: 'pm>ProjectType', formatter: '.formatTypeIcon' }"
                                 state="{ path: 'pm>ProjectType', formatter: '.formatTypeState' }"
                                 inverted="true"/>
+
+                            <!-- Created By -->
+                            <Text id="txtCreatedBy" text="{pm>CreatedByName}"/>
 
                             <!-- Start Date -->
                             <Text id="txtStartDate" text="{

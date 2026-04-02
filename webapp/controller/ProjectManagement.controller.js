@@ -66,6 +66,7 @@ sap.ui.define([
             }
 
             this._loadProjectValueHelps();
+            this._fetchUserRoles(); // Fetch users for ID -> Name mapping
             this._readProjects("");
         },
 
@@ -333,7 +334,8 @@ sap.ui.define([
                     type: "project_type",
                     startDate: "start_date",
                     endDate: "end_date",
-                    status: "status"
+                    status: "status",
+                    createdBy: "created_by"
                 };
             }
         },
@@ -366,7 +368,8 @@ sap.ui.define([
                 ProjectType: oRow.ProjectType || oRow.project_type || "",
                 StartDate: oRow.StartDate || oRow.start_date || null,
                 EndDate: oRow.EndDate || oRow.end_date || null,
-                Status: oRow.Status || oRow.status || ""
+                Status: oRow.Status || oRow.status || "",
+                CreatedBy: oRow.CreatedBy || oRow.created_by || ""
             };
         },
 
@@ -415,9 +418,57 @@ sap.ui.define([
             return "datetime'" + iYear + "-" + sMonth + "-" + sDay + "T00:00:00'";
         },
 
+        _fetchUserRoles: function () {
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+            if (!oModel) return;
+
+            oModel.read("/UserRoleSet", {
+                success: function (oData) {
+                    var aUsers = (oData && oData.results) ? oData.results : [];
+                    var mUserMap = {};
+                    aUsers.forEach(function (u) {
+                        mUserMap[u.UserId] = u.UserName || u.UserId;
+                    });
+                    
+                    // Store in a local model for easy access
+                    that.getView().setModel(new JSONModel({
+                        map: mUserMap,
+                        list: aUsers
+                    }), "users");
+
+                    // Re-enrich projects if they are already loaded
+                    var oPmModel = that.getView().getModel("pm");
+                    var aProjects = oPmModel.getProperty("/projects") || [];
+                    if (aProjects.length > 0) {
+                        that._enrichProjectWithNames(aProjects);
+                        oPmModel.setProperty("/projects", aProjects);
+                    }
+                },
+                error: function () {
+                    console.error("Failed to fetch UserRoleSet for name mapping");
+                }
+            });
+        },
+
+        _enrichProjectWithNames: function (aProjects) {
+            var oUsersModel = this.getView().getModel("users");
+            if (!oUsersModel) return;
+            
+            var mUserMap = oUsersModel.getProperty("/map") || {};
+            aProjects.forEach(function (p) {
+                if (p.CreatedBy) {
+                    p.CreatedByName = mUserMap[p.CreatedBy] || p.CreatedBy;
+                } else {
+                    p.CreatedByName = "";
+                }
+            });
+        },
+
         _readProjects: function (sFilterExpr) {
             var oModel = this.getOwnerComponent().getModel();
             var oPmModel = this.getView().getModel("pm");
+            var that = this;
             if (!oModel || !oPmModel) {
                 return;
             }
@@ -436,6 +487,10 @@ sap.ui.define([
                         this._detectProjectFieldMap(aResults[0]);
                     }
                     var aNormalized = aResults.map(this._normalizeProjectRow.bind(this));
+                    
+                    // Enrich with Names
+                    this._enrichProjectWithNames(aNormalized);
+
                     aNormalized = this._applyCriteriaLocal(aNormalized);
                     aNormalized.sort(function (a, b) {
                         var iA = a.StartDate ? new Date(a.StartDate).getTime() : 0;
@@ -610,6 +665,11 @@ sap.ui.define([
                 return;
             }
 
+            if (!this._checkProjectPermission(oContext)) {
+                MessageBox.error(oBundle.getText("permissionError"));
+                return;
+            }
+
             this._openProjectDialog(oContext);
         },
 
@@ -622,6 +682,11 @@ sap.ui.define([
 
             if (sStatus !== "PLANNING") {
                 MessageBox.error(oBundle.getText("deleteOnlyPlanningError"));
+                return;
+            }
+
+            if (!this._checkProjectPermission(oContext)) {
+                MessageBox.error(oBundle.getText("permissionError"));
                 return;
             }
 
@@ -653,6 +718,26 @@ sap.ui.define([
             });
         },
 
+        _checkProjectPermission: function (oContext) {
+            var oUserModel = this.getView().getModel("userModel");
+            if (!oUserModel) {
+                return false;
+            }
+
+            var sCurrentUser = oUserModel.getProperty("/userId");
+            var iAuthLevel = oUserModel.getProperty("/authLevel");
+            
+            // Allow if System Admin (99)
+            if (iAuthLevel === 99) {
+                return true;
+            }
+
+            var sCreatedBy = oContext.getProperty("CreatedBy") || oContext.getProperty("created_by");
+            
+            // Allow if Project Creator
+            return sCurrentUser === sCreatedBy;
+        },
+
         // ── PRIVATE: Create/Edit Project Dialog ──────────────────────────────
         _openProjectDialog: function (oContext) {
             var that = this;
@@ -662,6 +747,7 @@ sap.ui.define([
             var oBundle = this.getOwnerComponent().getModel("i18n").getResourceBundle();
             var oInputCode = new Input({
                 placeholder: oBundle.getText("projectCodePlaceholder"),
+                editable: false, // Always read-only as per new requirement
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValue(oSource.getValue().toUpperCase());
@@ -698,7 +784,7 @@ sap.ui.define([
             dToday.setHours(0, 0, 0, 0);
 
             var oPickerStart = new DatePicker({
-                width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday,
+                width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd",
                 change: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValueState("None");
@@ -706,7 +792,7 @@ sap.ui.define([
                 }
             });
             var oPickerEnd = new DatePicker({
-                width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday,
+                width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd",
                 change: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValueState("None");
@@ -726,11 +812,27 @@ sap.ui.define([
             oPickerEnd.addEventDelegate({ onAfterRendering: fnSetReadOnly }, oPickerEnd);
 
             oPickerStart.attachChange(function (oEvent) {
-                var dNewStart = oEvent.getSource().getDateValue();
-                if (dNewStart) {
-                    var dMinEnd = new Date(Math.max(dToday.getTime(), dNewStart.getTime()));
-                    dMinEnd.setDate(dMinEnd.getDate() + 1); // End date should be > Start date
-                    oPickerEnd.setMinDate(dMinEnd);
+                // When Start Date changes, we just clear states. 
+                // We no longer setMinDate to allow the user to 'attempt' any date 
+                // and see our custom error message instead of the generic UI5 minDate error.
+                var dStart = oPickerStart.getDateValue();
+                var dEnd = oPickerEnd.getDateValue();
+                if (dStart && dEnd && dEnd <= dStart) {
+                    oPickerEnd.setValueState("Error");
+                    oPickerEnd.setValueStateText(oBundle.getText("endDateBeforeStartError"));
+                } else {
+                    oPickerEnd.setValueState("None");
+                }
+            });
+
+            oPickerEnd.attachChange(function (oEvent) {
+                var dStart = oPickerStart.getDateValue();
+                var dEnd = oPickerEnd.getDateValue();
+                if (dStart && dEnd && dEnd <= dStart) {
+                    oPickerEnd.setValueState("Error");
+                    oPickerEnd.setValueStateText(oBundle.getText("endDateBeforeStartError"));
+                } else {
+                    oPickerEnd.setValueState("None");
                 }
             });
 
@@ -777,41 +879,26 @@ sap.ui.define([
                 
                 if (oStart) {
                     oPickerStart.setDateValue(oStart);
-                    // Prevent error state if existing date is in the past
-                    var dStartMin = new Date(dToday);
-                    if (oStart < dToday) {
-                        dStartMin = new Date(oStart);
-                        dStartMin.setHours(0, 0, 0, 0);
-                    }
-                    oPickerStart.setMinDate(dStartMin);
                 }
                 
                 if (oEnd) {
                     oPickerEnd.setDateValue(oEnd);
-                    var dEndMin = new Date(dToday);
-                    if (oEnd < dToday) {
-                        dEndMin = new Date(oEnd);
-                        dEndMin.setHours(0, 0, 0, 0);
-                    }
-                    if (oStart && oStart >= dStartMin) {
-                        var dMinEndFromStart = new Date(oStart);
-                        dMinEndFromStart.setHours(0, 0, 0, 0);
-                        dMinEndFromStart.setDate(dMinEndFromStart.getDate() + 1);
-                        if (dMinEndFromStart > dEndMin) {
-                            dEndMin = dMinEndFromStart;
-                        }
-                    }
-                    oPickerEnd.setMinDate(dEndMin);
                 }
             }
 
-            var aFormContent = [
-                new Label({ text: oBundle.getText("projectCode"), required: true }), oInputCode,
-                new Label({ text: oBundle.getText("projectName"), required: true }), oInputName,
-                new Label({ text: oBundle.getText("projectType"), required: true }), oComboType,
-                new Label({ text: oBundle.getText("startDate"), required: true }), oPickerStart,
-                new Label({ text: oBundle.getText("estEndDate"), required: true }), oPickerEnd
-            ];
+            var aFormContent = [];
+            if (bEdit) {
+                aFormContent.push(new Label({ text: oBundle.getText("projectCode"), required: true }));
+                aFormContent.push(oInputCode);
+            }
+            aFormContent.push(new Label({ text: oBundle.getText("projectName"), required: true }));
+            aFormContent.push(oInputName);
+            aFormContent.push(new Label({ text: oBundle.getText("projectType"), required: true }));
+            aFormContent.push(oComboType);
+            aFormContent.push(new Label({ text: oBundle.getText("startDate"), required: true }));
+            aFormContent.push(oPickerStart);
+            aFormContent.push(new Label({ text: oBundle.getText("estEndDate"), required: true }));
+            aFormContent.push(oPickerEnd);
 
             var oForm = new SimpleForm({
                 editable: true,
@@ -846,18 +933,10 @@ sap.ui.define([
                         var sCode = oInputCode.getValue().trim();
                         var sName = oInputName.getValue().trim();
 
-                        if (!sCode) {
+                        if (bEdit && !sCode) {
                             oInputCode.setValueState("Error");
                             oInputCode.setValueStateText(oBundle.getText("requireProjectCode"));
                             bHasError = true;
-                        } else {
-                            // Validate Project Code format: PRJ-YYYY-XXX
-                            var rCodePattern = /^PRJ-\d{4}-\d{3}$/;
-                            if (!rCodePattern.test(sCode)) {
-                                oInputCode.setValueState("Error");
-                                oInputCode.setValueStateText(oBundle.getText("invalidProjectCodeFormat"));
-                                bHasError = true;
-                            }
                         }
 
                         if (!sName) {
@@ -896,18 +975,7 @@ sap.ui.define([
                         var dStart = oPickerStart.getDateValue();
                         var dEnd = oPickerEnd.getDateValue();
 
-                        if (!bEdit && dStart && oPickerStart.isValidValue()) {
-                            var dToday = new Date();
-                            dToday.setHours(0, 0, 0, 0);
-                            var dStartCompare = new Date(dStart.getTime());
-                            dStartCompare.setHours(0, 0, 0, 0);
 
-                            if (dStartCompare < dToday) {
-                                oPickerStart.setValueState("Error");
-                                oPickerStart.setValueStateText(oBundle.getText("startDatePastError"));
-                                bHasError = true;
-                            }
-                        }
 
                         if (dStart && dEnd && oPickerStart.isValidValue() && oPickerEnd.isValidValue()) {
                             var dStartCompare = new Date(dStart.getTime());
@@ -922,17 +990,18 @@ sap.ui.define([
                             }
                         }
 
-                        if (bHasError) {
-                            return;
-                        }
-
                         // Duplicate Name Check
                         var aProjects = that.getView().getModel("pm").getProperty("/projects") || [];
                         var bNameExists = aProjects.some(function (p) {
                             return p.ProjectName && p.ProjectName.trim().toLowerCase() === sName.toLowerCase() && p.ProjectCode !== sCode;
                         });
                         if (bNameExists) {
-                            MessageBox.error(oBundle.getText("projectNameExistsError") || "Project name already exists.");
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("projectNameExistsError") || "Project name already exists.");
+                            bHasError = true;
+                        }
+
+                        if (bHasError) {
                             return;
                         }
 
@@ -942,13 +1011,16 @@ sap.ui.define([
                         };
 
                         var oPayload = {
-                            ProjectCode: sCode,
                             ProjectName: sName,
                             ProjectType: oComboType.getSelectedKey() || oComboType.getValue().trim(),
                             StartDate: toUTC(oPickerStart.getDateValue()),
                             EndDate: toUTC(oPickerEnd.getDateValue()),
                             Status: oSelectStatus.getSelectedKey()
                         };
+
+                        if (bEdit) {
+                            oPayload.ProjectCode = sCode;
+                        }
 
                         var fnDoSave = function () {
                             if (bEdit) {

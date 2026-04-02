@@ -1166,8 +1166,8 @@ sap.ui.define([
             var dToday = new Date();
             dToday.setHours(0, 0, 0, 0);
 
-            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", minDate: dToday });
-            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", minDate: dToday });
+            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy" });
+            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy" });
 
             // Standardize: Disable manual keyboard input, force use of calendar icon
             var oReadonlyDelegate = {
@@ -1186,11 +1186,9 @@ sap.ui.define([
                 oSource.setValueState("None");
                 oSource.setValueStateText("");
                 var dNewStart = oSource.getDateValue();
-                if (dNewStart) {
-                    var dMinEnd = new Date(Math.max(dToday.getTime(), dNewStart.getTime()));
-                    dMinEnd.setDate(dMinEnd.getDate() + 1); // End date should be > Start date
-                    oPickerEnd.setMinDate(dMinEnd);
-                }
+                // Removed auto-setMinDate to allow 'cho chọn thoải mái' (selecting freely)
+                // Logical validation will be handled on Save
+
             });
 
             oPickerEnd.attachChange(function (oEvent) {
@@ -1246,31 +1244,16 @@ sap.ui.define([
                 var dEndObj = oEndRaw ? (oEndRaw instanceof Date ? oEndRaw : new Date(oEndRaw)) : null;
 
                 if (dStartObj && !isNaN(dStartObj.getTime())) {
-                    // Prevent error state if existing date is in the past
-                    var dStartMin = new Date(dToday);
-                    if (dStartObj < dToday) {
-                        dStartMin = new Date(dStartObj);
-                        dStartMin.setHours(0, 0, 0, 0);
-                    }
-                    oPickerStart.setMinDate(dStartMin);
                     oPickerStart.setDateValue(dStartObj);
                 }
 
                 if (dEndObj && !isNaN(dEndObj.getTime())) {
-                    var dEndMin = new Date(dToday);
-                    if (dEndObj < dToday) {
-                        dEndMin = new Date(dEndObj);
-                        dEndMin.setHours(0, 0, 0, 0);
-                    }
-                    if (dStartObj && dStartObj >= dStartMin) {
+                    if (dStartObj) {
                         var dMinEndFromStart = new Date(dStartObj);
                         dMinEndFromStart.setHours(0, 0, 0, 0);
                         dMinEndFromStart.setDate(dMinEndFromStart.getDate() + 1);
-                        if (dMinEndFromStart > dEndMin) {
-                            dEndMin = dMinEndFromStart;
-                        }
+                        oPickerEnd.setMinDate(dMinEndFromStart);
                     }
-                    oPickerEnd.setMinDate(dEndMin);
                     oPickerEnd.setDateValue(dEndObj);
                 }
 
@@ -1426,7 +1409,7 @@ sap.ui.define([
                         // FE Validation: End Date after Start Date
                         if (dEnd <= dStart) {
                             oPickerEnd.setValueState("Error");
-                            MessageBox.error(oBundle.getText("wbsEndDateBeforeStartDateError"));
+                            oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
                             return;
                         }
 
@@ -1449,7 +1432,12 @@ sap.ui.define([
                                 var dCompareProjStart = new Date(dProjStart); dCompareProjStart.setHours(0,0,0,0);
                                 if (dCompareWbsStart < dCompareProjStart) {
                                     oPickerStart.setValueState("Error");
-                                    MessageBox.error(oBundle.getText("wbsStartDateBeforeProjectError", [that.formatDate(dProjStart)]));
+                                    oPickerStart.setValueStateText(oBundle.getText("wbsStartDateBeforeProjectError", [that.formatDate(dProjStart)]));
+                                    return;
+                                }
+                                if (dCompareWbsEnd < dCompareProjStart) {
+                                    oPickerEnd.setValueState("Error");
+                                    oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeProjectStartError", [that.formatDate(dProjStart)]));
                                     return;
                                 }
                             }
@@ -1458,7 +1446,7 @@ sap.ui.define([
                                 var dCompareProjEnd = new Date(dProjEnd); dCompareProjEnd.setHours(0,0,0,0);
                                 if (dCompareWbsEnd > dCompareProjEnd) {
                                     oPickerEnd.setValueState("Error");
-                                    MessageBox.error(oBundle.getText("wbsEndDateAfterProjectError", [that.formatDate(dProjEnd)]));
+                                    oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateAfterProjectError", [that.formatDate(dProjEnd)]));
                                     return;
                                 }
                             }

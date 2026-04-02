@@ -24,6 +24,7 @@
                 <Property Name="UpdatedOn"   Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
                 <Property Name="UpdatedAt"   Type="Edm.Time"   Precision="0"   sap:label="Updated At" />
                 <NavigationProperty Name="ToSites" Relationship="ZBT_ODATA_SRV.Proj_to_Site" FromRole="FromProj" ToRole="ToSite" />
+                <NavigationProperty Name="ToApprovers" Relationship="ZBT_ODATA_SRV.Proj_to_Approver" FromRole="FromProj" ToRole="ToApprover" />
             </EntityType>
 
             <EntityType Name="Site">
@@ -202,6 +203,26 @@
             </EntityType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- ProjectApprover (ZBT_APPROVERS — project approvers)         -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <EntityType Name="ProjectApprover">
+                <Key>
+                    <PropertyRef Name="ProjectId" />
+                </Key>
+                <Property Name="Client"      Type="Edm.String"   MaxLength="3"   sap:label="Client" />
+                <Property Name="ProjectId"   Type="Edm.Guid"     Nullable="false" sap:label="Project UUID" />
+                <Property Name="Approver1Id" Type="Edm.String"   MaxLength="12"  sap:label="Approver 1" />
+                <Property Name="Approver2Id" Type="Edm.String"   MaxLength="12"  sap:label="Approver 2" />
+                <Property Name="Approver3Id" Type="Edm.String"   MaxLength="12"  sap:label="Approver 3" />
+                <Property Name="CreatedBy"   Type="Edm.String"   MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn"   Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt"   Type="Edm.Time"     Precision="0"   sap:label="Created At" />
+                <Property Name="UpdatedBy"   Type="Edm.String"   MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn"   Type="Edm.DateTime" Precision="0" DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt"   Type="Edm.Time"     Precision="0"   sap:label="Updated At" />
+            </EntityType>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- Dependency (ZBT_DEPENDENCIES — WBS dependencies)            -->
             <!-- ═══════════════════════════════════════════════════════════ -->
             <EntityType Name="Dependency">
@@ -303,6 +324,15 @@
                 </ReferentialConstraint>
             </Association>
 
+            <Association Name="Proj_to_Approver">
+                <End Role="FromProj" Type="ZBT_ODATA_SRV.Project" Multiplicity="1" />
+                <End Role="ToApprover" Type="ZBT_ODATA_SRV.ProjectApprover" Multiplicity="0..1" />
+                <ReferentialConstraint>
+                    <Principal Role="FromProj"><PropertyRef Name="ProjectId" /></Principal>
+                    <Dependent  Role="ToApprover"><PropertyRef Name="ProjectId" /></Dependent>
+                </ReferentialConstraint>
+            </Association>
+
 
             <EntityContainer Name="ZBT_ODATA_SRV_Entities" m:IsDefaultEntityContainer="true">
                 <EntitySet Name="ProjectSet"           EntityType="ZBT_ODATA_SRV.Project" />
@@ -315,6 +345,7 @@
                 <EntitySet Name="ApprovalLogSet"       EntityType="ZBT_ODATA_SRV.ApprovalLog" />
                 <EntitySet Name="UserRoleSet"          EntityType="ZBT_ODATA_SRV.UserRole" />
                 <EntitySet Name="DependencySet"        EntityType="ZBT_ODATA_SRV.Dependency" />
+                <EntitySet Name="ApproverSet"          EntityType="ZBT_ODATA_SRV.Approver" />
 
                 <AssociationSet Name="Proj_to_Site_Set" Association="ZBT_ODATA_SRV.Proj_to_Site">
                     <End Role="FromProj" EntitySet="ProjectSet" />
@@ -347,6 +378,10 @@
                 <AssociationSet Name="WBS_to_Dependency_Set" Association="ZBT_ODATA_SRV.WBS_to_Dependency">
                     <End Role="FromWBS"      EntitySet="WBSSet" />
                     <End Role="ToDependency" EntitySet="DependencySet" />
+                </AssociationSet>
+                <AssociationSet Name="Proj_to_Approver_Set" Association="ZBT_ODATA_SRV.Proj_to_Approver">
+                    <End Role="FromProj" EntitySet="ProjectSet" />
+                    <End Role="ToApprover" EntitySet="ApproverSet" />
                 </AssociationSet>
 
                 <FunctionImport Name="StartWSProcess" ReturnType="ZBT_ODATA_SRV.WsProcessResult" m:HttpMethod="POST">
