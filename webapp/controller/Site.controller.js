@@ -597,10 +597,26 @@ sap.ui.define([
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValue(oSource.getValue().toUpperCase());
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
                 }
             });
-            var oInputName = new Input({ placeholder: oBundle.getText("siteName") });
-            var oInputAddress = new Input({ placeholder: oBundle.getText("address") });
+            var oInputName = new Input({
+                placeholder: oBundle.getText("siteName"),
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
+            var oInputAddress = new Input({
+                placeholder: oBundle.getText("address"),
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
             if (bEdit) {
                 oInputCode.setValue(oContext.getProperty("SiteCode"));
                 oInputName.setValue(oContext.getProperty("SiteName"));
@@ -615,7 +631,7 @@ sap.ui.define([
                 content: [
                     new Label({ text: oBundle.getText("siteCode"), required: true }), oInputCode,
                     new Label({ text: oBundle.getText("siteName"), required: true }), oInputName,
-                    new Label({ text: oBundle.getText("address") }), oInputAddress
+                    new Label({ text: oBundle.getText("address"), required: true }), oInputAddress
                 ]
             });
 
@@ -627,10 +643,37 @@ sap.ui.define([
                     text: bEdit ? oBundle.getText("saveChanges") : oBundle.getText("create"),
                     type: "Emphasized",
                     press: function () {
+                        oInputCode.setValueState("None");
+                        oInputCode.setValueStateText("");
+                        oInputName.setValueState("None");
+                        oInputName.setValueStateText("");
+                        oInputAddress.setValueState("None");
+                        oInputAddress.setValueStateText("");
+
+                        var bHasError = false;
                         var sCode = oInputCode.getValue().trim();
                         var sName = oInputName.getValue().trim();
-                        if (!sCode || !sName) {
-                            MessageToast.show(oBundle.getText("enterSiteCodeNameError"));
+                        var sAddress = oInputAddress.getValue().trim();
+
+                        if (!sCode) {
+                            oInputCode.setValueState("Error");
+                            oInputCode.setValueStateText(oBundle.getText("requireSiteCode"));
+                            bHasError = true;
+                        }
+
+                        if (!sName) {
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("requireSiteName"));
+                            bHasError = true;
+                        }
+
+                        if (!sAddress) {
+                            oInputAddress.setValueState("Error");
+                            oInputAddress.setValueStateText(oBundle.getText("requireAddress"));
+                            bHasError = true;
+                        }
+
+                        if (bHasError) {
                             return;
                         }
 

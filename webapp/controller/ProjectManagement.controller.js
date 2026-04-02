@@ -665,9 +665,18 @@ sap.ui.define([
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValue(oSource.getValue().toUpperCase());
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
                 }
             });
-            var oInputName = new Input({ placeholder: oBundle.getText("projectNamePlaceholder") });
+            var oInputName = new Input({
+                placeholder: oBundle.getText("projectNamePlaceholder"),
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
             // ComboBox allows selecting a preset type OR typing a custom value for "Other"
             var oComboType = new ComboBox({
                 width: "100%",
@@ -678,13 +687,32 @@ sap.ui.define([
                     new Item({ key: "BUILDING", text: oBundle.getText("typeBuilding") }),
                     new Item({ key: "TUNNEL", text: oBundle.getText("typeTunnel") }),
                     new Item({ key: "OTHER", text: oBundle.getText("typeOther") })
-                ]
+                ],
+                change: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
             });
             var dToday = new Date();
             dToday.setHours(0, 0, 0, 0);
 
-            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
-            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+            var oPickerStart = new DatePicker({
+                width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday,
+                change: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
+            var oPickerEnd = new DatePicker({
+                width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday,
+                change: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
 
             // Ensure no typing/cursor by making internal input readonly
             var fnSetReadOnly = function () {
@@ -801,81 +829,111 @@ sap.ui.define([
                     text: bEdit ? oBundle.getText("saveChanges") : oBundle.getText("create"),
                     type: "Emphasized",
                     press: function () {
+                        // Reset all value states first
+                        oInputCode.setValueState("None");
+                        oInputCode.setValueStateText("");
+                        oInputName.setValueState("None");
+                        oInputName.setValueStateText("");
+                        oComboType.setValueState("None");
+                        oComboType.setValueStateText("");
+                        oPickerStart.setValueState("None");
+                        oPickerStart.setValueStateText("");
+                        oPickerEnd.setValueState("None");
+                        oPickerEnd.setValueStateText("");
+
+                        var bHasError = false;
+
                         var sCode = oInputCode.getValue().trim();
                         var sName = oInputName.getValue().trim();
-                        if (!sCode || !sName) {
-                            MessageToast.show(oBundle.getText("enterProjectCodeNameError"));
-                            return;
+
+                        if (!sCode) {
+                            oInputCode.setValueState("Error");
+                            oInputCode.setValueStateText(oBundle.getText("requireProjectCode"));
+                            bHasError = true;
+                        } else {
+                            // Validate Project Code format: PRJ-YYYY-XXX
+                            var rCodePattern = /^PRJ-\d{4}-\d{3}$/;
+                            if (!rCodePattern.test(sCode)) {
+                                oInputCode.setValueState("Error");
+                                oInputCode.setValueStateText(oBundle.getText("invalidProjectCodeFormat"));
+                                bHasError = true;
+                            }
                         }
 
-                        // Duplicate Name Check
-                        var aProjects = that.getView().getModel("pm").getProperty("/projects") || [];
-                        var bNameExists = aProjects.some(function (p) {
-                            // Check if name matches (excluding properties with no name)
-                            // and ignore the project itself when editing (match by ProjectCode)
-                            return p.ProjectName && p.ProjectName.trim().toLowerCase() === sName.toLowerCase() && p.ProjectCode !== sCode;
-                        });
-                        if (bNameExists) {
-                            MessageBox.error(oBundle.getText("projectNameExistsError"));
-                            return;
+                        if (!sName) {
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("requireProjectName"));
+                            bHasError = true;
                         }
 
-                        // Validate Project Code format: PRJ-YYYY-XXX
-                        var rCodePattern = /^PRJ-\d{4}-\d{3}$/;
-                        if (!rCodePattern.test(sCode)) {
-                            MessageBox.error(oBundle.getText("invalidProjectCodeFormat"));
-                            return;
-                        }
-                        
                         var sType = oComboType.getSelectedKey() || oComboType.getValue().trim();
                         if (!sType) {
-                            MessageBox.error(oBundle.getText("missingProjectType"));
-                            return;
+                            oComboType.setValueState("Error");
+                            oComboType.setValueStateText(oBundle.getText("missingProjectType"));
+                            bHasError = true;
                         }
 
                         if (!oPickerStart.getDateValue()) {
-                            MessageBox.error(oBundle.getText("missingStartDate"));
-                            return;
-                        }
-                        if (!oPickerStart.isValidValue()) {
-                            MessageBox.error(oBundle.getText("invalidDateError"));
-                            return;
+                            oPickerStart.setValueState("Error");
+                            oPickerStart.setValueStateText(oBundle.getText("missingStartDate"));
+                            bHasError = true;
+                        } else if (!oPickerStart.isValidValue()) {
+                            oPickerStart.setValueState("Error");
+                            oPickerStart.setValueStateText(oBundle.getText("invalidDateError") || "Invalid date format.");
+                            bHasError = true;
                         }
 
                         if (!oPickerEnd.getDateValue()) {
-                            MessageBox.error(oBundle.getText("missingEndDate"));
-                            return;
-                        }
-                        if (!oPickerEnd.isValidValue()) {
-                            MessageBox.error(oBundle.getText("invalidDateError"));
-                            return;
+                            oPickerEnd.setValueState("Error");
+                            oPickerEnd.setValueStateText(oBundle.getText("missingEndDate") || "Missing end date.");
+                            bHasError = true;
+                        } else if (!oPickerEnd.isValidValue()) {
+                            oPickerEnd.setValueState("Error");
+                            oPickerEnd.setValueStateText(oBundle.getText("invalidDateError") || "Invalid date format.");
+                            bHasError = true;
                         }
 
                         var dStart = oPickerStart.getDateValue();
                         var dEnd = oPickerEnd.getDateValue();
 
-                        if (!bEdit) {
+                        if (!bEdit && dStart && oPickerStart.isValidValue()) {
                             var dToday = new Date();
                             dToday.setHours(0, 0, 0, 0);
                             var dStartCompare = new Date(dStart.getTime());
                             dStartCompare.setHours(0, 0, 0, 0);
 
                             if (dStartCompare < dToday) {
-                                MessageBox.error(oBundle.getText("startDatePastError"));
-                                return;
+                                oPickerStart.setValueState("Error");
+                                oPickerStart.setValueStateText(oBundle.getText("startDatePastError"));
+                                bHasError = true;
                             }
                         }
 
-                        if (dStart && dEnd) {
+                        if (dStart && dEnd && oPickerStart.isValidValue() && oPickerEnd.isValidValue()) {
                             var dStartCompare = new Date(dStart.getTime());
                             dStartCompare.setHours(0, 0, 0, 0);
                             var dEndCompare = new Date(dEnd.getTime());
                             dEndCompare.setHours(0, 0, 0, 0);
 
                             if (dEndCompare <= dStartCompare) {
-                                MessageBox.error(oBundle.getText("endDateBeforeStartError"));
-                                return;
+                                oPickerEnd.setValueState("Error");
+                                oPickerEnd.setValueStateText(oBundle.getText("endDateBeforeStartError"));
+                                bHasError = true;
                             }
+                        }
+
+                        if (bHasError) {
+                            return;
+                        }
+
+                        // Duplicate Name Check
+                        var aProjects = that.getView().getModel("pm").getProperty("/projects") || [];
+                        var bNameExists = aProjects.some(function (p) {
+                            return p.ProjectName && p.ProjectName.trim().toLowerCase() === sName.toLowerCase() && p.ProjectCode !== sCode;
+                        });
+                        if (bNameExists) {
+                            MessageBox.error(oBundle.getText("projectNameExistsError") || "Project name already exists.");
+                            return;
                         }
 
                         var toUTC = function (d) {

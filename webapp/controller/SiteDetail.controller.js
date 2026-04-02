@@ -1151,14 +1151,23 @@ sap.ui.define([
                     if (sVal) {
                         oControl.setValue(sVal.toUpperCase());
                     }
+                    oControl.setValueState("None");
+                    oControl.setValueStateText("");
                 }
             });
-            var oInputName = new Input({ placeholder: oBundle.getText("workItemName") });
+            var oInputName = new Input({
+                placeholder: oBundle.getText("workItemName"),
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
             var dToday = new Date();
             dToday.setHours(0, 0, 0, 0);
 
-            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
-            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", valueFormat: "yyyy-MM-dd", minDate: dToday });
+            var oPickerStart = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", minDate: dToday });
+            var oPickerEnd = new DatePicker({ width: "100%", displayFormat: "dd/MM/yyyy", minDate: dToday });
 
             // Standardize: Disable manual keyboard input, force use of calendar icon
             var oReadonlyDelegate = {
@@ -1173,7 +1182,10 @@ sap.ui.define([
             oPickerEnd.addEventDelegate(oReadonlyDelegate, oPickerEnd);
 
             oPickerStart.attachChange(function (oEvent) {
-                var dNewStart = oEvent.getSource().getDateValue();
+                var oSource = oEvent.getSource();
+                oSource.setValueState("None");
+                oSource.setValueStateText("");
+                var dNewStart = oSource.getDateValue();
                 if (dNewStart) {
                     var dMinEnd = new Date(Math.max(dToday.getTime(), dNewStart.getTime()));
                     dMinEnd.setDate(dMinEnd.getDate() + 1); // End date should be > Start date
@@ -1181,7 +1193,21 @@ sap.ui.define([
                 }
             });
 
-            var oInputQty = new Input({ type: "Number", placeholder: "0" });
+            oPickerEnd.attachChange(function (oEvent) {
+                var oSource = oEvent.getSource();
+                oSource.setValueState("None");
+                oSource.setValueStateText("");
+            });
+
+            var oInputQty = new Input({
+                type: "Number",
+                placeholder: "0",
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                }
+            });
 
             var oSelectUnit = new Select({
                 width: "100%",
@@ -1214,29 +1240,30 @@ sap.ui.define([
                 sDialogTitle = oBundle.getText("editWbs");
                 oInputCode.setValue(oContext.getProperty("WbsCode"));
                 oInputName.setValue(oContext.getProperty("WbsName"));
-                var oStart = oContext.getProperty("StartDate");
-                var oEnd = oContext.getProperty("EndDate");
+                var oStartRaw = oContext.getProperty("StartDate");
+                var oEndRaw = oContext.getProperty("EndDate");
+                var dStartObj = oStartRaw ? (oStartRaw instanceof Date ? oStartRaw : new Date(oStartRaw)) : null;
+                var dEndObj = oEndRaw ? (oEndRaw instanceof Date ? oEndRaw : new Date(oEndRaw)) : null;
 
-                if (oStart) {
-                    oPickerStart.setDateValue(oStart);
+                if (dStartObj && !isNaN(dStartObj.getTime())) {
                     // Prevent error state if existing date is in the past
                     var dStartMin = new Date(dToday);
-                    if (oStart < dToday) {
-                        dStartMin = new Date(oStart);
+                    if (dStartObj < dToday) {
+                        dStartMin = new Date(dStartObj);
                         dStartMin.setHours(0, 0, 0, 0);
                     }
                     oPickerStart.setMinDate(dStartMin);
+                    oPickerStart.setDateValue(dStartObj);
                 }
 
-                if (oEnd) {
-                    oPickerEnd.setDateValue(oEnd);
+                if (dEndObj && !isNaN(dEndObj.getTime())) {
                     var dEndMin = new Date(dToday);
-                    if (oEnd < dToday) {
-                        dEndMin = new Date(oEnd);
+                    if (dEndObj < dToday) {
+                        dEndMin = new Date(dEndObj);
                         dEndMin.setHours(0, 0, 0, 0);
                     }
-                    if (oStart && oStart >= dStartMin) {
-                        var dMinEndFromStart = new Date(oStart);
+                    if (dStartObj && dStartObj >= dStartMin) {
+                        var dMinEndFromStart = new Date(dStartObj);
                         dMinEndFromStart.setHours(0, 0, 0, 0);
                         dMinEndFromStart.setDate(dMinEndFromStart.getDate() + 1);
                         if (dMinEndFromStart > dEndMin) {
@@ -1244,6 +1271,7 @@ sap.ui.define([
                         }
                     }
                     oPickerEnd.setMinDate(dEndMin);
+                    oPickerEnd.setDateValue(dEndObj);
                 }
 
                 var sQty = oContext.getProperty("Quantity");
@@ -1363,14 +1391,35 @@ sap.ui.define([
                         oPickerEnd.setValueState("None");
                         oInputQty.setValueState("None");
 
-                        if (!sWbsCode || !sName || !dStart || !dEnd || !sQty) {
-                            if (!sWbsCode) oInputCode.setValueState("Error");
-                            if (!sName) oInputName.setValueState("Error");
-                            if (!dStart) oPickerStart.setValueState("Error");
-                            if (!dEnd) oPickerEnd.setValueState("Error");
-                            if (!sQty) oInputQty.setValueState("Error");
-                            
-                            MessageBox.error(oBundle.getText("wbsFieldsRequired"));
+                        var bHasError = false;
+
+                        if (!sWbsCode) {
+                            oInputCode.setValueState("Error");
+                            oInputCode.setValueStateText(oBundle.getText("requireWbsCode"));
+                            bHasError = true;
+                        }
+                        if (!sName) {
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("requireWbsName"));
+                            bHasError = true;
+                        }
+                        if (!dStart) {
+                            oPickerStart.setValueState("Error");
+                            oPickerStart.setValueStateText(oBundle.getText("requireWbsStartDate"));
+                            bHasError = true;
+                        }
+                        if (!dEnd) {
+                            oPickerEnd.setValueState("Error");
+                            oPickerEnd.setValueStateText(oBundle.getText("requireWbsEndDate"));
+                            bHasError = true;
+                        }
+                        if (!sQty) {
+                            oInputQty.setValueState("Error");
+                            oInputQty.setValueStateText(oBundle.getText("requireWbsQuantity"));
+                            bHasError = true;
+                        }
+
+                        if (bHasError) {
                             return;
                         }
 
