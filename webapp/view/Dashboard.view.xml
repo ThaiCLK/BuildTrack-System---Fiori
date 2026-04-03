@@ -139,7 +139,7 @@
 
                     <!-- Card 1: WBS Status Donut -->
                     <Panel class="dashboardCard dashboardChartCard" headerText="" expandable="false">
-                        <layoutData><FlexItemData growFactor="1" baseSize="0%"/></layoutData>
+                        <layoutData><FlexItemData growFactor="1.5" baseSize="0%"/></layoutData>
                         <HBox alignItems="Center" class="dashboardCardHeader">
                             <core:Icon src="sap-icon://pie-chart" class="dashboardCardIcon iconBlue"/>
                             <VBox class="sapUiTinyMarginBegin">
@@ -251,13 +251,6 @@
                                     <Text text="{i18n>dashboardTopWbsCompletionDesc}" class="dashboardSubLabel"/>
                                 </VBox>
                             </HBox>
-                            <ComboBox id="cbWbsUnit"
-                                      items="{dashboard>/wbsUnitList}"
-                                      selectionChange=".onFilterChange"
-                                      selectedKey="ALL"
-                                      width="120px">
-                                <core:Item key="{dashboard>Unit}" text="{dashboard>DisplayText}"/>
-                            </ComboBox>
                         </HBox>
                         <viz:VizFrame id="chartWbsProgress"
                             vizType="stacked_bar"

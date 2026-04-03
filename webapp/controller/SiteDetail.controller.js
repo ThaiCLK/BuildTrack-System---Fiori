@@ -93,9 +93,17 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({}), "editModel");
 
             // --- AUTO REFRESH LOGIC ---
+            // Debounce: chỉ refresh sau 1.5 giây kể từ lần focus cuối cùng
+            // để tránh reload liên tục khi người dùng click vào cửa sổ
             this._fnFocusHandler = function () {
                 if (this._sCurrentSiteId) {
-                    this._loadWbsData();
+                    if (this._iFocusDebounce) {
+                        clearTimeout(this._iFocusDebounce);
+                    }
+                    this._iFocusDebounce = setTimeout(function () {
+                        this._iFocusDebounce = null;
+                        this._loadWbsData();
+                    }.bind(this), 1500);
                 }
             }.bind(this);
             window.addEventListener("focus", this._fnFocusHandler);
@@ -104,6 +112,10 @@ sap.ui.define([
         onExit: function () {
             if (this._fnFocusHandler) {
                 window.removeEventListener("focus", this._fnFocusHandler);
+            }
+            if (this._iFocusDebounce) {
+                clearTimeout(this._iFocusDebounce);
+                this._iFocusDebounce = null;
             }
             this._stopPolling();
         },
@@ -189,7 +201,9 @@ sap.ui.define([
                     that.getView().setBusy(false);
                     MessageToast.show(oBundle.getText("siteUpdateSuccess"));
                     that.getView().getModel("viewData").setProperty("/editMode", false);
-                    oModel.refresh(true);
+                    // Chỉ invalidate element binding của view hiện tại, tránh rebuild toàn bộ model
+                    var oBinding = that.getView().getElementBinding();
+                    if (oBinding) { oBinding.refresh(); }
                 },
                 error: function (oError) {
                     that.getView().setBusy(false);
@@ -755,73 +769,119 @@ sap.ui.define([
         onRunWbs: function () {
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
-
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
             if (aIndices.length === 0) {
                 MessageToast.show(oBundle.getText("selectWbsToRunError"));
                 return;
-            } else if (aIndices.length > 1) {
-                MessageToast.show(oBundle.getText("selectOneWbsToRunError"));
-                return;
             }
 
-            var oCtx = oTable.getContextByIndex(aIndices[0]);
-            var oData = oCtx.getObject();
-            var sStatus = oData.Status;
-            var dStartDate = oData.StartDate;
             var dToday = new Date();
             dToday.setHours(0, 0, 0, 0);
-
-            // 1. Check Status
-            if (sStatus !== "OPENED") {
-                MessageBox.warning(oBundle.getText("openedOnlyRunError", [sStatus]));
-                return;
-            }
-
-            // 2. Check Start Date
-            if (dStartDate && new Date(dStartDate) > dToday) {
-                var sFormattedDate = this.formatDate(dStartDate);
-                MessageBox.error(oBundle.getText("startDateRunError", [sFormattedDate]));
-                return;
-            }
-
-            var oModel = this.getOwnerComponent().getModel();
             var that = this;
+            var oModel = this.getOwnerComponent().getModel();
 
-            // Check FS + SS dependency constraints before running
-            var fnRun = function () {
-                MessageBox.confirm(oBundle.getText("runWbsConfirm", [oData.WbsName]), {
+            // 1. Collect and validate all selected WBS
+            var aValid = [];
+            var aSkipped = [];
+
+            aIndices.forEach(function (iIdx) {
+                var oCtx = oTable.getContextByIndex(iIdx);
+                if (!oCtx) return;
+                var oData = oCtx.getObject();
+
+                if (oData.Status !== "OPENED") {
+                    aSkipped.push(oData.WbsName + " (" + oBundle.getText("openedOnlyRunError", [oData.Status]) + ")");
+                } else if (oData.StartDate && new Date(oData.StartDate) > dToday) {
+                    aSkipped.push(oData.WbsName + " (" + oBundle.getText("startDateRunError", [that.formatDate(oData.StartDate)]) + ")");
+                } else {
+                    aValid.push(oData);
+                }
+            });
+
+            if (aSkipped.length > 0 && aValid.length === 0) {
+                MessageBox.warning(oBundle.getText("runWbsAllSkipped") + "\n" + aSkipped.join("\n"));
+                return;
+            }
+
+            if (aValid.length === 0) {
+                MessageToast.show(oBundle.getText("selectWbsToRunError"));
+                return;
+            }
+
+            // 2. Show confirmation listing all valid WBS names
+            var sNames = aValid.map(function (o) { return "• " + o.WbsName; }).join("\n");
+            var sConfirmMsg = oBundle.getText("runMultiWbsConfirm", [aValid.length]) + "\n\n" + sNames;
+            if (aSkipped.length > 0) {
+                sConfirmMsg += "\n\n" + oBundle.getText("runWbsSkippedNote", [aSkipped.length]);
+            }
+
+            // 3. Dependency check then confirm
+            var fnRunAll = function () {
+                MessageBox.confirm(sConfirmMsg, {
                     title: oBundle.getText("confirmRunWbs"),
                     onClose: function (sAction) {
-                        if (sAction === MessageBox.Action.OK) {
-                            that.getView().setBusy(true);
-                            oModel.update("/WBSSet(guid'" + oData.WbsId + "')", { Status: "IN_PROGRESS" }, {
-                                success: function () {
-                                    that.getView().setBusy(false);
-                                    MessageToast.show(oBundle.getText("wbsRunSuccess"));
-                                    oTable.clearSelection();
-                                    that._loadWbsData();
-                                    // Status computation is now handled by Backend
-                                    oModel.refresh(true);
-                                },
-                                error: function (oError) {
-                                    that.getView().setBusy(false);
-                                    that._showError(oError, "wbsRunError");
-                                }
+                        if (sAction !== MessageBox.Action.OK) return;
+
+                        that.getView().setBusy(true);
+                        var aSuccess = [];
+                        var aFailed = [];
+
+                        // Run sequentially: reduce into a Promise chain
+                        aValid.reduce(function (pChain, oWbs) {
+                            return pChain.then(function () {
+                                return new Promise(function (resolve) {
+                                    oModel.update("/WBSSet(guid'" + oWbs.WbsId + "')", { Status: "IN_PROGRESS" }, {
+                                        success: function () {
+                                            aSuccess.push(oWbs.WbsName);
+                                            resolve();
+                                        },
+                                        error: function () {
+                                            aFailed.push(oWbs.WbsName);
+                                            resolve(); // Don't break chain on error
+                                        }
+                                    });
+                                });
                             });
-                        }
+                        }, Promise.resolve()).then(function () {
+                            that.getView().setBusy(false);
+                            oTable.clearSelection();
+
+                            // Build summary message
+                            var sSummary = "";
+                            if (aSuccess.length > 0) {
+                                sSummary += oBundle.getText("runWbsMultiSuccess", [aSuccess.length]) + "\n" +
+                                    aSuccess.map(function (n) { return "✓ " + n; }).join("\n");
+                            }
+                            if (aFailed.length > 0) {
+                                if (sSummary) sSummary += "\n\n";
+                                sSummary += oBundle.getText("runWbsMultiFailed", [aFailed.length]) + "\n" +
+                                    aFailed.map(function (n) { return "✗ " + n; }).join("\n");
+                            }
+
+                            if (aFailed.length === 0) {
+                                MessageToast.show(oBundle.getText("runWbsMultiSuccess", [aSuccess.length]));
+                            } else {
+                                MessageBox.warning(sSummary);
+                            }
+
+                            that._loadWbsData();
+                            oModel.refresh(true);
+                        });
                     }
                 });
             };
 
-            if (typeof that.validateDependencyOnRun === "function") {
-                that.validateDependencyOnRun(oData.WbsId).then(fnRun).catch(function (sMsg) {
+            // Run dependency validation only for the first valid WBS (or skip if not available)
+            if (typeof that.validateDependencyOnRun === "function" && aValid.length === 1) {
+                that.validateDependencyOnRun(aValid[0].WbsId).then(fnRunAll).catch(function (sMsg) {
                     MessageBox.error(sMsg, { title: oBundle.getText("depDependencyViolationTitle") || "Dependency Constraint" });
                 });
             } else {
-                fnRun();
+                fnRunAll();
             }
         },
+
 
         // ── WBS: PENDING APPROVAL LOGIC ───────────────────────────────────────
         onApproveWbs: function () {
@@ -1396,9 +1456,14 @@ sap.ui.define([
                             oPickerEnd.setValueStateText(oBundle.getText("requireWbsEndDate"));
                             bHasError = true;
                         }
+                        var fQty = parseFloat(sQty);
                         if (!sQty) {
                             oInputQty.setValueState("Error");
                             oInputQty.setValueStateText(oBundle.getText("requireWbsQuantity"));
+                            bHasError = true;
+                        } else if (isNaN(fQty) || fQty <= 0) {
+                            oInputQty.setValueState("Error");
+                            oInputQty.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
                             bHasError = true;
                         }
 

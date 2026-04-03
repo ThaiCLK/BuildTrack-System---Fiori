@@ -22,6 +22,12 @@ sap.ui.define([
             return oBundle.getText("wbsDetailTitle", [sWbsName || ""]);
         },
 
+        formatQuantityInt: function (v) {
+            if (!v) return "0";
+            var f = parseFloat(v);
+            return isNaN(f) ? "0" : Math.round(f).toString();
+        },
+
 
         /* =========================================================== */
         /* LIFECYCLE                                                    */
@@ -48,6 +54,25 @@ sap.ui.define([
         /* =========================================================== */
         onEditWbs: function () {
             this.getView().getModel("viewData").setProperty("/editMode", true);
+
+            // Set minDate only when entering edit mode and binding context is already loaded
+            var oCtx = this.getView().getBindingContext();
+            if (oCtx) {
+                var oToday = new Date();
+                oToday.setHours(0, 0, 0, 0);
+
+                var dStart = oCtx.getProperty("StartDate");
+                var dEnd = oCtx.getProperty("EndDate");
+
+                // Allow existing past dates: use actual date as minDate so no validation error
+                var oMinStart = (dStart && dStart < oToday) ? dStart : oToday;
+                var oMinEnd = (dEnd && dEnd < oToday) ? dEnd : oToday;
+
+                var oStartPicker = this.byId("inWbsStartDate");
+                var oEndPicker = this.byId("inWbsEndDate");
+                if (oStartPicker) { oStartPicker.setMinDate(oMinStart); }
+                if (oEndPicker) { oEndPicker.setMinDate(oMinEnd); }
+            }
         },
 
         onCancelWbs: function () {
@@ -59,6 +84,12 @@ sap.ui.define([
             }
             // Revert location model changes by reloading
             this._loadLocation(this._sWbsId);
+
+            // Clear minDate to avoid validation errors when viewing existing past-dated records
+            var oStartPicker = this.byId("inWbsStartDate");
+            var oEndPicker = this.byId("inWbsEndDate");
+            if (oStartPicker) { oStartPicker.setMinDate(null); oStartPicker.setValueState("None"); }
+            if (oEndPicker) { oEndPicker.setMinDate(null); oEndPicker.setValueState("None"); }
         },
 
         onSaveWbs: function () {
@@ -124,6 +155,20 @@ sap.ui.define([
                     var dStart = oStartDatePicker ? oStartDatePicker.getDateValue() : null;
                     var dEnd = oEndDatePicker ? oEndDatePicker.getDateValue() : null;
 
+                    // Validate: end date must be after start date
+                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
+                    if (dStart && dEnd && dEnd <= dStart) {
+                        if (oEndDatePicker) {
+                            oEndDatePicker.setValueState("Error");
+                            oEndDatePicker.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
+                        }
+                        reject(new Error(oBundle.getText("wbsEndDateBeforeStartDateError")));
+                        return;
+                    }
+                    // Clear error state if valid
+                    if (oStartDatePicker) { oStartDatePicker.setValueState("None"); }
+                    if (oEndDatePicker) { oEndDatePicker.setValueState("None"); }
+
                     var oPayloadWbs = {
                         WbsName: that.byId("inWbsName").getValue(),
                         WbsCode: that.byId("inWbsCode").getValue(),
@@ -159,6 +204,13 @@ sap.ui.define([
                     // Force refresh to update display text mappings seamlessly
                     oModel.refresh(true);
                 }).catch(function (oError) {
+                    // If it's a client-side validation error (date check), stay in edit mode
+                    // The inline ValueState on the DatePicker already shows the message
+                    if (oError && oError.message && !oError.responseText) {
+                        // Client-side error: just keep edit mode open, no MessageBox
+                        return;
+                    }
+                    // OData/network error: show dialog and exit edit mode
                     that._showError(oError, "updateError");
                     that.getView().getModel("viewData").setProperty("/editMode", false);
                     if (oModel.hasPendingChanges()) {
@@ -216,40 +268,48 @@ sap.ui.define([
             this.getView().setModel(oViewData, "viewData");
 
             // --- AUTO REFRESH LOGIC ---
+            // Debounce: chỉ refresh sau 1.5 giây kể từ lần focus cuối cùng
+            // để tránh reload liên tục khi người dùng click vào cửa sổ / tab
             this._fnFocusHandler = function () {
                 if (window.location.hash.indexOf("/WBS/") !== -1 && this._sWbsId) {
-                    var oModel = this.getOwnerComponent().getModel();
-                    // Explicitly fetch data to bypass refresh() blocks (e.g., pending changes)
-                    oModel.read("/WBSSet(guid'" + this._sWbsId + "')", {
-                        urlParameters: { "$expand": "ToApprovalLog" },
-                        headers: {
-                            "Cache-Control": "no-cache, no-store, must-revalidate",
-                            "Pragma": "no-cache",
-                            "Expires": "0"
-                        },
-                        success: function (oData) {
-                            var sPath = "/WBSSet(guid'" + this._sWbsId + "')";
-                            var bStatusChanged = oModel.getProperty(sPath + "/Status") !== oData.Status;
+                    if (this._iFocusDebounce) {
+                        clearTimeout(this._iFocusDebounce);
+                    }
+                    this._iFocusDebounce = setTimeout(function () {
+                        this._iFocusDebounce = null;
+                        var oModel = this.getOwnerComponent().getModel();
+                        // Explicitly fetch data to bypass refresh() blocks (e.g., pending changes)
+                        oModel.read("/WBSSet(guid'" + this._sWbsId + "')", {
+                            urlParameters: { "$expand": "ToApprovalLog" },
+                            headers: {
+                                "Cache-Control": "no-cache, no-store, must-revalidate",
+                                "Pragma": "no-cache",
+                                "Expires": "0"
+                            },
+                            success: function (oData) {
+                                var sPath = "/WBSSet(guid'" + this._sWbsId + "')";
+                                var bStatusChanged = oModel.getProperty(sPath + "/Status") !== oData.Status;
 
-                            // Manually run check to ensure buttons appear without relying on view binding events
-                            this._checkIfActionable(this._sWbsId, oData.Status);
+                                // Manually run check to ensure buttons appear without relying on view binding events
+                                this._checkIfActionable(this._sWbsId, oData.Status);
 
-                            // Force OData V2 model to notify bindings
-                            if (bStatusChanged) {
-                                oModel.setProperty(sPath + "/Status", oData.Status);
-                            }
-                            if (oModel.getProperty(sPath + "/Quantity") !== oData.Quantity) {
-                                oModel.setProperty(sPath + "/Quantity", oData.Quantity);
-                            }
+                                // Force OData V2 model to notify bindings
+                                if (bStatusChanged) {
+                                    oModel.setProperty(sPath + "/Status", oData.Status);
+                                }
+                                if (oModel.getProperty(sPath + "/Quantity") !== oData.Quantity) {
+                                    oModel.setProperty(sPath + "/Quantity", oData.Quantity);
+                                }
 
-                            if (typeof this._loadWorkSummary === "function") {
-                                this._loadWorkSummary(this._sWbsId);
-                            }
-                            if (typeof this.updateProcessFlow === "function") {
-                                this.updateProcessFlow(this._aGlobalLogs || []);
-                            }
-                        }.bind(this)
-                    });
+                                if (typeof this._loadWorkSummary === "function") {
+                                    this._loadWorkSummary(this._sWbsId);
+                                }
+                                if (typeof this.updateProcessFlow === "function") {
+                                    this.updateProcessFlow(this._aGlobalLogs || []);
+                                }
+                            }.bind(this)
+                        });
+                    }.bind(this), 1500);
                 }
             }.bind(this);
             window.addEventListener("focus", this._fnFocusHandler);
@@ -267,6 +327,10 @@ sap.ui.define([
         onExit: function () {
             if (this._fnFocusHandler) {
                 window.removeEventListener("focus", this._fnFocusHandler);
+            }
+            if (this._iFocusDebounce) {
+                clearTimeout(this._iFocusDebounce);
+                this._iFocusDebounce = null;
             }
             this._stopPolling();
         },
@@ -353,20 +417,6 @@ sap.ui.define([
                 oApprovalModel.setProperty("/selectedLog", {});
                 oApprovalModel.setProperty("/ui/isSelected", false);
             }
-
-            var oToday = new Date();
-            oToday.setHours(0, 0, 0, 0);
-
-            var sPath = "/WBSSet(guid'" + this._sWbsId + "')";
-            var dStart = oModel.getProperty(sPath + "/StartDate");
-            var dEnd = oModel.getProperty(sPath + "/EndDate");
-
-            // Avoid console errors by allowing existing past dates as minDate
-            var oMinStart = (dStart && dStart < oToday) ? dStart : oToday;
-            var oMinEnd = (dEnd && dEnd < oToday) ? dEnd : oToday;
-
-            this.byId("inWbsStartDate").setMinDate(oMinStart);
-            this.byId("inWbsEndDate").setMinDate(oMinEnd);
 
             this._startPolling();
         },

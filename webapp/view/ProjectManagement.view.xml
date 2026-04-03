@@ -64,7 +64,7 @@
                 <Table id="projectTable"
                     inset="false"
                     growing="true"
-                    growingThreshold="20"
+                    growingThreshold="10"
                     alternateRowColors="true"
                     items="{ path: 'pm>/projects', sorter: { path: 'ProjectCode', descending: false } }">
 

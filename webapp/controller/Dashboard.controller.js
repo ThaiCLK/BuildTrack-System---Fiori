@@ -9,6 +9,15 @@ sap.ui.define([
     "use strict";
 
     // ── SAP Fiori chart color palette ──────────────────────────────────────
+    // ── SAP Status color palette ──────────────────────────────────────
+    const STATUS_COLORS = {
+        "PLANNING": "#5899DA",       // Blue
+        "IN_PROGRESS": "#19A979",    // Green
+        "OPENED": "#E8743B",         // Orange
+        "CLOSED": "#7F8489",         // Grey
+        "REJECTED": "#DC0D0E"        // Red
+    };
+
     var SAP_COLORS = ["#5899DA", "#E8743B", "#19A979", "#ED4A7B", "#945ECF", "#13A4B4", "#525DF4", "#BF399E"];
 
     return Controller.extend("z.bts.buildtrack551.controller.Dashboard", {
@@ -68,6 +77,16 @@ sap.ui.define([
                     });
                 }
             });
+
+            // Handle language change
+            sap.ui.getCore().attachLocalizationChanged(function () {
+                // Small delay to ensure i18n model has finished loading the new properties file
+                setTimeout(function() {
+                    var oCombo = this.byId("cbProject");
+                    var sKey = oCombo ? oCombo.getSelectedKey() : null;
+                    this._buildCharts(sKey || null);
+                }.bind(this), 300);
+            }.bind(this));
         },
 
         // ── onAfterRendering ───────────────────────────────────────────────
@@ -75,14 +94,12 @@ sap.ui.define([
             var that = this;
             // Apply SAP Fiori color palette to VizFrame charts after render
             var aChartIds = ["chartWbsStatus", "chartWbsPerSite", "chartDailyOutput", "chartWbsProgress"];
+            // Apply initial properties to VizFrame charts after render
+            var aChartIds = ["chartWbsStatus", "chartWbsPerSite", "chartDailyOutput", "chartWbsProgress"];
             aChartIds.forEach(function (sId) {
                 var oViz = that.byId(sId);
                 if (oViz) {
                     oViz.setVizProperties({
-                        plotArea: {
-                            colorPalette: SAP_COLORS,
-                            dataLabel: { visible: false }
-                        },
                         legend: { visible: true },
                         interaction: { selectability: { mode: "EXCLUSIVE" } }
                     });
@@ -191,11 +208,14 @@ sap.ui.define([
 
         // Wait until all 4 entity sets are loaded before building charts
         _checkAndBuildCharts: function () {
-            if (this._allProjects.length >= 0 &&
-                this._allSites.length >= 0 &&
-                this._allWbs.length >= 0 &&
-                this._allLogs.length >= 0) {
-                this._buildCharts(null);
+            if (this._allProjects &&
+                this._allSites &&
+                this._allWbs &&
+                this._allLogs) {
+                
+                var oCombo = this.byId("cbProject");
+                var sKey = oCombo ? oCombo.getSelectedKey() : null;
+                this._buildCharts(sKey || null);
             }
         },
 
@@ -216,29 +236,14 @@ sap.ui.define([
                 }.bind(this));
             }
 
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-
-            var formatStatus = function (s) {
-                var m = {
-                    "PLANNING": oBundle.getText("planning"),
-                    "OPENED": oBundle.getText("opened"),
-                    "IN_PROGRESS": oBundle.getText("inProgress"),
-                    "CLOSED": oBundle.getText("closed"),
-                    "REJECTED": oBundle.getText("rejected"),
-                    "OPEN_REJECTED": oBundle.getText("openRejectedStatus") || "Open Rejected",
-                    "CLOSE_REJECTED": oBundle.getText("closeRejectedStatus") || "Close Rejected"
-                };
-                return m[s] || s;
-            };
+            var oBundle = this.getOwnerComponent().getModel("i18n").getResourceBundle();
 
             var aStatusOrder = [
-                oBundle.getText("planning"),
-                oBundle.getText("opened"),
-                oBundle.getText("inProgress"),
-                oBundle.getText("closed"),
-                oBundle.getText("rejected"),
-                oBundle.getText("openRejectedStatus") || "Open Rejected",
-                oBundle.getText("closeRejectedStatus") || "Close Rejected"
+                { key: "PLANNING", label: oBundle.getText("planning") },
+                { key: "OPENED", label: oBundle.getText("opened") },
+                { key: "IN_PROGRESS", label: oBundle.getText("inProgress") },
+                { key: "CLOSED", label: oBundle.getText("closed") },
+                { key: "REJECTED", label: oBundle.getText("rejected") }
             ];
 
             // Filter sites by project
@@ -261,62 +266,90 @@ sap.ui.define([
 
             // ── Chart 1: WBS Status (Donut) ──────────────────────────────
             var oStatusMap = {};
+            var iTotalWbs = 0;
             aFilteredWbs.forEach(function (w) {
-                var sRawStatus = w.Status || "Unknown";
-                if (sRawStatus === "PENDING_OPEN" || sRawStatus === "PENDING_CLOSE") return;
-                var sStatus = formatStatus(sRawStatus);
-                oStatusMap[sStatus] = (oStatusMap[sStatus] || 0) + 1;
+                var sStatusKey = w.Status || "Unknown";
+                if (sStatusKey === "PENDING_OPEN" || sStatusKey === "PENDING_CLOSE") return;
+                
+                // Combine all rejected types into one
+                if (sStatusKey === "OPEN_REJECTED" || sStatusKey === "CLOSE_REJECTED") {
+                    sStatusKey = "REJECTED";
+                }
+                
+                oStatusMap[sStatusKey] = (oStatusMap[sStatusKey] || 0) + 1;
+                iTotalWbs++;
             });
-            var aStatusChart = Object.keys(oStatusMap).map(function (s) {
-                return { status: s, count: oStatusMap[s] };
-            });
-            aStatusChart.sort(function (a, b) {
-                var idxA = aStatusOrder.indexOf(a.status);
-                var idxB = aStatusOrder.indexOf(b.status);
-                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+
+            var aStatusChart = [];
+            var aDonutRules = [];
+
+            aStatusOrder.forEach(function (item) {
+                if (oStatusMap[item.key] > 0) {
+                    var iCount = oStatusMap[item.key];
+                    var fPct = iTotalWbs > 0 ? (iCount / iTotalWbs * 100) : 0;
+                    var sLabelWithPct = item.label + " (" + fPct.toFixed(1) + "%)";
+                    
+                    aStatusChart.push({ status: sLabelWithPct, count: iCount });
+                    
+                    aDonutRules.push({
+                        dataContext: { "Status": sLabelWithPct },
+                        properties: { color: STATUS_COLORS[item.key] },
+                        displayName: sLabelWithPct
+                    });
+                }
             });
             oDash.setProperty("/wbsStatusChart", aStatusChart);
+            oDash.setProperty("/donutRules", aDonutRules);
 
             // ── Chart 2: WBS per Site (Stacked Bar) ──────────────────────
-            var oSiteStatusMap = {}; // { siteId: { siteName, statusMap } }
+            var oSiteStatusMap = {}; // { siteName: { statusKey: count } }
             var oSiteById = {};
             aFilteredSites.forEach(function (s) { oSiteById[s.SiteId] = s.SiteName || s.SiteCode || s.SiteId; });
 
+            var oActiveStatusKeysInBar = {};
             aFilteredWbs.forEach(function (w) {
-                var sRawStatus = w.Status || "Unknown";
-                if (sRawStatus === "PENDING_OPEN" || sRawStatus === "PENDING_CLOSE") return;
+                var sStatusKey = w.Status || "Unknown";
+                if (sStatusKey === "PENDING_OPEN" || sStatusKey === "PENDING_CLOSE") return;
+                
+                // Combine all rejected types into one
+                if (sStatusKey === "OPEN_REJECTED" || sStatusKey === "CLOSE_REJECTED") {
+                    sStatusKey = "REJECTED";
+                }
+                
                 var sSiteName = oSiteById[w.SiteId] || "Unknown";
-                var sStatus = formatStatus(sRawStatus);
                 if (!oSiteStatusMap[sSiteName]) { oSiteStatusMap[sSiteName] = {}; }
-                oSiteStatusMap[sSiteName][sStatus] = (oSiteStatusMap[sSiteName][sStatus] || 0) + 1;
+                oSiteStatusMap[sSiteName][sStatusKey] = (oSiteStatusMap[sSiteName][sStatusKey] || 0) + 1;
+                oActiveStatusKeysInBar[sStatusKey] = true;
             });
 
             var aPerSiteFlat = [];
+            var aBarColors = [];
+
+            // Colors for bar must match the order of statuses that appear in the chart
+            aStatusOrder.forEach(function (item) {
+                if (oActiveStatusKeysInBar[item.key]) {
+                    aBarColors.push(STATUS_COLORS[item.key]);
+                }
+            });
+
             Object.keys(oSiteStatusMap).forEach(function (sSite) {
-                aStatusOrder.forEach(function (sStatus) {
-                    if (oSiteStatusMap[sSite][sStatus] !== undefined) {
-                        aPerSiteFlat.push({ site: sSite, status: sStatus, count: oSiteStatusMap[sSite][sStatus] });
-                    }
-                });
-                Object.keys(oSiteStatusMap[sSite]).forEach(function (s) {
-                    if (aStatusOrder.indexOf(s) === -1) {
-                        aPerSiteFlat.push({ site: sSite, status: s, count: oSiteStatusMap[sSite][s] });
+                aStatusOrder.forEach(function (item) {
+                    if (oSiteStatusMap[sSite][item.key] !== undefined) {
+                        aPerSiteFlat.push({ site: sSite, status: item.label, count: oSiteStatusMap[sSite][item.key] });
                     }
                 });
             });
             oDash.setProperty("/wbsPerSiteChart", aPerSiteFlat);
+            oDash.setProperty("/barColors", aBarColors);
 
             // ── Chart 3: Daily Output Line Chart (last 14 days) ───────────
             var oCutoff = new Date();
             oCutoff.setDate(oCutoff.getDate() - 14);
             var oDayMap = {};
 
-            var sUnit = this.byId("cbWbsUnit") ? this.byId("cbWbsUnit").getSelectedKey() : "ALL";
-            if (!sUnit) sUnit = "ALL";
 
             aFilteredLogs.forEach(function (l) {
                 if (!l.LogDate) { return; }
-                // OData DateTime: "/Date(ms)/"
                 var ms = typeof l.LogDate === "object" ? l.LogDate.getTime() : parseInt((l.LogDate + "").replace(/[^0-9]/g, ""), 10);
                 var oDate = new Date(ms);
                 if (oDate < oCutoff) { return; }
@@ -325,33 +358,24 @@ sap.ui.define([
                 
                 var oMatchWbs = aFilteredWbs.find(function(w) { return w.WbsId === l.WbsId; });
                 if (oMatchWbs) {
-                    var bMatchUnit = (sUnit === "ALL") || (oMatchWbs.UnitCode === sUnit);
-                    if (bMatchUnit) {
-                        var fLogQty = parseFloat(l.QuantityDone) || 0;
-                        var fWbsQty = parseFloat(oMatchWbs.Quantity) || 1; 
-                        var fPct = (fLogQty / fWbsQty) * 100;
-                        oDayMap[sDay] = (oDayMap[sDay] || 0) + fPct;
-                    }
+                    var fLogQty = parseFloat(l.QuantityDone) || 0;
+                    var fWbsQty = parseFloat(oMatchWbs.Quantity) || 1; 
+                    var fPct = (fLogQty / fWbsQty) * 100;
+                    oDayMap[sDay] = (oDayMap[sDay] || 0) + fPct;
                 }
             });
 
-            // Sort by date
             var aDailyChart = Object.keys(oDayMap).sort().map(function (d) {
                 return { date: d, quantity: Math.round(oDayMap[d] * 100) / 100 };
             });
-            // If no log data, show a friendly empty message placeholder
             if (aDailyChart.length === 0) {
                 aDailyChart = [{ date: "---", quantity: 0 }];
             }
             oDash.setProperty("/dailyOutputChart", aDailyChart);
 
             // ── Chart 4: Top WBS Progress (Stacked Done vs Remaining) ─────
-
-            // Only leaf WBS with Quantity > 0 and TotalQuantityDone > 0, matching Unit, top 10
             var aLeafWbs = aFilteredWbs.filter(function (w) {
-                var bHasQuantity = parseFloat(w.Quantity) > 0 && parseFloat(w.TotalQuantityDone) > 0;
-                var bMatchUnit = (sUnit === "ALL") || (w.UnitCode === sUnit);
-                return bHasQuantity && bMatchUnit;
+                return parseFloat(w.Quantity) > 0 && parseFloat(w.TotalQuantityDone) > 0;
             });
             aLeafWbs.sort(function (a, b) { 
                 var pctA = (parseFloat(a.TotalQuantityDone) || 0) / (parseFloat(a.Quantity) || 1);
@@ -364,11 +388,8 @@ sap.ui.define([
             aTopWbs.forEach(function (w) {
                 var fTotal = parseFloat(w.Quantity) || 1;
                 var fDone = Math.min(parseFloat(w.TotalQuantityDone) || 0, fTotal);
-                
                 var fDonePct = (fDone / fTotal) * 100;
                 var fRemPct = 100 - fDonePct;
-
-                // Ensure full name to prevent category grouping issues in VizFrame
                 var sName = w.WbsName || w.WbsCode || "WBS";
 
                 aProgressChart.push({ wbsName: sName, type: oBundle.getText("done") + " (%)", value: Math.round(fDonePct * 100) / 100 });
@@ -379,19 +400,40 @@ sap.ui.define([
             }
             oDash.setProperty("/wbsProgressChart", aProgressChart);
 
-            // Re-apply chart properties after data update
             this._applyVizProperties();
         },
 
-        // ── Apply VizFrame visual properties ──────────────────────────────
+        // ── Apply VizFrame visual properties with robust rules ──────────────────
         _applyVizProperties: function () {
             var that = this;
+            var oDash = this.getView().getModel("dashboard");
+            var oBundle = this.getOwnerComponent().getModel("i18n").getResourceBundle();
+
+            // Status key to Translated Label map for rules
+            var aStatuses = [
+                { key: "PLANNING", label: oBundle.getText("planning") },
+                { key: "OPENED", label: oBundle.getText("opened") },
+                { key: "IN_PROGRESS", label: oBundle.getText("inProgress") },
+                { key: "CLOSED", label: oBundle.getText("closed") },
+                { key: "REJECTED", label: oBundle.getText("rejected") }
+            ];
+
+            var aRules = aStatuses.map(function(s) {
+                return {
+                    dataContext: { "Status": s.label },
+                    properties: { color: STATUS_COLORS[s.key] },
+                    displayName: s.label
+                };
+            });
 
             // Donut
             var oDonut = that.byId("chartWbsStatus");
             if (oDonut) {
                 oDonut.setVizProperties({
-                    plotArea: { colorPalette: SAP_COLORS, dataLabel: { visible: true, type: "percentage" } },
+                    plotArea: { 
+                        dataPointStyle: { rules: oDash.getProperty("/donutRules") || [] },
+                        dataLabel: { visible: false } 
+                    },
                     title: { visible: false },
                     legend: { visible: true, title: { visible: false } }
                 });
@@ -401,7 +443,10 @@ sap.ui.define([
             var oStackedSite = that.byId("chartWbsPerSite");
             if (oStackedSite) {
                 oStackedSite.setVizProperties({
-                    plotArea: { colorPalette: SAP_COLORS, dataLabel: { visible: false } },
+                    plotArea: { 
+                        dataPointStyle: { rules: aRules },
+                        dataLabel: { visible: false } 
+                    },
                     title: { visible: false },
                     legend: { visible: true, title: { visible: false } },
                     categoryAxis: { title: { visible: false } },

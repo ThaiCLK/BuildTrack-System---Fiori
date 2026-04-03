@@ -413,6 +413,19 @@ sap.ui.define([
               var sMsg = oBundle.getText("languageChanged", [sKey === "vi" ? oBundle.getText("vietnamese") : oBundle.getText("english")]);
               sap.m.MessageToast.show(sMsg);
           }
+      },
+
+      formatUserRole: function (iAuthLevel) {
+          var oBundle = (this.getOwnerComponent() ? this.getOwnerComponent().getModel("i18n") : this.getView().getModel("i18n")).getResourceBundle();
+          var level = parseInt(iAuthLevel, 10);
+          switch (level) {
+              case 0: return oBundle.getText("roleFieldEngineer");
+              case 1: return oBundle.getText("roleLeadEngineer");
+              case 2: return oBundle.getText("roleSupervisor");
+              case 3: return oBundle.getText("roleInvestor");
+              case 99: return oBundle.getText("roleSystemAdmin");
+              default: return oBundle.getText("unknown");
+          }
       }
   });
 });

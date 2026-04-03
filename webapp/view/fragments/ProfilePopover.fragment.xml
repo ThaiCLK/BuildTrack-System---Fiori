@@ -11,7 +11,7 @@
                 <Title text="{i18n>roleDetails}" level="H5" class="sapUiSmallMarginTop"/>
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginTop">
                     <Text text="{i18n>roleLabel}"/>
-                    <Text text="{userModel>/role}" class="sapUiTinyMarginStart"/>
+                    <Text text="{path: 'userModel>/authLevel', formatter: '.formatUserRole'}" class="sapUiTinyMarginStart"/>
                 </HBox>
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginTop">
                     <Text text="{i18n>emailLabel}"/>

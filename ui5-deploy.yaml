@@ -14,7 +14,7 @@ builder:
       afterTask: generateCachebusterInfo
       configuration:
         target:
-          url: https://s35.gb.ucc.cit.tum.de
+          url: https://s35.qb.ucc.cit.tum.de
           client: '302'
         app:
           name: ZBT_BUILDTRACK

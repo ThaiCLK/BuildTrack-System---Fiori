@@ -73,10 +73,26 @@
                         <Text text="{ProjectName}" />
 
                         <Label text="{i18n>completedCumulative}" design="Bold"/>
-                                <ObjectNumber 
-                                    number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" 
-                                    unit="{UnitCode}" 
-                                    state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                                <VBox>
+                                    <ObjectNumber 
+                                        number="{
+                                            path: 'workSummaryModel>/TotalQtyDone',
+                                            type: 'sap.ui.model.type.Float',
+                                            formatOptions: {
+                                                maxFractionDigits: 0,
+                                                groupingEnabled: true
+                                            }
+                                        }" 
+                                        unit="{UnitCode}" 
+                                        state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
+                                    <!-- Chú thích: chỉ hiện khi là WBS cha -->
+                                    <Text
+                                        text="{i18n>parentWbsAggregateNote}"
+                                        visible="{path: 'ParentId', formatter: '.isParentNode'}"
+                                        class="sapUiTinyMarginTop"
+                                        wrapping="true"
+                                        />
+                                </VBox>
                     </f:content>
                 </f:SimpleForm>
             </Panel>
@@ -142,9 +158,25 @@
                             <cells>
                                 <Text text="{workSummaryModel>WbsCode}" />
                                 <Text text="{workSummaryModel>WbsName}" wrapping="true" />
-                                <ObjectNumber number="{path: 'workSummaryModel>Quantity', formatter: '.formatTotalQty'}" unit="{workSummaryModel>UnitCode}" />
                                 <ObjectNumber 
-                                    number="{path: 'workSummaryModel>TotalQtyDone', formatter: '.formatTotalQty'}" 
+                                    number="{
+                                        path: 'workSummaryModel>Quantity',
+                                        type: 'sap.ui.model.type.Float',
+                                        formatOptions: {
+                                            maxFractionDigits: 0,
+                                            groupingEnabled: true
+                                        }
+                                    }" 
+                                    unit="{workSummaryModel>UnitCode}" />
+                                <ObjectNumber 
+                                    number="{
+                                        path: 'workSummaryModel>TotalQtyDone',
+                                        type: 'sap.ui.model.type.Float',
+                                        formatOptions: {
+                                            maxFractionDigits: 0,
+                                            groupingEnabled: true
+                                        }
+                                    }" 
                                     unit="{workSummaryModel>UnitCode}" 
                                     state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" />
                                 

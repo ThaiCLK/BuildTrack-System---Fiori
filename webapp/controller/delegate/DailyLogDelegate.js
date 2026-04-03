@@ -59,7 +59,13 @@ sap.ui.define([
                     
                     // FALLBACK: Force client-side filtering because 
                     // the backend ignores the $filter=WbsId eq '...'
+                    // FALLBACK: Force client-side filtering because 
+                    // the backend ignores the $filter=WbsId eq '...'
                     var aFilteredLogs = aLogs.filter(function(log) {
+                        // Round to integer while we are at it
+                        if (log.QuantityDone !== undefined && log.QuantityDone !== null) {
+                            log.QuantityDone = Math.round(parseFloat(log.QuantityDone) || 0).toString();
+                        }
                         return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
                     });
                     
@@ -152,7 +158,7 @@ sap.ui.define([
                 LogDate: parseDate(oODataLog.LogDate),
                 WeatherAm: oODataLog.WeatherAm || "SUNNY",
                 WeatherPm: oODataLog.WeatherPm || "SUNNY",
-                QuantityDone: oODataLog.QuantityDone !== undefined ? oODataLog.QuantityDone : 0,
+                QuantityDone: oODataLog.QuantityDone !== undefined ? Math.round(parseFloat(oODataLog.QuantityDone) || 0) : 0,
                 UnitCode: oODataLog.UnitCode || "",
                 SafeNote: oODataLog.SafeNote || "",
                 GeneralNote: oODataLog.GeneralNote || "",
@@ -768,7 +774,12 @@ sap.ui.define([
                 success: function (oData) {
                     oUIModel.setProperty("/ui/busy", false);
                     var bDuplicate = false;
-                    var aLogs = oData.results || [];
+                    var sNormCheckId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
+                    // Client-side filter: backend có thể ignore $filter
+                    var aLogs = (oData.results || []).filter(function (l) {
+                        var sLogId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                        return !sLogId || sLogId === sNormCheckId;
+                    });
                     for (var i = 0; i < aLogs.length; i++) {
                         if (!bIsNew && aLogs[i].LogId === oLog.LogId) {
                             continue;

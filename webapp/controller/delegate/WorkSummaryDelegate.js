@@ -42,9 +42,16 @@ sap.ui.define([
                 WbsId: sWbsId
             });
 
+            // Race-condition guard: stamp the current request token.
+            // Callbacks will abort if this token has changed (i.e. user navigated away).
+            this._sWorkSummaryToken = sWbsId;
+
             // 2. Fetch the WBS record to get the ABSOLUTE LATEST ParentId for this ID
             oModel.read("/WBSSet(guid'" + sWbsId + "')", {
                 success: function (oWbs) {
+                    // Abort if user already navigated to another WBS
+                    if (that._sWorkSummaryToken !== sWbsId) { return; }
+
                     var bIsParent = false;
                     var vParentId = oWbs.ParentId;
 
@@ -70,12 +77,16 @@ sap.ui.define([
         },
 
         _loadParentAggregation: function (sWbsId, oWSModel, oModel) {
+            var that = this;
             oModel.read("/WBSSet", {
                 filters: sWbsId ? [new Filter("ParentId", FilterOperator.EQ, sWbsId)] : [],
                 urlParameters: {
                     "$expand": "ToApprovalLog"
                 },
                 success: function (oData) {
+                    // Race-condition guard
+                    if (that._sWorkSummaryToken !== sWbsId) { return; }
+
                     var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
                     var aChildren = (oData.results || []).filter(function (w) {
                         if (!w.ParentId) return false;
@@ -89,12 +100,22 @@ sap.ui.define([
 
                     var iProcessed = 0;
                     aChildren.forEach(function (oChild) {
+                        var sChildId = oChild.WbsId;
+                        var sNormChildId = sChildId ? sChildId.toLowerCase().replace(/-/g, "") : "";
+
                         oModel.read("/DailyLogSet", {
-                            filters: oChild.WbsId ? [new Filter("WbsId", FilterOperator.EQ, oChild.WbsId)] : [],
+                            filters: sChildId ? [new Filter("WbsId", FilterOperator.EQ, sChildId)] : [],
                             success: function (oLogData) {
+                                // Race-condition guard
+                                if (that._sWorkSummaryToken !== sWbsId) { return; }
+
                                 var fSum = 0;
+                                // Client-side filter: backend có thể ignore $filter và trả về tất cả logs
                                 (oLogData.results || []).forEach(function (l) {
-                                    fSum += parseFloat(l.QuantityDone) || 0;
+                                    var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                                    if (!sLogWbsId || sLogWbsId === sNormChildId) {
+                                        fSum += parseFloat(l.QuantityDone) || 0;
+                                    }
                                 });
                                 oChild.TotalQtyDone = Math.round(fSum).toString();
 
@@ -113,6 +134,7 @@ sap.ui.define([
                                 }
                             },
                             error: function () {
+                                if (that._sWorkSummaryToken !== sWbsId) { return; }
                                 iProcessed++;
                                 if (iProcessed === aChildren.length) {
                                     oWSModel.setProperty("/Children", aChildren);
@@ -129,12 +151,22 @@ sap.ui.define([
 
         _loadLeafNodeAggregation: function (sWbsId, oWSModel, oModel) {
             var that = this;
+            var sNormWbsId = sWbsId ? sWbsId.toLowerCase().replace(/-/g, "") : "";
+
             oModel.read("/DailyLogSet", {
                 filters: sWbsId ? [new Filter("WbsId", FilterOperator.EQ, sWbsId)] : [],
                 success: function (oData) {
+                    // Race-condition guard: nếu user đã navigate sang WBS khác thì bỏ qua
+                    if (that._sWorkSummaryToken !== sWbsId) { return; }
+
                     var fTotal = 0;
+                    // Client-side filter: backend có thể ignore $filter và trả về tất cả logs
+                    // Nếu WbsId trên log không khớp thì bỏ qua (tránh hiện data của WBS khác)
                     (oData.results || []).forEach(function (oLog) {
-                        fTotal += parseFloat(oLog.QuantityDone) || 0;
+                        var sLogWbsId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
+                        if (!sLogWbsId || sLogWbsId === sNormWbsId) {
+                            fTotal += parseFloat(oLog.QuantityDone) || 0;
+                        }
                     });
 
                     oWSModel.setData({

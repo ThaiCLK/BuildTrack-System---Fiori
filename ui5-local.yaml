@@ -42,5 +42,7 @@ server:
             url: https://s35.gb.ucc.cit.tum.de
             client: "302"
             authenticationType: "basic"
+            username: "${SAP_USER}"
+            password: "${SAP_PASSWORD}"
           - path: /rag
             url: http://localhost:4001

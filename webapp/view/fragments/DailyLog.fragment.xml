@@ -87,8 +87,15 @@
                                 formatOptions: { pattern: 'dd/MM/yyyy' }
                             }"/>
                             <ObjectNumber
-                                number="{path: 'dailyLogModel>QuantityDone', formatter: '.formatTotalQty'}"
-                                unit="{UnitCode}"
+                                number="{
+                                    path: 'dailyLogModel>QuantityDone',
+                                    type: 'sap.ui.model.type.Float',
+                                    formatOptions: {
+                                        maxFractionDigits: 0,
+                                        groupingEnabled: true
+                                    }
+                                }"
+                                unit="{dailyLogModel>UnitCode}"
                                 state="None"/>
                         </cells>
                     </ColumnListItem>
@@ -165,7 +172,13 @@
                                 <Label text="{i18n>reportQtyDone}"/>
                                 <HBox alignItems="Center">
                                     <Input
-                                        value="{dailyLogModel>/selectedLog/QuantityDone}"
+                                        value="{
+                                            path: 'dailyLogModel>/selectedLog/QuantityDone',
+                                            type: 'sap.ui.model.type.Float',
+                                            formatOptions: {
+                                                maxFractionDigits: 0
+                                            }
+                                        }"
                                         editable="{dailyLogModel>/ui/editMode}"
                                         width="120px"
                                         type="Number"/>
