@@ -15,13 +15,9 @@ sap.ui.define([
                     return;
                 }
 
-                // Determine base path for local xlsx file
-                var sBase = window.location.pathname.replace(/\/[^/]*$/, "");
-                // Support both /test/flp.html and /index.html contexts
-                if (sBase.indexOf("/test") !== -1) {
-                    sBase = sBase.replace("/test", "");
-                }
-                var sUrl = sBase + "/libs/xlsx.full.min.js";
+                // Resolve the correct URL using SAP UI5's module path system
+                // This works both locally and when deployed on SAP FLP / BSP
+                var sUrl = sap.ui.require.toUrl("z/bts/buildtrack551/libs/xlsx.full.min.js");
 
                 fetch(sUrl)
                     .then(function (response) {

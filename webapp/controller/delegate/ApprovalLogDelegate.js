@@ -1,8 +1,10 @@
 sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
-    "sap/ui/model/json/JSONModel"
-], function (Filter, FilterOperator, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/m/MessageBox",
+    "sap/m/MessageToast"
+], function (Filter, FilterOperator, JSONModel, MessageBox, MessageToast) {
     "use strict";
 
     return {
@@ -23,6 +25,7 @@ sap.ui.define([
             oController.formatApprovalActionState = this.formatApprovalActionState.bind(oController);
             oController.formatApprovalActionIcon = this.formatApprovalActionIcon.bind(oController);
             oController.onLogSelectionChange = this.onLogSelectionChange.bind(oController);
+            oController.onApprovalLogPress = this.onApprovalLogPress.bind(oController);
             oController._initInvestorCanvas = this._initInvestorCanvas.bind(oController);
 
             // Stubs for old references
@@ -206,6 +209,29 @@ sap.ui.define([
 
                     // Show ALL logs regardless of User ID
                     aLogs = aGlobalLogs;
+                    
+                    // Sort: Logs with notes first, then newest timestamp
+                    aLogs.sort(function(a, b) {
+                        var hasNoteA = !!a.ApprovalNote && String(a.ApprovalNote).trim() !== "";
+                        var hasNoteB = !!b.ApprovalNote && String(b.ApprovalNote).trim() !== "";
+                        
+                        if (hasNoteA && !hasNoteB) return -1;
+                        if (!hasNoteA && hasNoteB) return 1;
+                        
+                        // If same note status, sort by date
+                        var dateA = a.CreatedTimestamp;
+                        var dateB = b.CreatedTimestamp;
+                        
+                        // Safely get numeric timestamp
+                        var tA = (dateA instanceof Date) ? dateA.getTime() : 0;
+                        var tB = (dateB instanceof Date) ? dateB.getTime() : 0;
+                        
+                        // If one was not a Date, try constructor
+                        if (tA === 0 && dateA) tA = new Date(dateA).getTime() || 0;
+                        if (tB === 0 && dateB) tB = new Date(dateB).getTime() || 0;
+                        
+                        return tB - tA; // Newest first
+                    });
 
                     if (oLogListModel) oLogListModel.setData(aLogs);
 
@@ -537,6 +563,28 @@ sap.ui.define([
 
         onLogSelectionChange: function (oEvent) {
             // No longer used in the new Dialog-based UX
+        },
+
+        onApprovalLogPress: function (oEvent) {
+            console.log("Approval Log pressed");
+            var oItem = oEvent.getSource();
+            var oCtx = oItem.getBindingContext("logListModel");
+            if (!oCtx) {
+                console.error("Binding context 'logListModel' not found for the selected log item.");
+                return;
+            }
+
+            var oLog = oCtx.getObject();
+            var sNote = oLog.ApprovalNote;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (!sNote || String(sNote).trim() === "") {
+                MessageBox.information(oBundle.getText("approvalLogNoNote"));
+            } else {
+                MessageBox.information(sNote, {
+                    title: oBundle.getText("approvalLogNoteTitle")
+                });
+            }
         },
 
         /* =========================================================== */

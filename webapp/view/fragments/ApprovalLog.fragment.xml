@@ -18,9 +18,11 @@
             <ScrollContainer height="calc(100vh - 250px)" vertical="true" horizontal="false">
                 <List id="idApprovalLogList" 
                     mode="None" 
-                    items="{path: 'logListModel>/', sorter: {path: 'CreatedTimestamp', descending: true}}"
+                    items="{path: 'logListModel>/'}"
                     noDataText="{i18n>noApprovalLogsFound}">
                     <StandardListItem
+                        type="Active"
+                        press=".onApprovalLogPress"
                         title="{logListModel>Action} - {logListModel>WorkItemId}"
                         description="{logListModel>ActionBy}"
                         info="{path: 'logListModel>CreatedTimestamp', type: 'sap.ui.model.type.DateTime', formatOptions: {pattern: 'dd/MM/yyyy HH:mm:ss'}}"

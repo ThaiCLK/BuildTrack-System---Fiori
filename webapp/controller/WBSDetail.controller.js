@@ -763,6 +763,7 @@ sap.ui.define([
     // Mix in ApprovalLogDelegate functions to the controller prototype
     Object.assign(WBSDetailController.prototype, {
         onLogSelectionChange: ApprovalLogDelegate.onLogSelectionChange,
+        onApprovalLogPress: ApprovalLogDelegate.onApprovalLogPress,
         formatApprovalActionText: ApprovalLogDelegate.formatApprovalActionText,
         formatApprovalActionState: ApprovalLogDelegate.formatApprovalActionState,
         formatApprovalActionIcon: ApprovalLogDelegate.formatApprovalActionIcon,
