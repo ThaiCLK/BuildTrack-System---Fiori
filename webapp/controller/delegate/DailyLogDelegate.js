@@ -1173,7 +1173,7 @@ sap.ui.define([
             };
 
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            var fnContinueSave = function () {
+            var fnContinueSave = function (bIsMerging) {
                 oUIModel.setProperty("/ui/busy", true);
                 var fnAfterLog = function (sLogId) {
                     that._saveResourceUse(sLogId, aResourceUse, function () {
@@ -1184,8 +1184,14 @@ sap.ui.define([
                         that._bindDailyLogList(that._sWbsId);
                         that._updateWbsActualDates(that._sWbsId);
                         that._loadWorkSummary(that._sWbsId);
+                        
+                        // If we implicitly merged into an existing log, refresh the resource list to show all
+                        if (bIsMerging) {
+                            that._loadResourceUse(sLogId);
+                        }
+                        
                         MessageToast.show(sToast);
-                    });
+                    }, bIsMerging);
                 };
 
                 if (bIsNew) {
@@ -1217,7 +1223,7 @@ sap.ui.define([
                 filters: oLog.WbsId ? [new Filter("WbsId", FilterOperator.EQ, oLog.WbsId)] : [],
                 success: function (oData) {
                     oUIModel.setProperty("/ui/busy", false);
-                    var bDuplicate = false;
+                    var sExistingLogIdToUpdate = null;
                     var sNormCheckId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
                     // Client-side filter: backend có thể ignore $filter
                     var aLogs = (oData.results || []).filter(function (l) {
@@ -1232,16 +1238,20 @@ sap.ui.define([
                         if (dExisting.getFullYear() === dRaw.getFullYear() &&
                             dExisting.getMonth() === dRaw.getMonth() &&
                             dExisting.getDate() === dRaw.getDate()) {
-                            bDuplicate = true;
+                            sExistingLogIdToUpdate = aLogs[i].LogId;
                             break;
                         }
                     }
 
-                    if (bDuplicate) {
-                        MessageBox.error(oBundle.getText("duplicateLogDateError"));
-                    } else {
-                        fnContinueSave();
+                    var bIsMerging = false;
+                    if (sExistingLogIdToUpdate) {
+                        // Switch to update mode for this existing log
+                        bIsNew = false;
+                        oLog.LogId = sExistingLogIdToUpdate;
+                        bIsMerging = true;
                     }
+                    
+                    fnContinueSave(bIsMerging);
                 },
                 error: function (oError) {
                     oUIModel.setProperty("/ui/busy", false);
@@ -1250,57 +1260,51 @@ sap.ui.define([
             });
         },
 
-        _saveResourceUse: function (sLogId, aResUse, fnSuccess) {
+        _saveResourceUse: function (sLogId, aResUse, fnSuccess, bAppendOnly) {
             var oModel = this.getOwnerComponent().getModel();
+
+            var fnSequentialProcess = function(aOld, aNew) {
+                var iOldIdx = 0;
+                var fnProcessOld = function() {
+                    if (bAppendOnly || iOldIdx >= aOld.length) {
+                        fnProcessNew();
+                        return;
+                    }
+                    var u = aOld[iOldIdx++];
+                    oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
+                        success: fnProcessOld,
+                        error: fnProcessOld
+                    });
+                };
+
+                var iNewIdx = 0;
+                var fnProcessNew = function() {
+                    if (iNewIdx >= aNew.length) {
+                        fnSuccess();
+                        return;
+                    }
+                    var u = aNew[iNewIdx++];
+                    var oPayload = {
+                        ResourceId: u.ResourceId,
+                        LogId: sLogId,
+                        Quantity: String(parseFloat(u.Quantity) || 0)
+                    };
+                    oModel.create("/ResourceUseSet", oPayload, {
+                        success: fnProcessNew,
+                        error: fnProcessNew
+                    });
+                };
+
+                fnProcessOld();
+            };
 
             oModel.read("/ResourceUseSet", {
                 filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
                 success: function (oData) {
-                    var aOld = oData.results || [];
-                    var iTotal = aOld.length + aResUse.length;
-                    var iDone = 0;
-
-                    var fnCheck = function () {
-                        iDone++;
-                        if (iDone >= iTotal) { fnSuccess(); }
-                    };
-
-                    if (iTotal === 0) { fnSuccess(); return; }
-
-                    aOld.forEach(function (u) {
-                        oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
-                            success: fnCheck,
-                            error: fnCheck
-                        });
-                    });
-
-                    aResUse.forEach(function (u) {
-                        var oPayload = {
-                            ResourceId: u.ResourceId,
-                            LogId: sLogId,
-                            Quantity: String(parseFloat(u.Quantity) || 0)
-                        };
-                        oModel.create("/ResourceUseSet", oPayload, {
-                            success: fnCheck,
-                            error: fnCheck
-                        });
-                    });
+                    fnSequentialProcess(oData.results || [], aResUse);
                 },
                 error: function () {
-                    var iTotal = aResUse.length;
-                    var iDone = 0;
-                    if (iTotal === 0) { fnSuccess(); return; }
-                    aResUse.forEach(function (u) {
-                        var oPayload = {
-                            ResourceId: u.ResourceId,
-                            LogId: sLogId,
-                            Quantity: String(parseFloat(u.Quantity) || 0)
-                        };
-                        oModel.create("/ResourceUseSet", oPayload, {
-                            success: function () { if (++iDone >= iTotal) { fnSuccess(); } },
-                            error: function () { if (++iDone >= iTotal) { fnSuccess(); } }
-                        });
-                    });
+                    fnSequentialProcess([], aResUse);
                 }
             });
         },
