@@ -47,21 +47,21 @@
 
                                 <Label text="{i18n>plannedStart}" />
                                 <VBox width="100%">
-                                    <DatePicker id="inWbsStartDate" value="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
+                                    <DatePicker id="inWbsStartDate" class="readonly-datepicker" value="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
                                     <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
                                 <Label text="{i18n>plannedEnd}" />
                                 <VBox width="100%">
-                                    <DatePicker id="inWbsEndDate" value="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
+                                    <DatePicker id="inWbsEndDate" class="readonly-datepicker" value="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{viewData>/editMode}" />
                                     <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
                                 <Label text="{i18n>actualStart}" />
-                                <Text text="{path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <Text text="{path: 'workSummaryModel>/ActualStart', formatter: '.formatActualDate'}" />
 
                                 <Label text="{i18n>actualEnd}" />
-                                <Text text="{path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}" />
+                                <Text text="{path: 'workSummaryModel>/ActualEnd', formatter: '.formatActualDate'}" />
 
                                 <core:Title text="{i18n>metricsAndStatus}" />
 

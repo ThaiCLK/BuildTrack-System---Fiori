@@ -292,10 +292,60 @@ sap.ui.define([
                         return sNameA.localeCompare(sNameB);
                     });
 
-                    var aTreeData = that._transformToTree(aResults);
-                    var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
-                    that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
-                    that.getView().getModel("viewConfig").setData(oGanttConfig);
+                    // Sync actual dates from DailyLog before building Gantt
+                    oModel.read("/DailyLogSet", {
+                        success: function (oLogData) {
+                            var aLogs = oLogData.results || [];
+
+                            // First pass: patch leaf WBS with min/max log dates
+                            aResults.forEach(function (item) {
+                                var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
+                                var dMin = null, dMax = null;
+                                aLogs.forEach(function (l) {
+                                    if ((l.WbsId || "").toLowerCase().replace(/-/g, "") === sId) {
+                                        var d = (l.LogDate instanceof Date) ? l.LogDate : new Date(l.LogDate);
+                                        if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
+                                            if (!dMin || d < dMin) dMin = d;
+                                            if (!dMax || d > dMax) dMax = d;
+                                        }
+                                    }
+                                });
+                                // Always overwrite: use log dates if found, null if not
+                                item.StartActual = dMin;
+                                item.EndActual = dMax;
+                            });
+
+                            // Second pass: aggregate parent dates from children
+                            aResults.forEach(function (item) {
+                                var vPid = item.ParentId;
+                                if (!vPid || String(vPid).replace(/-/g, "").replace(/0/g, "") === "") {
+                                    var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
+                                    var pMin = item.StartActual || null;
+                                    var pMax = item.EndActual || null;
+                                    aResults.forEach(function (c) {
+                                        if ((c.ParentId || "").toLowerCase().replace(/-/g, "") === sId) {
+                                            if (c.StartActual && (!pMin || c.StartActual < pMin)) pMin = c.StartActual;
+                                            if (c.EndActual && (!pMax || c.EndActual > pMax)) pMax = c.EndActual;
+                                        }
+                                    });
+                                    if (pMin) item.StartActual = pMin;
+                                    if (pMax) item.EndActual = pMax;
+                                }
+                            });
+
+                            var aTreeData = that._transformToTree(aResults);
+                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
+                            that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
+                            that.getView().getModel("viewConfig").setData(oGanttConfig);
+                        },
+                        error: function () {
+                            // Fallback: build Gantt without log sync
+                            var aTreeData = that._transformToTree(aResults);
+                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
+                            that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
+                            that.getView().getModel("viewConfig").setData(oGanttConfig);
+                        }
+                    });
 
 
                     // 1. Filter items that are globally in a PENDING status
@@ -488,9 +538,9 @@ sap.ui.define([
 
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
-            
+
             // Collect all selected WBS details
-            var aSelectedItems = aIndices.map(function(iIdx) {
+            var aSelectedItems = aIndices.map(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 return {
                     id: oCtx.getProperty("WbsId"),
@@ -498,7 +548,7 @@ sap.ui.define([
                 };
             });
 
-            var sConfirmMsg = aSelectedItems.length === 1 ? 
+            var sConfirmMsg = aSelectedItems.length === 1 ?
                 oBundle.getText("deleteWbsConfirm", [aSelectedItems[0].name]) :
                 oBundle.getText("deleteMultipleWbsConfirm", [aSelectedItems.length]);
 
@@ -507,14 +557,14 @@ sap.ui.define([
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         that.getView().setBusy(true);
-                        
+
                         var iCount = aSelectedItems.length;
                         var iSuccess = 0;
                         var iError = 0;
 
                         // Function to perform deletion sequentially (one by one)
                         // This avoids "one operation per changeset" issues on the backend.
-                        var fnDeleteNext = function(iIndex) {
+                        var fnDeleteNext = function (iIndex) {
                             if (iIndex >= iCount) {
                                 // All items processed
                                 that.getView().setBusy(false);
@@ -534,11 +584,11 @@ sap.ui.define([
 
                             var item = aSelectedItems[iIndex];
                             oModel.remove("/WBSSet(guid'" + item.id + "')", {
-                                success: function() {
+                                success: function () {
                                     iSuccess++;
                                     fnDeleteNext(iIndex + 1);
                                 },
-                                error: function(oError) {
+                                error: function (oError) {
                                     iError++;
                                     console.error("Error deleting WBS: " + item.id, oError);
                                     fnDeleteNext(iIndex + 1);
@@ -815,7 +865,7 @@ sap.ui.define([
             // 2. Show confirmation listing all valid WBS names
             var sNames = aValid.map(function (o) { return "• " + o.WbsName; }).join("\n");
             var sConfirmMsg = oBundle.getText("runMultiWbsConfirm", [aValid.length]) + "\n\n" + sNames;
-            
+
             if (aEarly.length > 0) {
                 sConfirmMsg += "\n\n" + oBundle.getText("runWbsEarlyWarning") + "\n" + aEarly.map(function (n) { return "⚠ " + n; }).join("\n");
             }
@@ -1334,6 +1384,16 @@ sap.ui.define([
                     ? oBundle.getText("addChildWbsOf", [sParentName])
                     : oBundle.getText("createWbsRoot");
                 oSelectStatus.setSelectedKey("NEW");
+
+                // When creating a child WBS, inherit the parent's unit and lock it
+                if (sParentId) {
+                    var sParentPath = "/WBSSet(guid'" + sParentId + "')";
+                    var sParentUnit = oModel.getProperty(sParentPath + "/UnitCode");
+                    if (sParentUnit) {
+                        oSelectUnit.setSelectedKey(sParentUnit);
+                    }
+                    oSelectUnit.setEnabled(false);
+                }
             }
 
             var oStatusLabel = new Label({ text: oBundle.getText("status"), visible: false });
@@ -1369,10 +1429,10 @@ sap.ui.define([
                     }
                 }
             });
-            var oLocStart = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
-            var oLocEnd = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
-            var oLocTop = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
-            var oLocBot = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
+            var oLocStart = new Input({ type: "Number", placeholder: "0.000", liveChange: function (oEvent) { oEvent.getSource().setValueState("None"); } });
+            var oLocEnd = new Input({ type: "Number", placeholder: "0.000", liveChange: function (oEvent) { oEvent.getSource().setValueState("None"); } });
+            var oLocTop = new Input({ type: "Number", placeholder: "0.000", liveChange: function (oEvent) { oEvent.getSource().setValueState("None"); } });
+            var oLocBot = new Input({ type: "Number", placeholder: "0.000", liveChange: function (oEvent) { oEvent.getSource().setValueState("None"); } });
 
             var sEditLocationId = null;
             if (bEdit) {
@@ -1540,20 +1600,20 @@ sap.ui.define([
                         // --- Project Date Validation ---
                         var oProjModel = that.getView().getModel("projectModel");
                         var oProjData = (oProjModel ? oProjModel.getData() : {}) || {};
-                        
+
                         var fnProceedSave = function (oProject) {
                             var vProjStart = oProject.StartDate || oProject.start_date || oProject.PlannedStart;
                             var vProjEnd = oProject.EndDate || oProject.end_date || oProject.PlannedEnd;
-                            
+
                             var dProjStart = vProjStart ? (vProjStart instanceof Date ? vProjStart : new Date(vProjStart)) : null;
                             var dProjEnd = vProjEnd ? (vProjEnd instanceof Date ? vProjEnd : new Date(vProjEnd)) : null;
 
                             // Normalize both for comparison
-                            var dCompareWbsStart = new Date(dStart); dCompareWbsStart.setHours(0,0,0,0);
-                            var dCompareWbsEnd = new Date(dEnd); dCompareWbsEnd.setHours(0,0,0,0);
+                            var dCompareWbsStart = new Date(dStart); dCompareWbsStart.setHours(0, 0, 0, 0);
+                            var dCompareWbsEnd = new Date(dEnd); dCompareWbsEnd.setHours(0, 0, 0, 0);
 
                             if (dProjStart) {
-                                var dCompareProjStart = new Date(dProjStart); dCompareProjStart.setHours(0,0,0,0);
+                                var dCompareProjStart = new Date(dProjStart); dCompareProjStart.setHours(0, 0, 0, 0);
                                 if (dCompareWbsStart < dCompareProjStart) {
                                     oPickerStart.setValueState("Error");
                                     oPickerStart.setValueStateText(oBundle.getText("wbsStartDateBeforeProjectError", [that.formatDate(dProjStart)]));
@@ -1567,7 +1627,7 @@ sap.ui.define([
                             }
 
                             if (dProjEnd) {
-                                var dCompareProjEnd = new Date(dProjEnd); dCompareProjEnd.setHours(0,0,0,0);
+                                var dCompareProjEnd = new Date(dProjEnd); dCompareProjEnd.setHours(0, 0, 0, 0);
                                 if (dCompareWbsEnd > dCompareProjEnd) {
                                     oPickerEnd.setValueState("Error");
                                     oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateAfterProjectError", [that.formatDate(dProjEnd)]));
@@ -1580,7 +1640,7 @@ sap.ui.define([
                                 return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
                             };
 
-                            var fnExecuteActualSave = function() {
+                            var fnExecuteActualSave = function () {
                                 var oPayload = {
                                     WbsCode: sWbsCode,
                                     WbsName: sName,

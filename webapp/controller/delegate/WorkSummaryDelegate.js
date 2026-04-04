@@ -160,17 +160,28 @@ sap.ui.define([
                     if (that._sWorkSummaryToken !== sWbsId) { return; }
 
                     var fTotal = 0;
+                    var dMinLog = null;
+                    var dMaxLog = null;
                     // Client-side filter: backend có thể ignore $filter và trả về tất cả logs
                     // Nếu WbsId trên log không khớp thì bỏ qua (tránh hiện data của WBS khác)
                     (oData.results || []).forEach(function (oLog) {
                         var sLogWbsId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
                         if (!sLogWbsId || sLogWbsId === sNormWbsId) {
                             fTotal += parseFloat(oLog.QuantityDone) || 0;
+                            if (oLog.LogDate) {
+                                var d = (oLog.LogDate instanceof Date) ? oLog.LogDate : new Date(oLog.LogDate);
+                                if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
+                                    if (!dMinLog || d < dMinLog) dMinLog = d;
+                                    if (!dMaxLog || d > dMaxLog) dMaxLog = d;
+                                }
+                            }
                         }
                     });
 
                     oWSModel.setData({
                         TotalQtyDone: Math.round(fTotal).toString(),
+                        ActualStart: dMinLog,
+                        ActualEnd: dMaxLog,
                         WbsId: sWbsId,
                         Children: []
                     });

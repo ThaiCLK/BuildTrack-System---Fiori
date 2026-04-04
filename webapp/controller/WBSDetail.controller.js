@@ -22,6 +22,14 @@ sap.ui.define([
             return oBundle.getText("wbsDetailTitle", [sWbsName || ""]);
         },
 
+        formatActualDate: function (v) {
+            if (!v) return "—";
+            var d = (v instanceof Date) ? v : new Date(v);
+            if (isNaN(d.getTime()) || d.getFullYear() <= 1970) return "—";
+            var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+            return oDateFormat.format(d);
+        },
+
         formatQuantityInt: function (v) {
             if (!v) return "0";
             var f = parseFloat(v);
@@ -156,7 +164,7 @@ sap.ui.define([
             var oInWbsEnd = this.byId("inWbsEndDate");
 
             // Reset states
-            [oInWbsName, oInWbsCode, oInWbsQty, oInWbsStart, oInWbsEnd].forEach(function(o) {
+            [oInWbsName, oInWbsCode, oInWbsQty, oInWbsStart, oInWbsEnd].forEach(function (o) {
                 if (o) o.setValueState("None");
             });
 
@@ -249,7 +257,7 @@ sap.ui.define([
                 return new Promise(function (resolve, reject) {
                     // WbsId is the key for LocationSet
                     var sPath = "/LocationSet(guid'" + that._sWbsId + "')";
-                    
+
                     // First check if it exists (for local mock logic, create if error on update)
                     oModel.update(sPath, oPayloadLocation, {
                         success: resolve,

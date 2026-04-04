@@ -64,13 +64,13 @@
                 <f:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
                     <f:content>
                         <Label text="{i18n>workItemTitle}" design="Bold"/>
-                        <VBox>
-                            <Text text="{WbsName}" class="sapUiTinyMarginBottom" />
-                            <Text text="{i18n>wbsCode}: {WbsCode}" />
-                        </VBox>
+                        <Text text="{WbsName}" />
+
+                        <Label text="{i18n>wbsCode}" design="Bold"/>
+                        <Text text="{WbsCode}" />
                         
                         <Label text="{i18n>site}" design="Bold"/>
-                        <Text text="{ProjectName}" />
+                        <Text text="{projectModel>/ProjectName} — {projectModel>/SiteName}" />
 
                         <Label text="{i18n>completedCumulative}" design="Bold"/>
                                 <VBox>

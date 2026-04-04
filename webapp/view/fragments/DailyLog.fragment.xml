@@ -118,13 +118,6 @@
                     press=".onToggleEditMode"
                     visible="{dailyLogModel>/ui/isSelected}"
                     enabled="{= !${dailyLogModel>/ui/editMode} }"/>
-                <Button
-                    text="{i18n>deleteSite}"
-                    icon="sap-icon://delete"
-                    type="Reject"
-                    press=".onDeleteLog"
-                    visible="{dailyLogModel>/ui/isSelected}"
-                    enabled="{= !${dailyLogModel>/ui/editMode} }"/>
             </OverflowToolbar>
 
             <!-- Placeholder when no log is selected -->
@@ -160,6 +153,8 @@
                             <f:content>
                                 <Label text="{i18n>reportDate}" required="true"/>
                                 <DatePicker
+                                    id="inLogDate"
+                                    class="readonly-datepicker"
                                     value="{
                                         path: 'dailyLogModel>/selectedLog/LogDate',
                                         type: 'sap.ui.model.type.Date',
@@ -265,7 +260,7 @@
                             <columns>
                                 <Column width="20%"><Text text="{i18n>resourceCode}"/></Column>
                                 <Column width="30%"><Text text="{i18n>resourceName}"/></Column>
-                                <Column width="15%"><Text text="{i18n>type}"/></Column>
+                                <Column width="15%"><Text text="{i18n>resourceType}"/></Column>
                                 <Column width="20%" hAlign="Center"><Text text="{i18n>resourceQty}"/></Column>
                                 <Column width="15%"><Text text="{i18n>resourceUnit}"/></Column>
                             </columns>
@@ -297,8 +292,11 @@
                                                 wrapping="false"/>
                                         </VBox>
 
-                                        <!-- CELL 3: Resource type (read-only) -->
-                                        <Text text="{dailyLogModel>ResourceType}"/>
+                                        <!-- CELL 3: Resource type (localized with status) -->
+                                        <ObjectStatus
+                                            text="{= ${dailyLogModel>ResourceType} === 'MATERIAL' ? ${i18n>resourceTypeMaterial} : (${dailyLogModel>ResourceType} === 'EQUIPMENT' ? ${i18n>resourceTypeEquipment} : ${dailyLogModel>ResourceType}) }"
+                                            state="{= ${dailyLogModel>ResourceType} === 'MATERIAL' ? 'Indication05' : 'Indication08' }"
+                                            icon="{= ${dailyLogModel>ResourceType} === 'MATERIAL' ? 'sap-icon://product' : 'sap-icon://shipping-status' }"/>
 
                                         <!-- CELL 4: Quantity -->
                                         <StepInput

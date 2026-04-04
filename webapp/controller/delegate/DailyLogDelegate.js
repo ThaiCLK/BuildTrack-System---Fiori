@@ -31,6 +31,16 @@ sap.ui.define([
                 logs: []
             });
             oController.getView().setModel(oImportPreviewModel, "importPreviewModel");
+
+            // Task: Make LogDate DatePicker non-typeable (picker only)
+            var oDatePicker = oController.byId("inLogDate");
+            if (oDatePicker) {
+                oDatePicker.addEventDelegate({
+                    onAfterRendering: function() {
+                        oDatePicker.$().find("input").attr("readonly", "readonly");
+                    }
+                });
+            }
         },
 
         /* =========================================================== */
@@ -720,9 +730,58 @@ sap.ui.define([
             var oUIModel = this.getView().getModel("dailyLogModel");
             var oLog = oUIModel.getProperty("/selectedLog");
             var oInput = this.byId("inQuantityDone");
+            var oDatePicker = this.byId("inLogDate");
 
             if (oInput) {
                 oInput.setValueState("None");
+            }
+            if (oDatePicker) {
+                oDatePicker.setValueState("None");
+            }
+
+            // 0. Validate Report Date within WBS date range
+            var dLogDate = oLog.LogDate instanceof Date ? oLog.LogDate : new Date(oLog.LogDate);
+            if (!dLogDate || isNaN(dLogDate.getTime())) {
+                if (oDatePicker) {
+                    oDatePicker.setValueState("Error");
+                    oDatePicker.setValueStateText(oBundle.getText("requireWbsStartDate"));
+                }
+                return;
+            }
+
+            var oWbsCtx = this.getView().getBindingContext();
+            if (oWbsCtx) {
+                var dWbsStart = oWbsCtx.getProperty("StartDate");
+                var dWbsEnd = oWbsCtx.getProperty("EndDate");
+
+                // Normalize all dates to midnight for comparison
+                var dLogNorm = new Date(dLogDate); dLogNorm.setHours(0, 0, 0, 0);
+
+                if (dWbsStart) {
+                    var dStartNorm = new Date(dWbsStart instanceof Date ? dWbsStart : new Date(dWbsStart));
+                    dStartNorm.setHours(0, 0, 0, 0);
+                    if (dLogNorm < dStartNorm) {
+                        if (oDatePicker) {
+                            var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                            oDatePicker.setValueState("Error");
+                            oDatePicker.setValueStateText(oBundle.getText("logDateBeforeWbsStartError", [oDateFormat.format(dStartNorm)]));
+                        }
+                        return;
+                    }
+                }
+
+                if (dWbsEnd) {
+                    var dEndNorm = new Date(dWbsEnd instanceof Date ? dWbsEnd : new Date(dWbsEnd));
+                    dEndNorm.setHours(0, 0, 0, 0);
+                    if (dLogNorm > dEndNorm) {
+                        if (oDatePicker) {
+                            var oDateFormat2 = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                            oDatePicker.setValueState("Error");
+                            oDatePicker.setValueStateText(oBundle.getText("logDateAfterWbsEndError", [oDateFormat2.format(dEndNorm)]));
+                        }
+                        return;
+                    }
+                }
             }
 
             // 1. Validate Quantity > 0

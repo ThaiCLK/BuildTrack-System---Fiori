@@ -419,7 +419,7 @@
 
 /* ── PAPER A4 STYLE (Acceptance Minutes) ── */
 .paperA4 {
-    background: var(--sapBackgroundColor) !important;
+    background: #ffffff !important;
     max-width: 850px;
     margin: 20px auto !important;
     padding: 50px 70px !important;
@@ -430,7 +430,7 @@
 }
 
 .paperA4Dialog {
-    background: var(--sapBackgroundColor) !important;
+    background: #ffffff !important;
     padding: 10px 20px !important;
     color: var(--sapTextColor);
     font-family: "Times New Roman", Times, serif !important;
@@ -1037,4 +1037,20 @@
 .labelActive {
     color: #27ae60 !important;
     font-weight: 700 !important;
+}
+
+/* Readonly DatePicker (Block typing, force calendar icon) */
+.readonly-datepicker .sapMInputBaseInner {
+    pointer-events: none !important;
+    background-color: transparent !important;
+    cursor: pointer !important;
+}
+
+.readonly-datepicker .sapUiIcon {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.readonly-datepicker {
+    cursor: pointer !important;
 }
