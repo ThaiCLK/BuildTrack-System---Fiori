@@ -536,7 +536,7 @@ sap.ui.define([
             var oUIModel = this.getView().getModel("dailyLogModel");
             var sLogId = oUIModel.getProperty("/selectedLog/LogId");
 
-            if (!sLogId) {
+            if (!sLogId || sLogId === "00000000-0000-0000-0000-000000000000") {
                 MessageToast.show(oBundle.getText("selectLogToViewDetail"));
                 return;
             }
@@ -607,7 +607,7 @@ sap.ui.define([
                         }
 
                         var oItem = aSelectedItems[iIndex];
-                        var oCtx = oItem.getBindingContext();
+                        var oCtx = oItem.getBindingContext("dailyLogModel");
                         if (!oCtx) {
                             iDone++;
                             fnDeleteSeq(iIndex + 1);
@@ -615,6 +615,12 @@ sap.ui.define([
                         }
 
                         var sLogId = oCtx.getProperty("LogId");
+                        if (!sLogId || sLogId === "undefined" || sLogId === "") {
+                            iDone++;
+                            fnDeleteSeq(iIndex + 1);
+                            return;
+                        }
+
                         oModel.remove("/DailyLogSet(guid'" + sLogId + "')", {
                             success: function () {
                                 iSuccess++;
@@ -638,7 +644,17 @@ sap.ui.define([
             if (!this._verifyStatusForDailyLog()) {
                 return;
             }
+            var oInput = this.byId("inQuantityDone");
+            if (oInput) {
+                oInput.setValueState("None");
+            }
             this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", true);
+        },
+
+        onQuantityChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            oInput.setValueState("None");
+            oInput.setValueStateText("");
         },
 
         onCancelEdit: function () {
@@ -701,6 +717,35 @@ sap.ui.define([
 
         onSaveLog: function () {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var oLog = oUIModel.getProperty("/selectedLog");
+            var oInput = this.byId("inQuantityDone");
+
+            if (oInput) {
+                oInput.setValueState("None");
+            }
+
+            // 1. Validate Quantity > 0
+            var fQty = parseFloat(oLog.QuantityDone) || 0;
+            if (fQty <= 0) {
+                if (oInput) {
+                    oInput.setValueState("Error");
+                    oInput.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
+                }
+                return;
+            }
+
+            // 2. Validate Resource Usage (Must have at least one and none missing ResourceId)
+            var aResources = oUIModel.getProperty("/resourceUseList") || [];
+            var bInvalidResource = aResources.length === 0 || aResources.some(function (res) {
+                return !res.ResourceId;
+            });
+
+            if (bInvalidResource) {
+                MessageBox.error(oBundle.getText("selectResourceError"));
+                return;
+            }
+
             this._persistLog(oBundle.getText("dailyLogSaveSuccess"));
         },
 

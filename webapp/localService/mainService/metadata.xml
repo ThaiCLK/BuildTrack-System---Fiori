@@ -136,18 +136,21 @@
             <!-- ═══════════════════════════════════════════════════════════ -->
             <EntityType Name="Location">
                 <Key>
-                    <PropertyRef Name="LocationId" />
+                    <PropertyRef Name="WbsId" />
                 </Key>
-                <Property Name="LocationId"   Type="Edm.Guid"    Nullable="false" sap:label="Location UUID" />
-                <Property Name="WbsId"        Type="Edm.Guid"    sap:label="WBS UUID" />
-                <Property Name="LocationType" Type="Edm.String"  MaxLength="20"  sap:label="Location Type" />
-                <Property Name="LocationCode" Type="Edm.String"  MaxLength="30"  sap:label="Location Code" />
-                <Property Name="LocationName" Type="Edm.String"  MaxLength="100" sap:label="Location Name" />
-                <Property Name="PosStart"     Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Start" />
-                <Property Name="PosEnd"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position End" />
-                <Property Name="PosTop"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Top" />
-                <Property Name="PosBot"       Type="Edm.Decimal" Precision="10" Scale="3" sap:label="Position Bottom" />
-                <Property Name="UnitCode"     Type="Edm.String"  MaxLength="10"  sap:label="Unit" />
+                <Property Name="Client"       Type="Edm.String"   MaxLength="3"   sap:label="Client" />
+                <Property Name="WbsId"        Type="Edm.Guid"     Nullable="false" sap:label="WBS UUID" />
+                <Property Name="LocationName" Type="Edm.String"   MaxLength="100" sap:label="Location Name" />
+                <Property Name="PosStart"     Type="Edm.Decimal"  Precision="10"  Scale="2" sap:label="Position Start" />
+                <Property Name="PosEnd"       Type="Edm.Decimal"  Precision="10"  Scale="2" sap:label="Position End" />
+                <Property Name="PosTop"       Type="Edm.Decimal"  Precision="10"  Scale="2" sap:label="Position Top" />
+                <Property Name="PosBot"       Type="Edm.Decimal"  Precision="10"  Scale="2" sap:label="Position Bottom" />
+                <Property Name="CreatedBy"    Type="Edm.String"   MaxLength="12"  sap:label="Created By" />
+                <Property Name="CreatedOn"    Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Created On" />
+                <Property Name="CreatedAt"    Type="Edm.Time"     Precision="0"   sap:label="Created At" />
+                <Property Name="UpdatedBy"    Type="Edm.String"   MaxLength="12"  sap:label="Updated By" />
+                <Property Name="UpdatedOn"    Type="Edm.DateTime" Precision="0"   DisplayFormat="Date" sap:label="Updated On" />
+                <Property Name="UpdatedAt"    Type="Edm.Time"     Precision="0"   sap:label="Updated At" />
             </EntityType>
             <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- Function Import Result Types                                -->
@@ -281,7 +284,7 @@
 
             <Association Name="WBS_to_Location">
                 <End Role="FromWBS"    Type="ZBT_ODATA_SRV.WBS"      Multiplicity="1" />
-                <End Role="ToLocation" Type="ZBT_ODATA_SRV.Location" Multiplicity="*" />
+                <End Role="ToLocation" Type="ZBT_ODATA_SRV.Location" Multiplicity="0..1" />
                 <ReferentialConstraint>
                     <Principal Role="FromWBS"><PropertyRef Name="WbsId" /></Principal>
                     <Dependent  Role="ToLocation"><PropertyRef Name="WbsId" /></Dependent>

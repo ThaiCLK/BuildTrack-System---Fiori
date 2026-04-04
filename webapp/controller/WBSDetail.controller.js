@@ -53,10 +53,28 @@ sap.ui.define([
         /* INLINE EDIT MODE - WBS DETAIL INFO                            */
         /* =========================================================== */
         onEditWbs: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oProjectData = this.getView().getModel("projectModel").getData();
+            var oCtx = this.getView().getBindingContext();
+            var sWbsStatus = oCtx ? oCtx.getProperty("Status") : "";
+
+            // Pre-check hierarchy status before entering edit mode
+            if (oProjectData.Status === "CLOSED") {
+                MessageBox.error(oBundle.getText("locationEditProjectClosed"));
+                return;
+            }
+            if (oProjectData.SiteStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("locationEditSiteClosed"));
+                return;
+            }
+            if (sWbsStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("locationEditWbsClosed"));
+                return;
+            }
+
             this.getView().getModel("viewData").setProperty("/editMode", true);
 
             // Set minDate only when entering edit mode and binding context is already loaded
-            var oCtx = this.getView().getBindingContext();
             if (oCtx) {
                 var oToday = new Date();
                 oToday.setHours(0, 0, 0, 0);
@@ -100,41 +118,149 @@ sap.ui.define([
             var bHasLocationData = !!oLocationModel.getProperty("/LocationName");
             var sLocationId = oLocationModel.getProperty("/LocationId");
 
+            // --- Location Validation (matching ABAP Update logic) ---
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var oUserModel = this.getView().getModel("userModel");
+            var oProjectData = this.getView().getModel("projectModel").getData();
+            var oWbsCtx = this.getView().getBindingContext();
+            var sWbsStatus = oWbsCtx ? oWbsCtx.getProperty("Status") : "";
+
+            var bHasError = false;
+
+            // 1. Authorization Check
+            var bIsAuthorized = (oUserModel.getProperty("/userId") === oProjectData.CreatedBy) || (oUserModel.getProperty("/authLevel") === 99);
+            if (!bIsAuthorized) {
+                MessageBox.error(oBundle.getText("locationEditAuthError"));
+                return;
+            }
+
+            // 2. Hierarchy Status Check
+            if (oProjectData.Status === "CLOSED") {
+                MessageBox.error(oBundle.getText("locationEditProjectClosed"));
+                return;
+            }
+            if (oProjectData.SiteStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("locationEditSiteClosed"));
+                return;
+            }
+            if (sWbsStatus === "CLOSED") {
+                MessageBox.error(oBundle.getText("locationEditWbsClosed"));
+                return;
+            }
+
+            // 3. WBS Detail Field Validation
+            var oInWbsName = this.byId("inWbsName");
+            var oInWbsCode = this.byId("inWbsCode");
+            var oInWbsQty = this.byId("inWbsQuantity");
+            var oInWbsStart = this.byId("inWbsStartDate");
+            var oInWbsEnd = this.byId("inWbsEndDate");
+
+            // Reset states
+            [oInWbsName, oInWbsCode, oInWbsQty, oInWbsStart, oInWbsEnd].forEach(function(o) {
+                if (o) o.setValueState("None");
+            });
+
+            var sWName = oInWbsName.getValue().trim();
+            var sWCode = oInWbsCode.getValue().trim();
+            var fWQty = parseFloat(oInWbsQty.getValue());
+            var dWStart = oInWbsStart.getDateValue();
+            var dWEnd = oInWbsEnd.getDateValue();
+
+            if (!sWName) {
+                oInWbsName.setValueState("Error");
+                oInWbsName.setValueStateText(oBundle.getText("requireWbsName"));
+                bHasError = true;
+            }
+            if (!sWCode) {
+                oInWbsCode.setValueState("Error");
+                oInWbsCode.setValueStateText(oBundle.getText("requireWbsCode"));
+                bHasError = true;
+            }
+            if (isNaN(fWQty) || fWQty <= 0) {
+                oInWbsQty.setValueState("Error");
+                oInWbsQty.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
+                bHasError = true;
+            }
+            if (!dWStart) {
+                oInWbsStart.setValueState("Error");
+                oInWbsStart.setValueStateText(oBundle.getText("requireWbsStartDate"));
+                bHasError = true;
+            }
+            if (!dWEnd) {
+                oInWbsEnd.setValueState("Error");
+                oInWbsEnd.setValueStateText(oBundle.getText("requireWbsEndDate"));
+                bHasError = true;
+            } else if (dWStart && dWEnd <= dWStart) {
+                oInWbsEnd.setValueState("Error");
+                oInWbsEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
+                bHasError = true;
+            }
+
+            // 4. Location Field Validation
+            var oInLocName = this.byId("inLocName");
+            var oInLocStart = this.byId("inLocStart");
+            var oInLocEnd = this.byId("inLocEnd");
+            var oInLocBot = this.byId("inLocBot");
+            var oInLocTop = this.byId("inLocTop");
+
+            var sLName = (oLocationModel.getProperty("/LocationName") || "").trim();
+            if (!sLName) {
+                oInLocName.setValueState("Error");
+                oInLocName.setValueStateText(oBundle.getText("locationNameRequired"));
+                bHasError = true;
+            } else if (sLName.length > 100) {
+                oInLocName.setValueState("Error");
+                oInLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
+                bHasError = true;
+            }
+
+            var fLStart = parseFloat(oLocationModel.getProperty("/PosStart"));
+            var fLEnd = parseFloat(oLocationModel.getProperty("/PosEnd"));
+            if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
+                oInLocStart.setValueState("Error");
+                oInLocStart.setValueStateText(oBundle.getText("posStartEndError"));
+                bHasError = true;
+            }
+
+            var fLBot = parseFloat(oLocationModel.getProperty("/PosBot"));
+            var fLTop = parseFloat(oLocationModel.getProperty("/PosTop"));
+            if (!isNaN(fLBot) && !isNaN(fLTop) && fLBot > fLTop) {
+                oInLocBot.setValueState("Error");
+                oInLocBot.setValueStateText(oBundle.getText("posBotTopError"));
+                bHasError = true;
+            }
+
+            if (bHasError) {
+                return;
+            }
+
             var oPayloadLocation = {
-                LocationName: oLocationModel.getProperty("/LocationName") || "",
-                LocationCode: oLocationModel.getProperty("/LocationCode") || "",
-                LocationType: oLocationModel.getProperty("/LocationType") || "",
-                PosStart: oLocationModel.getProperty("/PosStart") ? String(oLocationModel.getProperty("/PosStart")) : "0.00",
-                PosEnd: oLocationModel.getProperty("/PosEnd") ? String(oLocationModel.getProperty("/PosEnd")) : "0.00",
-                PosTop: oLocationModel.getProperty("/PosTop") ? String(oLocationModel.getProperty("/PosTop")) : "0.00",
-                PosBot: oLocationModel.getProperty("/PosBot") ? String(oLocationModel.getProperty("/PosBot")) : "0.00",
+                LocationName: sLName,
+                PosStart: that._formatDecimal(oLocationModel.getProperty("/PosStart")),
+                PosEnd: that._formatDecimal(oLocationModel.getProperty("/PosEnd")),
+                PosTop: that._formatDecimal(oLocationModel.getProperty("/PosTop")),
+                PosBot: that._formatDecimal(oLocationModel.getProperty("/PosBot")),
                 WbsId: this._sWbsId
             };
-
-            // Format coordinates to decimals
-            oPayloadLocation.PosStart = that._formatDecimal(oPayloadLocation.PosStart);
-            oPayloadLocation.PosEnd = that._formatDecimal(oPayloadLocation.PosEnd);
-            oPayloadLocation.PosTop = that._formatDecimal(oPayloadLocation.PosTop);
-            oPayloadLocation.PosBot = that._formatDecimal(oPayloadLocation.PosBot);
 
             var fnSaveLocation = function () {
                 if (!bHasLocationData) return Promise.resolve();
 
                 return new Promise(function (resolve, reject) {
-                    if (sLocationId) {
-                        // Update existing
-                        oModel.update("/LocationSet(guid'" + sLocationId + "')", oPayloadLocation, {
-                            success: resolve,
-                            error: reject
-                        });
-                    } else {
-                        // Create new
-                        oPayloadLocation.LocationId = "00000000-0000-0000-0000-000000000000";
-                        oModel.create("/LocationSet", oPayloadLocation, {
-                            success: resolve,
-                            error: reject
-                        });
-                    }
+                    // WbsId is the key for LocationSet
+                    var sPath = "/LocationSet(guid'" + that._sWbsId + "')";
+                    
+                    // First check if it exists (for local mock logic, create if error on update)
+                    oModel.update(sPath, oPayloadLocation, {
+                        success: resolve,
+                        error: function (vErr) {
+                            // If update fails (not found), try create
+                            oModel.create("/LocationSet", oPayloadLocation, {
+                                success: resolve,
+                                error: reject
+                            });
+                        }
+                    });
                 });
             };
 
@@ -145,38 +271,18 @@ sap.ui.define([
                 return new Promise(function (resolve, reject) {
                     var sPath = "/WBSSet(guid'" + that._sWbsId + "')";
 
-                    var oStartDatePicker = that.byId("inWbsStartDate");
-                    var oEndDatePicker = that.byId("inWbsEndDate");
-
                     var toUTC = function (d) {
                         return d ? new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) : null;
                     };
 
-                    var dStart = oStartDatePicker ? oStartDatePicker.getDateValue() : null;
-                    var dEnd = oEndDatePicker ? oEndDatePicker.getDateValue() : null;
-
-                    // Validate: end date must be after start date
-                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
-                    if (dStart && dEnd && dEnd <= dStart) {
-                        if (oEndDatePicker) {
-                            oEndDatePicker.setValueState("Error");
-                            oEndDatePicker.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
-                        }
-                        reject(new Error(oBundle.getText("wbsEndDateBeforeStartDateError")));
-                        return;
-                    }
-                    // Clear error state if valid
-                    if (oStartDatePicker) { oStartDatePicker.setValueState("None"); }
-                    if (oEndDatePicker) { oEndDatePicker.setValueState("None"); }
-
                     var oPayloadWbs = {
-                        WbsName: that.byId("inWbsName").getValue(),
-                        WbsCode: that.byId("inWbsCode").getValue(),
-                        Quantity: String(Math.floor(parseFloat(that.byId("inWbsQuantity").getValue() || "0")) || "0"),
+                        WbsName: sWName,
+                        WbsCode: sWCode,
+                        Quantity: String(Math.floor(fWQty) || "0"),
                         UnitCode: oModel.getProperty(sPath + "/UnitCode") || "M",
                         Status: oModel.getProperty(sPath + "/Status"),
-                        StartDate: dStart ? toUTC(dStart) : oModel.getProperty(sPath + "/StartDate"),
-                        EndDate: dEnd ? toUTC(dEnd) : oModel.getProperty(sPath + "/EndDate"),
+                        StartDate: dWStart ? toUTC(dWStart) : oModel.getProperty(sPath + "/StartDate"),
+                        EndDate: dWEnd ? toUTC(dWEnd) : oModel.getProperty(sPath + "/EndDate"),
                         StartActual: oModel.getProperty(sPath + "/StartActual"),
                         EndActual: oModel.getProperty(sPath + "/EndActual"),
                         SiteId: oModel.getProperty(sPath + "/SiteId"),
@@ -541,21 +647,20 @@ sap.ui.define([
             // Reset
             oLocationModel.setData({});
 
-            oModel.read("/LocationSet", {
-                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+            if (!sWbsId) {
+                return;
+            }
+
+            this.getView().setBusy(true);
+            var sPath = "/LocationSet(guid'" + sWbsId + "')";
+            oModel.read(sPath, {
                 success: function (oData) {
-                    if (oData.results && oData.results.length > 0) {
-                        // Client-side fallback to handle backend not processing $filter correctly
-                        var aMatches = oData.results.filter(function (loc) { return loc.WbsId === sWbsId; });
-                        if (aMatches.length > 0) {
-                            oLocationModel.setData(aMatches[0]);
-                        } else {
-                            oLocationModel.setData({});
-                        }
-                    }
+                    oLocationModel.setData(oData);
+                    that.getView().setBusy(false);
                 },
                 error: function () {
-                    // No location data — form stays hidden
+                    oLocationModel.setData({});
+                    that.getView().setBusy(false);
                 }
             });
         },
@@ -580,8 +685,9 @@ sap.ui.define([
                     if (oSiteData && oSiteData.ProjectId) {
                         oModel.read("/ProjectSet(guid'" + oSiteData.ProjectId + "')", {
                             success: function (oProjectData) {
-                                // Combine SiteName and ProjectName into the same model
+                                // Combine Site info and Project info into the same model
                                 oProjectData.SiteName = oSiteData.SiteName;
+                                oProjectData.SiteStatus = oSiteData.Status;
                                 oProjectModel.setData(oProjectData);
                             }
                         });
@@ -692,6 +798,24 @@ sap.ui.define([
             if (isNaN(f)) return sValue;
             return String(Math.floor(f));
         },
+
+        onLocationNameLiveChange: function (oEvent) {
+            var oControl = oEvent.getSource();
+            var sVal = oControl.getValue();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (sVal && sVal.length > 100) {
+                oControl.setValueState("Warning");
+                oControl.setValueStateText(oBundle.getText("locationNameTooLong"));
+            } else {
+                oControl.setValueState("None");
+                oControl.setValueStateText("");
+            }
+        },
+
+        onLocRangeChange: function (oEvent) {
+            oEvent.getSource().setValueState("None");
+        },
     });
 
     // Mix in DependencyDelegate functions
@@ -732,6 +856,7 @@ sap.ui.define([
         onAddResourceUse: DailyLogDelegate.onAddResourceUse,
         onDeleteResourceUse: DailyLogDelegate.onDeleteResourceUse,
         onResourceIdChange: DailyLogDelegate.onResourceIdChange,
+        onQuantityChange: DailyLogDelegate.onQuantityChange,
         onSaveLog: DailyLogDelegate.onSaveLog,
         _persistLog: DailyLogDelegate._persistLog,
         _saveResourceUse: DailyLogDelegate._saveResourceUse,

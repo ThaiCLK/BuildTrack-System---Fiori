@@ -109,47 +109,34 @@
                             <form:content>
                                 <core:Title text="{i18n>location}" />
 
-                                <Label text="{i18n>locationName}" design="Bold" />
+                                <Label text="{i18n>locationName}" design="Bold" required="true" />
                                 <VBox width="100%">
-                                    <Input value="{locationModel>/LocationName}" visible="{viewData>/editMode}" />
+                                    <Input id="inLocName" value="{locationModel>/LocationName}" visible="{viewData>/editMode}" liveChange=".onLocationNameLiveChange" />
                                     <Text text="{locationModel>/LocationName}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
-                                <Label text="{i18n>locationCode}" />
-                                <VBox width="100%">
-                                    <Input value="{locationModel>/LocationCode}" visible="{viewData>/editMode}" />
-                                    <Text text="{locationModel>/LocationCode}" visible="{= !${viewData>/editMode} }" />
-                                </VBox>
 
-                                <Label text="{i18n>locationType}" />
-                                <VBox width="100%">
-                                    <Input value="{locationModel>/LocationType}" visible="{viewData>/editMode}" />
-                                    <ObjectStatus
-                                        visible="{= !${viewData>/editMode} }"
-                                        text="{locationModel>/LocationType}"
-                                        state="{= ${locationModel>/LocationType} === 'FLOOR' ? 'Information' : ${locationModel>/LocationType} === 'ZONE' ? 'Success' : ${locationModel>/LocationType} === 'SHAFT' ? 'Warning' : 'None' }"/>
-                                </VBox>
 
                                 <core:Title text="{i18n>positionMetric}" />
 
                                 <Label text="{i18n>horizontalRange}" />
                                 <VBox width="100%">
                                     <HBox visible="{viewData>/editMode}">
-                                        <Input value="{locationModel>/PosStart}" width="45%" type="Number" />
+                                        <Input id="inLocStart" value="{locationModel>/PosStart}" width="45%" type="Number" liveChange=".onLocRangeChange" />
                                         <Text text=" — " class="sapUiTinyMarginBeginEnd sapUiTinyMarginTop" />
-                                        <Input value="{locationModel>/PosEnd}" width="45%" type="Number" />
+                                        <Input id="inLocEnd" value="{locationModel>/PosEnd}" width="45%" type="Number" liveChange=".onLocRangeChange" />
                                     </HBox>
-                                    <Text text="{locationModel>/PosStart} → {locationModel>/PosEnd} {locationModel>/UnitCode}" visible="{= !${viewData>/editMode} }" />
+                                    <Text text="{locationModel>/PosStart} → {locationModel>/PosEnd}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
 
                                 <Label text="{i18n>verticalRange}" />
                                 <VBox width="100%">
                                     <HBox visible="{viewData>/editMode}">
-                                        <Input value="{locationModel>/PosBot}" width="45%" type="Number" />
+                                        <Input id="inLocBot" value="{locationModel>/PosBot}" width="45%" type="Number" liveChange=".onLocRangeChange" />
                                         <Text text=" — " class="sapUiTinyMarginBeginEnd sapUiTinyMarginTop" />
-                                        <Input value="{locationModel>/PosTop}" width="45%" type="Number" />
+                                        <Input id="inLocTop" value="{locationModel>/PosTop}" width="45%" type="Number" liveChange=".onLocRangeChange" />
                                     </HBox>
-                                    <Text text="{locationModel>/PosBot} → {locationModel>/PosTop} {locationModel>/UnitCode}" visible="{= !${viewData>/editMode} }" />
+                                    <Text text="{locationModel>/PosBot} → {locationModel>/PosTop}" visible="{= !${viewData>/editMode} }" />
                                 </VBox>
                             </form:content>
                         </form:SimpleForm>

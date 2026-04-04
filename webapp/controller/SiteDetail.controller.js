@@ -784,6 +784,7 @@ sap.ui.define([
             // 1. Collect and validate all selected WBS
             var aValid = [];
             var aSkipped = [];
+            var aEarly = [];
 
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
@@ -792,15 +793,17 @@ sap.ui.define([
 
                 if (oData.Status !== "OPENED") {
                     aSkipped.push(oData.WbsName + " (" + oBundle.getText("openedOnlyRunError", [oData.Status]) + ")");
-                } else if (oData.StartDate && new Date(oData.StartDate) > dToday) {
-                    aSkipped.push(oData.WbsName + " (" + oBundle.getText("startDateRunError", [that.formatDate(oData.StartDate)]) + ")");
                 } else {
+                    // Early start is allowed with confirmation (no longer skipped)
                     aValid.push(oData);
+                    if (oData.StartDate && new Date(oData.StartDate) > dToday) {
+                        aEarly.push(oData.WbsName + " (" + that.formatDate(oData.StartDate) + ")");
+                    }
                 }
             });
 
             if (aSkipped.length > 0 && aValid.length === 0) {
-                MessageBox.warning(oBundle.getText("runWbsAllSkipped") + "\n" + aSkipped.join("\n"));
+                MessageBox.warning(oBundle.getText("runWbsAllSkipped") + "\n\n" + aSkipped.map(function (s) { return "○ " + s; }).join("\n"));
                 return;
             }
 
@@ -812,8 +815,13 @@ sap.ui.define([
             // 2. Show confirmation listing all valid WBS names
             var sNames = aValid.map(function (o) { return "• " + o.WbsName; }).join("\n");
             var sConfirmMsg = oBundle.getText("runMultiWbsConfirm", [aValid.length]) + "\n\n" + sNames;
+            
+            if (aEarly.length > 0) {
+                sConfirmMsg += "\n\n" + oBundle.getText("runWbsEarlyWarning") + "\n" + aEarly.map(function (n) { return "⚠ " + n; }).join("\n");
+            }
+
             if (aSkipped.length > 0) {
-                sConfirmMsg += "\n\n" + oBundle.getText("runWbsSkippedNote", [aSkipped.length]);
+                sConfirmMsg += "\n\n" + oBundle.getText("runWbsSkippedNote", [aSkipped.length]) + "\n" + aSkipped.map(function (s) { return "○ " + s; }).join("\n");
             }
 
             // 3. Dependency check then confirm
@@ -1347,13 +1355,24 @@ sap.ui.define([
             });
 
             // --- LOCATION TAB ---
-            var oLocName = new Input({ placeholder: oBundle.getText("locationPlaceholder") });
-            var oLocCode = new Input({ placeholder: oBundle.getText("locationCodePlaceholder") });
-            var oLocType = new Input({ placeholder: oBundle.getText("locationTypePlaceholder") });
-            var oLocStart = new Input({ type: "Number", placeholder: "0.000" });
-            var oLocEnd = new Input({ type: "Number", placeholder: "0.000" });
-            var oLocTop = new Input({ type: "Number", placeholder: "0.000" });
-            var oLocBot = new Input({ type: "Number", placeholder: "0.000" });
+            var oLocName = new Input({
+                placeholder: oBundle.getText("locationPlaceholder"),
+                liveChange: function (oEvent) {
+                    var oControl = oEvent.getSource();
+                    var sVal = oControl.getValue();
+                    if (sVal && sVal.length > 100) {
+                        oControl.setValueState("Warning");
+                        oControl.setValueStateText(oBundle.getText("locationNameTooLong"));
+                    } else {
+                        oControl.setValueState("None");
+                        oControl.setValueStateText("");
+                    }
+                }
+            });
+            var oLocStart = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
+            var oLocEnd = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
+            var oLocTop = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
+            var oLocBot = new Input({ type: "Number", placeholder: "0.000", liveChange: function(oEvent){ oEvent.getSource().setValueState("None"); } });
 
             var sEditLocationId = null;
             if (bEdit) {
@@ -1366,10 +1385,8 @@ sap.ui.define([
                             var aMatches = oData.results.filter(function (loc) { return loc.WbsId === sEditWbsId; });
                             if (aMatches.length > 0) {
                                 var oFirstLoc = aMatches[0];
-                                sEditLocationId = oFirstLoc.LocationId;
+                                sEditLocationId = oFirstLoc.WbsId; // WbsId is the key
                                 oLocName.setValue(oFirstLoc.LocationName);
-                                oLocCode.setValue(oFirstLoc.LocationCode);
-                                oLocType.setValue(oFirstLoc.LocationType);
                                 if (oFirstLoc.PosStart) oLocStart.setValue(parseFloat(oFirstLoc.PosStart));
                                 if (oFirstLoc.PosEnd) oLocEnd.setValue(parseFloat(oFirstLoc.PosEnd));
                                 if (oFirstLoc.PosTop) oLocTop.setValue(parseFloat(oFirstLoc.PosTop));
@@ -1387,9 +1404,7 @@ sap.ui.define([
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
                 content: [
-                    new Label({ text: oBundle.getText("locationName") }), oLocName,
-                    new Label({ text: oBundle.getText("locationCode") }), oLocCode,
-                    new Label({ text: oBundle.getText("locationType") }), oLocType,
+                    new Label({ text: oBundle.getText("locationName"), required: true }), oLocName,
                     new Label({ text: oBundle.getText("posStart") }), oLocStart,
                     new Label({ text: oBundle.getText("posEnd") }), oLocEnd,
                     new Label({ text: oBundle.getText("posTop") }), oLocTop,
@@ -1467,6 +1482,50 @@ sap.ui.define([
                             bHasError = true;
                         }
 
+                        if (dStart && dEnd && dEnd <= dStart) {
+                            oPickerEnd.setValueState("Error");
+                            oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
+                            bHasError = true;
+                        }
+
+                        // --- Location Validation (matching ABAP logic) ---
+                        var sLName = oLocName.getValue().trim();
+                        var fLStart = parseFloat(oLocStart.getValue());
+                        var fLEnd = parseFloat(oLocEnd.getValue());
+                        var fLTop = parseFloat(oLocTop.getValue());
+                        var fLBot = parseFloat(oLocBot.getValue());
+
+                        // Don't validate location if all fields are empty (link is optional)
+                        var bHasLocationData = sLName || !isNaN(fLStart) || !isNaN(fLEnd) || !isNaN(fLTop) || !isNaN(fLBot);
+
+                        if (bHasLocationData) {
+                            if (!sLName) {
+                                oLocName.setValueState("Error");
+                                oLocName.setValueStateText(oBundle.getText("locationNameRequired"));
+                                bHasError = true;
+                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId()); // Switch to Location tab
+                            } else if (sLName.length > 100) {
+                                oLocName.setValueState("Error");
+                                oLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
+                                bHasError = true;
+                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                            }
+
+                            if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
+                                oLocStart.setValueState("Error");
+                                oLocStart.setValueStateText(oBundle.getText("posStartEndError"));
+                                bHasError = true;
+                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                            }
+
+                            if (!isNaN(fLTop) && !isNaN(fLBot) && fLBot > fLTop) {
+                                oLocBot.setValueState("Error");
+                                oLocBot.setValueStateText(oBundle.getText("posBotTopError"));
+                                bHasError = true;
+                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                            }
+                        }
+
                         if (bHasError) {
                             return;
                         }
@@ -1534,7 +1593,7 @@ sap.ui.define([
 
                                 var fnSaveLocation = function (sTargetWbsId, fnDone) {
                                     var sLName = oLocName.getValue().trim();
-                                    if (!sLName && !oLocCode.getValue().trim()) {
+                                    if (!sLName) {
                                         fnDone(); // No location data entered
                                         return;
                                     }
@@ -1547,8 +1606,6 @@ sap.ui.define([
                                     var oLocPayload = {
                                         WbsId: sTargetWbsId,
                                         LocationName: sLName,
-                                        LocationCode: oLocCode.getValue().trim(),
-                                        LocationType: oLocType.getValue().trim(),
                                         PosStart: formatDecimal(oLocStart.getValue()),
                                         PosEnd: formatDecimal(oLocEnd.getValue()),
                                         PosTop: formatDecimal(oLocTop.getValue()),

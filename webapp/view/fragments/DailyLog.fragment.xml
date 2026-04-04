@@ -172,6 +172,7 @@
                                 <Label text="{i18n>reportQtyDone}"/>
                                 <HBox alignItems="Center">
                                     <Input
+                                        id="inQuantityDone"
                                         value="{
                                             path: 'dailyLogModel>/selectedLog/QuantityDone',
                                             type: 'sap.ui.model.type.Float',
@@ -181,10 +182,11 @@
                                         }"
                                         editable="{dailyLogModel>/ui/editMode}"
                                         width="120px"
-                                        type="Number"/>
+                                        type="Number"
+                                        liveChange=".onQuantityChange"/>
                                     <Input
                                         value="{dailyLogModel>/selectedLog/UnitCode}"
-                                        editable="{dailyLogModel>/ui/editMode}"
+                                        editable="false"
                                         width="80px"
                                         placeholder="{i18n>unit}"
                                         class="sapUiTinyMarginBegin"/>
