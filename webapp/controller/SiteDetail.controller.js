@@ -1259,8 +1259,18 @@ sap.ui.define([
             var that = this;
             var bEdit = !!oContext;
             var oModel = this.getOwnerComponent().getModel();
-
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            // Determine if we are dealing with a Child WBS or a Root WBS
+            var bIsChild = false;
+            if (bEdit) {
+                var sPid = oContext.getProperty("ParentId");
+                // Check if ParentId is exist and not an empty GUID
+                bIsChild = (!!sPid && sPid !== "00000000-0000-0000-0000-000000000000");
+            } else {
+                bIsChild = !!sParentId;
+            }
+
             var oInputCode = new Input({
                 placeholder: "e.g. 1.1.1",
                 liveChange: function (oEvent) {
@@ -1318,6 +1328,7 @@ sap.ui.define([
             var oInputQty = new Input({
                 type: "Number",
                 placeholder: "0",
+                visible: bIsChild,
                 liveChange: function (oEvent) {
                     var oSource = oEvent.getSource();
                     oSource.setValueState("None");
@@ -1327,6 +1338,7 @@ sap.ui.define([
 
             var oSelectUnit = new Select({
                 width: "100%",
+                visible: bIsChild,
                 items: [
                     new Item({ key: "M3", text: "Cubic Meter (M3)" }),
                     new Item({ key: "M2", text: "Square Meter (M2)" }),
@@ -1384,16 +1396,6 @@ sap.ui.define([
                     ? oBundle.getText("addChildWbsOf", [sParentName])
                     : oBundle.getText("createWbsRoot");
                 oSelectStatus.setSelectedKey("NEW");
-
-                // When creating a child WBS, inherit the parent's unit and lock it
-                if (sParentId) {
-                    var sParentPath = "/WBSSet(guid'" + sParentId + "')";
-                    var sParentUnit = oModel.getProperty(sParentPath + "/UnitCode");
-                    if (sParentUnit) {
-                        oSelectUnit.setSelectedKey(sParentUnit);
-                    }
-                    oSelectUnit.setEnabled(false);
-                }
             }
 
             var oStatusLabel = new Label({ text: oBundle.getText("status"), visible: false });
@@ -1408,8 +1410,8 @@ sap.ui.define([
                     new Label({ text: oBundle.getText("name"), required: true }), oInputName,
                     new Label({ text: oBundle.getText("startDate"), required: true }), oPickerStart,
                     new Label({ text: oBundle.getText("endDate"), required: true }), oPickerEnd,
-                    new Label({ text: oBundle.getText("quantity"), required: true }), oInputQty,
-                    new Label({ text: oBundle.getText("unit") }), oSelectUnit,
+                    new Label({ text: oBundle.getText("quantity"), required: bIsChild, visible: bIsChild }), oInputQty,
+                    new Label({ text: oBundle.getText("unit"), visible: bIsChild }), oSelectUnit,
                     oStatusLabel, oSelectStatus
                 ]
             });
@@ -1532,14 +1534,18 @@ sap.ui.define([
                             bHasError = true;
                         }
                         var fQty = parseFloat(sQty);
-                        if (!sQty) {
-                            oInputQty.setValueState("Error");
-                            oInputQty.setValueStateText(oBundle.getText("requireWbsQuantity"));
-                            bHasError = true;
-                        } else if (isNaN(fQty) || fQty <= 0) {
-                            oInputQty.setValueState("Error");
-                            oInputQty.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
-                            bHasError = true;
+                        // Leaf nodes (children) must have quantity.
+                        // Root level creations/edits skip this check.
+                        if (bIsChild) {
+                            if (!sQty) {
+                                oInputQty.setValueState("Error");
+                                oInputQty.setValueStateText(oBundle.getText("requireWbsQuantity"));
+                                bHasError = true;
+                            } else if (isNaN(fQty) || fQty <= 0) {
+                                oInputQty.setValueState("Error");
+                                oInputQty.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
+                                bHasError = true;
+                            }
                         }
 
                         if (dStart && dEnd && dEnd <= dStart) {

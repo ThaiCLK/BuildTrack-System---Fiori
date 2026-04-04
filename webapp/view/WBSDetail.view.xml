@@ -65,8 +65,8 @@
 
                                 <core:Title text="{i18n>metricsAndStatus}" />
 
-                                <Label text="{i18n>quantity}" />
-                                <VBox width="100%">
+                                <Label text="{i18n>quantity}" visible="{= ${ParentId} !== '00000000-0000-0000-0000-000000000000' &amp;&amp; ${ParentId} !== null &amp;&amp; ${ParentId} !== '' }" />
+                                <VBox width="100%" visible="{= ${ParentId} !== '00000000-0000-0000-0000-000000000000' &amp;&amp; ${ParentId} !== null &amp;&amp; ${ParentId} !== '' }">
                                     <Input id="inWbsQuantity" 
                                            value="{path: 'Quantity', formatter: '.formatQuantityInt'}" 
                                            description="{UnitCode}" 
