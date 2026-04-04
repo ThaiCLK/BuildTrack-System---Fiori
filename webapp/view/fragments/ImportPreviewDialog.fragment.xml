@@ -6,7 +6,7 @@
     <Dialog
         id="importPreviewDialog"
         title="{i18n>importPreviewTitle}"
-        contentWidth="700px"
+        contentWidth="800px"
         draggable="true"
         resizable="true">
 
@@ -15,7 +15,7 @@
                 <!-- Summary bar -->
                 <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
                     <Label
-                        text="{parts: [ {path: 'i18n>logsFoundInFile'}, {path: 'importPreviewModel>/logs/length'} ], type: 'sap.ui.model.type.MessageFormat'}"
+                        text="{parts: [ {path: 'i18n>logsFoundInFile'}, {path: 'importPreviewModel>/logs/length'} ], formatter: '.formatImportPreviewLogCount'}"
                         design="Bold"/>
                     <Label
                         text="{i18n>tickLogsToImport}"
@@ -63,15 +63,18 @@
                         <Column width="5rem" hAlign="End">
                             <Text text="{i18n>resources}"/>
                         </Column>
+                        <Column width="6rem" hAlign="End">
+                            <Text text="{i18n>resQty}"/>
+                        </Column>
                     </columns>
                     <items>
                         <ColumnListItem>
                             <cells>
                                 <Text text="{importPreviewModel>log_num}"/>
                                 <Text text="{
-                                    path: 'importPreviewModel>log_date',
-                                    formatter: '.formatImportDate'
-                                }"/>
+                                        path: 'importPreviewModel>log_date',
+                                        formatter: '.formatImportDate'
+                                    }"/>
                                 <ObjectNumber
                                     number="{importPreviewModel>qty_done}"
                                     unit="{importPreviewModel>unit_code}"
@@ -81,6 +84,10 @@
                                 <ObjectNumber
                                     number="{= ${importPreviewModel>resources}.length }"
                                     state="{= ${importPreviewModel>resources}.length > 0 ? 'Information' : 'None' }"/>
+                                <Text text="{
+                                        path: 'importPreviewModel>resources',
+                                        formatter: '.formatTotalResQty'
+                                    }"/>
                             </cells>
                         </ColumnListItem>
                     </items>

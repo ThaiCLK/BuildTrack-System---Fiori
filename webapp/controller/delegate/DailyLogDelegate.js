@@ -455,13 +455,185 @@ sap.ui.define([
                 return oItem.getBindingContext("importPreviewModel").getObject();
             });
 
+            // FE Validation: Check if imported log dates are within WBS date range AND Project date range
+            var oWbsCtx = this.getView().getBindingContext();
+            var oProjectModel = this.getView().getModel("projectModel");
+
+            var dWbsStart = oWbsCtx ? oWbsCtx.getProperty("StartDate") : null;
+            var dWbsEnd = oWbsCtx ? oWbsCtx.getProperty("EndDate") : null;
+            var dProjStart = oProjectModel ? oProjectModel.getProperty("/StartDate") : null;
+            var dProjEnd = oProjectModel ? oProjectModel.getProperty("/EndDate") : null;
+
+            var dStartNorm = null;
+            var dEndNorm = null;
+            var dProjStartNorm = null;
+            var dProjEndNorm = null;
+            var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+
+            // Helper to normalize any date input (String, Date object, OData timestamp)
+            var fnNormalizeDate = function (vDate) {
+                if (!vDate) return null;
+                var d = null;
+                if (vDate instanceof Date) {
+                    d = new Date(vDate.getTime());
+                } else if (typeof vDate === "string") {
+                    // Try dd/MM/yyyy (common in Excel inputs)
+                    if (vDate.indexOf("/") !== -1) {
+                        d = oDateFormat.parse(vDate);
+                    }
+                    // Fallback for OData strings or ISO strings
+                    if (!d) {
+                        d = new Date(vDate);
+                    }
+                } else if (typeof vDate === "number") {
+                    d = new Date(vDate);
+                }
+
+                if (d && !isNaN(d.getTime())) {
+                    d.setHours(0, 0, 0, 0);
+                    return d;
+                }
+                return null;
+            };
+
+            dStartNorm = fnNormalizeDate(dWbsStart);
+            dEndNorm = fnNormalizeDate(dWbsEnd);
+            dProjStartNorm = fnNormalizeDate(dProjStart);
+            dProjEndNorm = fnNormalizeDate(dProjEnd);
+
+            // Clear all previous row highlights
+            var aAllItems = oTable ? oTable.getItems() : [];
+            aAllItems.forEach(function (oItem) {
+                if (oItem.setHighlight) {
+                    oItem.setHighlight("None");
+                }
+            });
+
+            var bHasInvalidDate = false;
+            var aErrorMessages = [];
+
+            for (var i = 0; i < aSelectedItems.length; i++) {
+                (function (idx) {
+                    var oItemLocal = aSelectedItems[idx];
+                    var dLogRaw = aSelectedLogs[idx].log_date;
+                    var sDateDisplay = oDateFormat.format(fnNormalizeDate(dLogRaw)) || dLogRaw;
+
+                    var fnMarkError = function (sMsg) {
+                        bHasInvalidDate = true;
+                        if (oItemLocal && oItemLocal.setHighlight) {
+                            oItemLocal.setHighlight("Error");
+                        }
+                        aErrorMessages.push("Row " + (idx + 1) + " (" + sDateDisplay + "): " + sMsg);
+                    };
+
+                    var dLogNorm = fnNormalizeDate(dLogRaw);
+                    if (!dLogNorm) {
+                        fnMarkError(oBundle.getText("requireWbsStartDate"));
+                        return;
+                    }
+
+                    var iLogMs = dLogNorm.getTime();
+
+                    // Check WBS logic first (most restrictive)
+                    if (dStartNorm && iLogMs < dStartNorm.getTime()) {
+                        fnMarkError(oBundle.getText("logDateBeforeWbsStartError", [oDateFormat.format(dStartNorm)]));
+                        return;
+                    }
+                    if (dEndNorm && iLogMs > dEndNorm.getTime()) {
+                        fnMarkError(oBundle.getText("logDateAfterWbsEndError", [oDateFormat.format(dEndNorm)]));
+                        return;
+                    }
+
+                    // Check Project logic second
+                    if (dProjStartNorm && iLogMs < dProjStartNorm.getTime()) {
+                        fnMarkError(oBundle.getText("logDateBeforeProjectStartError", [oDateFormat.format(dProjStartNorm)]));
+                        return;
+                    }
+                    if (dProjEndNorm && iLogMs > dProjEndNorm.getTime()) {
+                        fnMarkError(oBundle.getText("logDateAfterProjectEndError", [oDateFormat.format(dProjEndNorm)]));
+                        return;
+                    }
+                })(i);
+            }
+
+            if (bHasInvalidDate) {
+                MessageBox.error(aErrorMessages.join("\n"));
+                return;
+            }
+
+            // Validate resource quantity > 0
+            var bHasInvalidQty = false;
+            var aQtyErrors = [];
+            for (var j = 0; j < aSelectedLogs.length; j++) {
+                (function (idx) {
+                    var oItemLocal = aSelectedItems[idx];
+                    var oLog = aSelectedLogs[idx];
+                    var aRes = oLog.resources || [];
+                    var sDateDisplay = oDateFormat.format(fnNormalizeDate(oLog.log_date)) || oLog.log_date;
+
+                    for (var r = 0; r < aRes.length; r++) {
+                        var fQty = parseFloat(aRes[r].quantity);
+                        if (isNaN(fQty) || fQty <= 0) {
+                            bHasInvalidQty = true;
+                            if (oItemLocal && oItemLocal.setHighlight) {
+                                oItemLocal.setHighlight("Error");
+                            }
+                            aQtyErrors.push("Row " + (idx + 1) + " (" + sDateDisplay + "): " + oBundle.getText("resourceQuantityZeroError") + " [" + (aRes[r].resource_id || "?") + "]");
+                            break;
+                        }
+                    }
+                })(j);
+            }
+
+            if (bHasInvalidQty) {
+                MessageBox.error(aQtyErrors.join("\n"));
+                return;
+            }
+
             this.byId("importPreviewDialog").close();
             MessageToast.show(oBundle.getText("importingLogsSequentially", [aSelectedLogs.length]));
-            this._importLogsSequentially(aSelectedLogs, 0, 0);
+
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            oUIModel.setProperty("/ui/busy", true);
+
+            oModel.read("/DailyLogSet", {
+                filters: this._sWbsId ? [new Filter("WbsId", FilterOperator.EQ, this._sWbsId)] : [],
+                success: function (oData) {
+                    var aExistingLogs = oData.results || [];
+                    that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                },
+                error: function () {
+                    oUIModel.setProperty("/ui/busy", false);
+                    MessageBox.error(oBundle.getText("logDateValidationError"));
+                }
+            });
         },
 
         onCancelImport: function () {
             this.byId("importPreviewDialog").close();
+        },
+
+        onImportLogDateChange: function (oEvent) {
+            var oDatePicker = oEvent.getSource();
+            oDatePicker.setValueState("None");
+            oDatePicker.setValueStateText("");
+
+            // Clear row highlight
+            var oItem = oDatePicker.getParent();
+            if (oItem && oItem.setHighlight) {
+                oItem.setHighlight("None");
+            }
+
+            var dNewDate = oDatePicker.getDateValue();
+            if (!dNewDate) {
+                return;
+            }
+            var oCtx = oDatePicker.getBindingContext("importPreviewModel");
+            if (oCtx) {
+                oCtx.getModel().setProperty(oCtx.getPath() + "/log_date", dNewDate);
+            }
         },
 
         formatImportDate: function (oDate) {
@@ -472,11 +644,55 @@ sap.ui.define([
                 d.getFullYear());
         },
 
-        _importLogsSequentially: function (aLogs, iIndex, iSuccess) {
+        formatImportPreviewLogCount: function(sText, iLength) {
+            if (!sText) return "";
+            return sText.replace("{0}", iLength || 0);
+        },
+
+        formatTotalResQty: function (aResources) {
+            if (!aResources || !Array.isArray(aResources) || aResources.length === 0) return "0";
+            var fTotal = 0;
+            aResources.forEach(function (res) {
+                fTotal += parseFloat(res.quantity) || 0;
+            });
+            return String(Math.round(fTotal));
+        },
+
+        _importLogsSequentially: function (aLogs, iIndex, iSuccess, aExistingLogs, aCreatedDates, aUpdatedDates) {
             var that = this;
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            aCreatedDates = aCreatedDates || [];
+            aUpdatedDates = aUpdatedDates || [];
+
+            var oDateFmt = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+
             if (iIndex >= aLogs.length) {
+                oUIModel.setProperty("/ui/busy", false);
                 var oBundle = this.getView().getModel("i18n").getResourceBundle();
-                MessageToast.show(oBundle.getText("logsImportedSuccess", [iSuccess]));
+
+                // Build detailed result message
+                var aLines = [];
+                if (aCreatedDates.length > 0) {
+                    aLines.push("✅ " + oBundle.getText("importNewLogs", [aCreatedDates.length]) + ":");
+                    aCreatedDates.forEach(function (sDate) {
+                        aLines.push("   • " + sDate);
+                    });
+                }
+                if (aUpdatedDates.length > 0) {
+                    if (aLines.length > 0) aLines.push("");
+                    aLines.push("🔄 " + oBundle.getText("importUpdatedLogs", [aUpdatedDates.length]) + ":");
+                    aUpdatedDates.forEach(function (sDate) {
+                        aLines.push("   • " + sDate);
+                    });
+                }
+                if (aLines.length === 0) {
+                    aLines.push(oBundle.getText("logsImportedSuccess", [0]));
+                }
+
+                MessageBox.success(aLines.join("\n"), {
+                    title: oBundle.getText("logsImportedSuccess", [iSuccess])
+                });
+
                 this._bindDailyLogList(this._sWbsId);
                 this._updateWbsActualDates(this._sWbsId);
                 this._loadWorkSummary(this._sWbsId);
@@ -488,10 +704,14 @@ sap.ui.define([
             var oWbsCtx = this.getView().getBindingContext();
             var sWbsUnit = oWbsCtx ? (oWbsCtx.getProperty("UnitCode") || "") : "";
 
+            var dLogDate = oLog.log_date instanceof Date ? oLog.log_date : new Date(oLog.log_date);
+            var dUtcMidnight = new Date(Date.UTC(dLogDate.getFullYear(), dLogDate.getMonth(), dLogDate.getDate()));
+            var sFormattedDate = oDateFmt.format(dLogDate);
+
             var oPayload = {
                 WbsId: this._sWbsId,
-                LogDate: oLog.log_date || new Date(),
-                QuantityDone: oLog.qty_done ? oLog.qty_done.toString() : "0",
+                LogDate: dUtcMidnight,
+                QuantityDone: oLog.qty_done ? String(parseFloat(oLog.qty_done) || 0) : "0",
                 UnitCode: sWbsUnit,
                 WeatherAm: oLog.weather_am || "SUNNY",
                 WeatherPm: oLog.weather_pm || "SUNNY",
@@ -500,41 +720,82 @@ sap.ui.define([
                 ContractorNote: oLog.contractor_note || ""
             };
 
-            oModel.create("/DailyLogSet", oPayload, {
-                success: function (oCreated) {
-                    var sNewLogId = oCreated.LogId;
-                    var aResources = oLog.resources || [];
-                    if (aResources.length === 0) {
-                        that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1);
-                        return;
-                    }
-
-                    var iDone = 0;
-                    var iTotal = aResources.length;
-                    aResources.forEach(function (res) {
-                        var oResPayload = {
-                            LogId: sNewLogId,
-                            ResourceId: res.resource_id || "",
-                            Quantity: String(parseFloat(res.quantity) || 0)
-                        };
-                        oModel.create("/ResourceUseSet", oResPayload, {
-                            success: function () {
-                                if (++iDone >= iTotal) {
-                                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1);
-                                }
-                            },
-                            error: function () {
-                                if (++iDone >= iTotal) {
-                                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1);
-                                }
-                            }
-                        });
-                    });
-                },
-                error: function () {
-                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess);
+            // CHECK DUPLICATE DATE
+            var sExistingLogId = null;
+            for (var i = 0; i < aExistingLogs.length; i++) {
+                var l = aExistingLogs[i];
+                var dExisting = l.LogDate instanceof Date ? l.LogDate : new Date(l.LogDate);
+                var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                var sNormCheckId = this._sWbsId ? this._sWbsId.toLowerCase().replace(/-/g, "") : "";
+                
+                if ((!sLogWbsId || sLogWbsId === sNormCheckId) &&
+                    dExisting.getFullYear() === dLogDate.getFullYear() &&
+                    dExisting.getMonth() === dLogDate.getMonth() &&
+                    dExisting.getDate() === dLogDate.getDate()) {
+                    sExistingLogId = l.LogId;
+                    break;
                 }
-            });
+            }
+
+            var fnAfterLog = function (sLogId) {
+                var aResources = oLog.resources || [];
+                if (aResources.length === 0) {
+                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
+                    return;
+                }
+
+                var iDone = 0;
+                var iTotal = aResources.length;
+                aResources.forEach(function (res) {
+                    var oResPayload = {
+                        LogId: sLogId,
+                        ResourceId: res.resource_id || "",
+                        Quantity: String(parseFloat(res.quantity) || 0)
+                    };
+                    oModel.create("/ResourceUseSet", oResPayload, {
+                        success: function () {
+                            if (++iDone >= iTotal) {
+                                that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
+                            }
+                        },
+                        error: function () {
+                            if (++iDone >= iTotal) {
+                                that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
+                            }
+                        }
+                    });
+                });
+            };
+
+            if (sExistingLogId) {
+                // UPDATE existing log
+                oModel.update("/DailyLogSet(guid'" + sExistingLogId + "')", oPayload, {
+                    success: function () {
+                        aUpdatedDates.push(sFormattedDate);
+                        fnAfterLog(sExistingLogId);
+                    },
+                    error: function () {
+                        that._importLogsSequentially(aLogs, iIndex + 1, iSuccess, aExistingLogs, aCreatedDates, aUpdatedDates);
+                    }
+                });
+            } else {
+                // CREATE new log
+                oModel.create("/DailyLogSet", oPayload, {
+                    success: function (oCreated) {
+                        var sNewLogId = oCreated.LogId;
+                        aExistingLogs.push({
+                            LogId: sNewLogId,
+                            LogDate: dUtcMidnight,
+                            WbsId: oCreated.WbsId
+                        });
+                        aCreatedDates.push(sFormattedDate);
+                        fnAfterLog(sNewLogId);
+                    },
+                    error: function () {
+                        that._importLogsSequentially(aLogs, iIndex + 1, iSuccess, aExistingLogs, aCreatedDates, aUpdatedDates);
+                    }
+                });
+            }
         },
 
         onDeleteLog: function () {
@@ -709,6 +970,10 @@ sap.ui.define([
 
         onResourceIdChange: function (oEvent) {
             var oSelectedItem = oEvent.getParameter("selectedItem");
+            var oSelect = oEvent.getSource();
+            oSelect.setValueState("None");
+            oSelect.setValueStateText("");
+            
             if (!oSelectedItem) { return; }
             var sResourceId = oSelectedItem.getKey();
             var oCtx = oEvent.getSource().getBindingContext("dailyLogModel");
@@ -723,6 +988,19 @@ sap.ui.define([
                     oUIModel.setProperty(oCtx.getPath() + "/UnitCode", oRes.UnitCode || "");
                 }
             });
+        },
+
+        onResourceQtyChange: function (oEvent) {
+            var oStepInput = oEvent.getSource();
+            var fValue = parseFloat(oStepInput.getValue());
+            if (isNaN(fValue) || fValue <= 0) {
+                oStepInput.setValueState("Error");
+                var oBundle = this.getView().getModel("i18n").getResourceBundle();
+                oStepInput.setValueStateText(oBundle.getText("resourceQuantityZeroError"));
+            } else {
+                oStepInput.setValueState("None");
+                oStepInput.setValueStateText("");
+            }
         },
 
         onSaveLog: function () {
@@ -750,12 +1028,46 @@ sap.ui.define([
             }
 
             var oWbsCtx = this.getView().getBindingContext();
+            var oProjectModel = this.getView().getModel("projectModel");
+
+            // Normalize log date to midnight for comparison
+            var dLogNorm = new Date(dLogDate); dLogNorm.setHours(0, 0, 0, 0);
+
+            // Project date validation bounds
+            if (oProjectModel) {
+                var dProjStart = oProjectModel.getProperty("/StartDate");
+                var dProjEnd = oProjectModel.getProperty("/EndDate");
+
+                if (dProjStart) {
+                    var dProjStartNorm = new Date(dProjStart instanceof Date ? dProjStart : new Date(dProjStart));
+                    dProjStartNorm.setHours(0, 0, 0, 0);
+                    if (dLogNorm < dProjStartNorm) {
+                        if (oDatePicker) {
+                            var oDateFormatP1 = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                            oDatePicker.setValueState("Error");
+                            oDatePicker.setValueStateText(oBundle.getText("logDateBeforeProjectStartError", [oDateFormatP1.format(dProjStartNorm)]));
+                        }
+                        return;
+                    }
+                }
+                if (dProjEnd) {
+                    var dProjEndNorm = new Date(dProjEnd instanceof Date ? dProjEnd : new Date(dProjEnd));
+                    dProjEndNorm.setHours(0, 0, 0, 0);
+                    if (dLogNorm > dProjEndNorm) {
+                        if (oDatePicker) {
+                            var oDateFormatP2 = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                            oDatePicker.setValueState("Error");
+                            oDatePicker.setValueStateText(oBundle.getText("logDateAfterProjectEndError", [oDateFormatP2.format(dProjEndNorm)]));
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // WBS date validation bounds
             if (oWbsCtx) {
                 var dWbsStart = oWbsCtx.getProperty("StartDate");
                 var dWbsEnd = oWbsCtx.getProperty("EndDate");
-
-                // Normalize all dates to midnight for comparison
-                var dLogNorm = new Date(dLogDate); dLogNorm.setHours(0, 0, 0, 0);
 
                 if (dWbsStart) {
                     var dStartNorm = new Date(dWbsStart instanceof Date ? dWbsStart : new Date(dWbsStart));
@@ -794,14 +1106,42 @@ sap.ui.define([
                 return;
             }
 
-            // 2. Validate Resource Usage (Must have at least one and none missing ResourceId)
+            // 2. Validate Resource Usage (Must have at least one and none missing ResourceId, Qty > 0)
             var aResources = oUIModel.getProperty("/resourceUseList") || [];
-            var bInvalidResource = aResources.length === 0 || aResources.some(function (res) {
-                return !res.ResourceId;
+            var oTable = this.byId("idResourceUseTable");
+            var aItems = oTable ? oTable.getItems() : [];
+            
+            var bMissingResourceInfo = false;
+            var bInvalidResourceQty = false;
+
+            if (aResources.length === 0) {
+                MessageBox.error(oBundle.getText("selectResourceError"));
+                return;
+            }
+
+            aItems.forEach(function (oItem) {
+                var aCells = oItem.getCells();
+                // CELL 2 contains a VBox -> Select (index 0)
+                var oSelectBox = aCells[1].getItems()[0]; 
+                // CELL 4 contains StepInput
+                var oStepInput = aCells[3];
+
+                var sResourceId = oSelectBox.getSelectedKey();
+                if (!sResourceId) {
+                    bMissingResourceInfo = true;
+                    oSelectBox.setValueState("Error");
+                    oSelectBox.setValueStateText(oBundle.getText("selectResourceError"));
+                }
+
+                var fResQty = parseFloat(oStepInput.getValue());
+                if (isNaN(fResQty) || fResQty <= 0) {
+                    bInvalidResourceQty = true;
+                    oStepInput.setValueState("Error");
+                    oStepInput.setValueStateText(oBundle.getText("resourceQuantityZeroError"));
+                }
             });
 
-            if (bInvalidResource) {
-                MessageBox.error(oBundle.getText("selectResourceError"));
+            if (bMissingResourceInfo || bInvalidResourceQty) {
                 return;
             }
 

@@ -118,6 +118,21 @@
                     press=".onToggleEditMode"
                     visible="{dailyLogModel>/ui/isSelected}"
                     enabled="{= !${dailyLogModel>/ui/editMode} }"/>
+                <!-- Save Log -->
+                <Button
+                    text="{i18n>save}"
+                    icon="sap-icon://save"
+                    type="Emphasized"
+                    visible="{dailyLogModel>/ui/isSelected}"
+                    enabled="{dailyLogModel>/ui/editMode}"
+                    press=".onSaveLog"/>
+                <!-- Cancel: discard changes -->
+                <Button
+                    text="{i18n>cancel}"
+                    type="Transparent"
+                    visible="{dailyLogModel>/ui/isSelected}"
+                    enabled="{dailyLogModel>/ui/editMode}"
+                    press=".onCancelEdit"/>
             </OverflowToolbar>
 
             <!-- Placeholder when no log is selected -->
@@ -303,6 +318,7 @@
                                             value="{dailyLogModel>Quantity}"
                                             min="0" max="99999" step="1"
                                             editable="{dailyLogModel>/ui/editMode}"
+                                            change=".onResourceQtyChange"
                                             width="100px"/>
 
                                         <!-- CELL 5: Unit (from resource master) -->
@@ -360,26 +376,7 @@
                 </VBox>
             </ScrollContainer><!-- end ScrollContainer -->
 
-            <!-- ════════════════════════════════════════════════════ -->
-            <!-- FOOTER TOOLBAR — actions (visible when isSelected)  -->
-            <!-- ════════════════════════════════════════════════════ -->
-            <OverflowToolbar
-                design="Solid"
-                visible="{= ${dailyLogModel>/ui/isSelected} }">
-                <ToolbarSpacer/>
-                <!-- Save Log -->
-                <Button
-                    text="{i18n>save}"
-                    icon="sap-icon://save"
-                    type="Emphasized"
-                    enabled="{dailyLogModel>/ui/editMode}"
-                    press=".onSaveLog"/>
-                <!-- Cancel: discard changes -->
-                <Button
-                    text="{i18n>cancel}"
-                    type="Transparent"
-                    press=".onCancelEdit"/>
-            </OverflowToolbar>
+
 
         </VBox><!-- end Right Panel -->
 

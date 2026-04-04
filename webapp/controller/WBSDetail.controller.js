@@ -850,6 +850,8 @@ sap.ui.define([
         onConfirmImport: DailyLogDelegate.onConfirmImport,
         onCancelImport: DailyLogDelegate.onCancelImport,
         formatImportDate: DailyLogDelegate.formatImportDate,
+        formatTotalResQty: DailyLogDelegate.formatTotalResQty,
+        formatImportPreviewLogCount: DailyLogDelegate.formatImportPreviewLogCount,
         _importLogsSequentially: DailyLogDelegate._importLogsSequentially,
         onDeleteLog: DailyLogDelegate.onDeleteLog,
         onDeleteMultipleLogs: DailyLogDelegate.onDeleteMultipleLogs,
