@@ -510,6 +510,13 @@ sap.ui.define([
 
             // Closed Node
             aNodes.push({ id: "node5", lane: "lane5", title: oBundle.getText("nodeCompleted"), state: state5, stateText: text5, texts: getInfoForLane(5, false), children: [] });
+            
+            // Check if acceptance report is "ready" (has reached level 1 or beyond)
+            var aActiveCloseLogs = getActiveLogsForType("CLOSE");
+            var bHasLvl1Plus = aActiveCloseLogs.some(function (l) {
+                return (parseInt(l.ApprovalLevel) || 0) > 0;
+            });
+            oView.getModel("viewData").setProperty("/isAcceptanceReportReady", bHasLvl1Plus);
 
             if (oPfModel) {
                 oPfModel.setData({

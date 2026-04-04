@@ -369,6 +369,7 @@ sap.ui.define([
                     level2: { text: "[Chờ duyệt]", signed: false },
                     level3: { text: "[Chờ duyệt]", signed: false }
                 },
+                isAcceptanceReportReady: false,
                 editMode: false
             });
             this.getView().setModel(oViewData, "viewData");
