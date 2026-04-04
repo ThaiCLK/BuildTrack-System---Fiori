@@ -158,18 +158,16 @@ sap.ui.define([
 
             // 3. WBS Detail Field Validation
             var oInWbsName = this.byId("inWbsName");
-            var oInWbsCode = this.byId("inWbsCode");
             var oInWbsQty = this.byId("inWbsQuantity");
             var oInWbsStart = this.byId("inWbsStartDate");
             var oInWbsEnd = this.byId("inWbsEndDate");
 
             // Reset states
-            [oInWbsName, oInWbsCode, oInWbsQty, oInWbsStart, oInWbsEnd].forEach(function (o) {
+            [oInWbsName, oInWbsQty, oInWbsStart, oInWbsEnd].forEach(function (o) {
                 if (o) o.setValueState("None");
             });
 
             var sWName = oInWbsName.getValue().trim();
-            var sWCode = oInWbsCode.getValue().trim();
             var fWQty = parseFloat(oInWbsQty.getValue());
             var dWStart = oInWbsStart.getDateValue();
             var dWEnd = oInWbsEnd.getDateValue();
@@ -177,11 +175,6 @@ sap.ui.define([
             if (!sWName) {
                 oInWbsName.setValueState("Error");
                 oInWbsName.setValueStateText(oBundle.getText("requireWbsName"));
-                bHasError = true;
-            }
-            if (!sWCode) {
-                oInWbsCode.setValueState("Error");
-                oInWbsCode.setValueStateText(oBundle.getText("requireWbsCode"));
                 bHasError = true;
             }
             if (isNaN(fWQty) || fWQty <= 0) {
@@ -285,7 +278,7 @@ sap.ui.define([
 
                     var oPayloadWbs = {
                         WbsName: sWName,
-                        WbsCode: sWCode,
+                        WbsCode: oModel.getProperty(sPath + "/WbsCode"),
                         Quantity: String(Math.floor(fWQty) || "0"),
                         UnitCode: oModel.getProperty(sPath + "/UnitCode") || "M",
                         Status: oModel.getProperty(sPath + "/Status"),

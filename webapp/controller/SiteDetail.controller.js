@@ -1271,17 +1271,10 @@ sap.ui.define([
                 bIsChild = !!sParentId;
             }
 
+            var oLabelCode = new Label({ text: oBundle.getText("wbsCode"), visible: bEdit });
             var oInputCode = new Input({
-                placeholder: "e.g. 1.1.1",
-                liveChange: function (oEvent) {
-                    var oControl = oEvent.getSource();
-                    var sVal = oControl.getValue();
-                    if (sVal) {
-                        oControl.setValue(sVal.toUpperCase());
-                    }
-                    oControl.setValueState("None");
-                    oControl.setValueStateText("");
-                }
+                visible: bEdit,
+                editable: false
             });
             var oInputName = new Input({
                 placeholder: oBundle.getText("workItemName"),
@@ -1406,7 +1399,7 @@ sap.ui.define([
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
                 content: [
-                    new Label({ text: oBundle.getText("wbsCode"), required: true }), oInputCode,
+                    oLabelCode, oInputCode,
                     new Label({ text: oBundle.getText("name"), required: true }), oInputName,
                     new Label({ text: oBundle.getText("startDate"), required: true }), oPickerStart,
                     new Label({ text: oBundle.getText("endDate"), required: true }), oPickerEnd,
@@ -1505,19 +1498,15 @@ sap.ui.define([
                         var sQty = oInputQty.getValue();
 
                         // Reset states
-                        oInputCode.setValueState("None");
+                        if (bEdit) {
+                            oInputCode.setValueState("None");
+                        }
                         oInputName.setValueState("None");
                         oPickerStart.setValueState("None");
                         oPickerEnd.setValueState("None");
                         oInputQty.setValueState("None");
 
                         var bHasError = false;
-
-                        if (!sWbsCode) {
-                            oInputCode.setValueState("Error");
-                            oInputCode.setValueStateText(oBundle.getText("requireWbsCode"));
-                            bHasError = true;
-                        }
                         if (!sName) {
                             oInputName.setValueState("Error");
                             oInputName.setValueStateText(oBundle.getText("requireWbsName"));
@@ -1648,7 +1637,6 @@ sap.ui.define([
 
                             var fnExecuteActualSave = function () {
                                 var oPayload = {
-                                    WbsCode: sWbsCode,
                                     WbsName: sName,
                                     StartDate: toUTC(dStart),
                                     EndDate: toUTC(dEnd),
@@ -1656,6 +1644,10 @@ sap.ui.define([
                                     UnitCode: oSelectUnit.getSelectedKey(),
                                     Status: bEdit ? (oSelectStatus.getSelectedKey() || oContext.getProperty("Status")) : "PLANNING"
                                 };
+
+                                if (bEdit) {
+                                    oPayload.WbsCode = sWbsCode;
+                                }
 
                                 var fnSaveLocation = function (sTargetWbsId, fnDone) {
                                     var sLName = oLocName.getValue().trim();
@@ -1724,40 +1716,7 @@ sap.ui.define([
                                 }
                             };
 
-                            // --- WBS Code Uniqueness Check (Only for new WBS) ---
-                            if (!bEdit) {
-                                that.getView().setBusy(true);
-                                oModel.read("/WBSSet", {
-                                    filters: [
-                                        new sap.ui.model.Filter("WbsCode", sap.ui.model.FilterOperator.EQ, sWbsCode),
-                                        new sap.ui.model.Filter("SiteId", sap.ui.model.FilterOperator.EQ, that._sCurrentSiteId)
-                                    ],
-                                    success: function (oData) {
-                                        that.getView().setBusy(false);
-                                        var aResults = oData.results || [];
-                                        // Case-insensitive exact match check on the returned results for the current site
-                                        var bExists = aResults.some(function (w) {
-                                            return (w.WbsCode || "").trim().toLowerCase() === sWbsCode.toLowerCase();
-                                        });
-
-                                        if (bExists) {
-                                            var sMsg = oBundle.getText("wbsCodeDuplicateError", [sWbsCode]);
-                                            if (sMsg.indexOf("{0}") !== -1) {
-                                                sMsg = sMsg.replace("{0}", sWbsCode);
-                                            }
-                                            MessageBox.error(sMsg);
-                                        } else {
-                                            fnExecuteActualSave();
-                                        }
-                                    },
-                                    error: function (e) {
-                                        that.getView().setBusy(false);
-                                        that._showError(e);
-                                    }
-                                });
-                            } else {
-                                fnExecuteActualSave();
-                            }
+                            fnExecuteActualSave();
                         };
 
                         if (!oProjData.StartDate) {

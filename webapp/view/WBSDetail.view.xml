@@ -38,10 +38,7 @@
                                 </VBox>
 
                                 <Label text="{i18n>wbsCode}" />
-                                <VBox width="100%">
-                                    <Input id="inWbsCode" value="{WbsCode}" visible="{viewData>/editMode}" />
-                                    <Text text="{WbsCode}" visible="{= !${viewData>/editMode} }" />
-                                </VBox>
+                                <Text text="{WbsCode}" />
 
                                 <core:Title text="{i18n>schedulePlannedVsActual}" />
 
@@ -85,7 +82,6 @@
                                 <Label text="{i18n>status}" />
                                 <VBox width="100%">
                                     <ObjectStatus 
-                                        class="sapUiTinyMarginTop"
                                         text="{path: 'Status', formatter: '.formatWbsStatusText'}"
                                         state="{path: 'Status', formatter: '.formatWbsStatusState'}"
                                         icon="{path: 'Status', formatter: '.formatWbsStatusIcon'}" />
