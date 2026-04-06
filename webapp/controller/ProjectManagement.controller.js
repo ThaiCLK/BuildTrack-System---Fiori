@@ -573,14 +573,6 @@ sap.ui.define([
             return mLabels[(sStatus || "").toUpperCase()] || sStatus;
         },
 
-        onDatePickerAfterRendering: function(oEvent) {
-            var $input = oEvent.getSource().$().find("input");
-            if ($input.length > 0) {
-                $input.attr("readonly", true);
-                $input.css("cursor", "pointer");
-            }
-        },
-
         // ── NAVIGATE BACK TO DASHBOARD ────────────────────────────────────────
         onNavBack: function () {
             this.getOwnerComponent().getRouter().navTo("Dashboard", {}, true);

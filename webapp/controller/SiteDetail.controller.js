@@ -1507,33 +1507,68 @@ sap.ui.define([
                         oInputQty.setValueState("None");
 
                         var bHasError = false;
+
+                        // Check for duplicate WBS name
+                        var bExists = false;
+                        var aTree = that.getView().getModel("viewData").getProperty("/WBS") || [];
+                        var sNameLower = sName.toLowerCase();
+                        var _checkNode = function (nodes) {
+                            for (var i = 0; i < nodes.length; i++) {
+                                var isSelf = false;
+                                if (bEdit && oContext) {
+                                    isSelf = nodes[i].WbsId === oContext.getProperty("WbsId");
+                                }
+                                if (!isSelf && nodes[i].WbsName && nodes[i].WbsName.toLowerCase() === sNameLower) {
+                                    bExists = true;
+                                    break;
+                                }
+                                if (nodes[i].children && nodes[i].children.length > 0) {
+                                    _checkNode(nodes[i].children);
+                                }
+                            }
+                        };
+
+                        if (sName) {
+                            _checkNode(aTree);
+                        }
+
+                        var bHasWbsDetailError = false;
+
                         if (!sName) {
                             oInputName.setValueState("Error");
                             oInputName.setValueStateText(oBundle.getText("requireWbsName"));
                             bHasError = true;
+                            bHasWbsDetailError = true;
+                        } else if (bExists) {
+                            oInputName.setValueState("Error");
+                            oInputName.setValueStateText(oBundle.getText("wbsNameExistsError") || "Tên Hạng mục thi công đã tồn tại trong Công trình này. Vui lòng chọn tên khác.");
+                            bHasError = true;
+                            bHasWbsDetailError = true;
                         }
                         if (!dStart) {
                             oPickerStart.setValueState("Error");
                             oPickerStart.setValueStateText(oBundle.getText("requireWbsStartDate"));
                             bHasError = true;
+                            bHasWbsDetailError = true;
                         }
                         if (!dEnd) {
                             oPickerEnd.setValueState("Error");
                             oPickerEnd.setValueStateText(oBundle.getText("requireWbsEndDate"));
                             bHasError = true;
+                            bHasWbsDetailError = true;
                         }
                         var fQty = parseFloat(sQty);
-                        // Leaf nodes (children) must have quantity.
-                        // Root level creations/edits skip this check.
                         if (bIsChild) {
                             if (!sQty) {
                                 oInputQty.setValueState("Error");
                                 oInputQty.setValueStateText(oBundle.getText("requireWbsQuantity"));
                                 bHasError = true;
+                                bHasWbsDetailError = true;
                             } else if (isNaN(fQty) || fQty <= 0) {
                                 oInputQty.setValueState("Error");
                                 oInputQty.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
                                 bHasError = true;
+                                bHasWbsDetailError = true;
                             }
                         }
 
@@ -1541,47 +1576,67 @@ sap.ui.define([
                             oPickerEnd.setValueState("Error");
                             oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
                             bHasError = true;
+                            bHasWbsDetailError = true;
                         }
 
-                        // --- Location Validation (matching ABAP logic) ---
+                        // --- Location Validation ---
                         var sLName = oLocName.getValue().trim();
                         var fLStart = parseFloat(oLocStart.getValue());
                         var fLEnd = parseFloat(oLocEnd.getValue());
                         var fLTop = parseFloat(oLocTop.getValue());
                         var fLBot = parseFloat(oLocBot.getValue());
 
-                        // Don't validate location if all fields are empty (link is optional)
-                        var bHasLocationData = sLName || !isNaN(fLStart) || !isNaN(fLEnd) || !isNaN(fLTop) || !isNaN(fLBot);
+                        var bLocationError = false;
+                        var aLocationErrors = [];
 
-                        if (bHasLocationData) {
-                            if (!sLName) {
-                                oLocName.setValueState("Error");
-                                oLocName.setValueStateText(oBundle.getText("locationNameRequired"));
-                                bHasError = true;
-                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId()); // Switch to Location tab
-                            } else if (sLName.length > 100) {
-                                oLocName.setValueState("Error");
-                                oLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
-                                bHasError = true;
-                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                        // Location Name is mandatory
+                        if (!sLName) {
+                            oLocName.setValueState("Error");
+                            oLocName.setValueStateText(oBundle.getText("locationNameRequired"));
+                            if (aLocationErrors.indexOf(oBundle.getText("locationNameRequired")) === -1) {
+                                aLocationErrors.push(oBundle.getText("locationNameRequired"));
                             }
+                            bHasError = true;
+                            bLocationError = true;
+                        } else if (sLName.length > 100) {
+                            oLocName.setValueState("Error");
+                            oLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
+                            if (aLocationErrors.indexOf(oBundle.getText("locationNameTooLong")) === -1) {
+                                aLocationErrors.push(oBundle.getText("locationNameTooLong"));
+                            }
+                            bHasError = true;
+                            bLocationError = true;
+                        }
 
-                            if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
-                                oLocStart.setValueState("Error");
-                                oLocStart.setValueStateText(oBundle.getText("posStartEndError"));
-                                bHasError = true;
-                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                        if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
+                            oLocStart.setValueState("Error");
+                            oLocStart.setValueStateText(oBundle.getText("posStartEndError"));
+                            if (aLocationErrors.indexOf(oBundle.getText("posStartEndError")) === -1) {
+                                aLocationErrors.push(oBundle.getText("posStartEndError"));
                             }
+                            bHasError = true;
+                            bLocationError = true;
+                        }
 
-                            if (!isNaN(fLTop) && !isNaN(fLBot) && fLBot > fLTop) {
-                                oLocBot.setValueState("Error");
-                                oLocBot.setValueStateText(oBundle.getText("posBotTopError"));
-                                bHasError = true;
-                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                        if (!isNaN(fLTop) && !isNaN(fLBot) && fLBot > fLTop) {
+                            oLocBot.setValueState("Error");
+                            oLocBot.setValueStateText(oBundle.getText("posBotTopError"));
+                            if (aLocationErrors.indexOf(oBundle.getText("posBotTopError")) === -1) {
+                                aLocationErrors.push(oBundle.getText("posBotTopError"));
                             }
+                            bHasError = true;
+                            bLocationError = true;
                         }
 
                         if (bHasError) {
+                            if (!bHasWbsDetailError && bLocationError) {
+                                // WBS validations passed, but Location failed. Alert and switch tab.
+                                MessageBox.error(aLocationErrors.join("\n"));
+                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
+                            } else {
+                                // Keep focus on first tab so the inline WBS Detail errors are seen
+                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[0].getId());
+                            }
                             return;
                         }
 
@@ -1597,6 +1652,17 @@ sap.ui.define([
                         var oProjData = (oProjModel ? oProjModel.getData() : {}) || {};
 
                         var fnProceedSave = function (oProject) {
+                            // --- Frontend Authorization Check ---
+                            var oUserModel = that.getView().getModel("userModel");
+                            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : 0;
+                            var sUserId = oUserModel ? oUserModel.getProperty("/userId") : "";
+                            
+                            var bIsAuthorized = (iAuthLevel === 99) || (sUserId && oProject && sUserId === oProject.CreatedBy);
+                            if (!bIsAuthorized) {
+                                MessageBox.error(oBundle.getText("errorNoAuthLocation") || "Người tạo Dự án hoặc Quản Lý Hệ Thống mới có quyền tạo Vị trí thi công.");
+                                return;
+                            }
+
                             var vProjStart = oProject.StartDate || oProject.start_date || oProject.PlannedStart;
                             var vProjEnd = oProject.EndDate || oProject.end_date || oProject.PlannedEnd;
 
@@ -1671,11 +1737,19 @@ sap.ui.define([
                                     };
                                     if (bEdit && sEditLocationId) {
                                         oModel.update("/LocationSet(guid'" + sEditLocationId + "')", oLocPayload, {
-                                            success: function () { fnDone(); }, error: function () { fnDone(); }
+                                            success: function () { fnDone(); }, 
+                                            error: function (oError) { 
+                                                that._showError(oError); 
+                                                fnDone(true); 
+                                            }
                                         });
                                     } else {
                                         oModel.create("/LocationSet", oLocPayload, {
-                                            success: function () { fnDone(); }, error: function () { fnDone(); }
+                                            success: function () { fnDone(); }, 
+                                            error: function (oError) { 
+                                                that._showError(oError); 
+                                                fnDone(true); 
+                                            }
                                         });
                                     }
                                 };
@@ -1684,8 +1758,10 @@ sap.ui.define([
                                     var sEditWbsId = oContext.getProperty("WbsId");
                                     oModel.update("/WBSSet(guid'" + sEditWbsId + "')", oPayload, {
                                         success: function () {
-                                            fnSaveLocation(sEditWbsId, function () {
-                                                MessageToast.show(oBundle.getText("wbsUpdated"));
+                                            fnSaveLocation(sEditWbsId, function (bLocError) {
+                                                if (!bLocError) {
+                                                    MessageToast.show(oBundle.getText("wbsUpdated"));
+                                                }
                                                 oDialog.close();
                                                 oModel.refresh(true);
                                                 that._loadWbsData();
@@ -1700,8 +1776,10 @@ sap.ui.define([
                                         success: function (oData) {
                                             var sNewWbsId = oData.WbsId || (oData.d && oData.d.WbsId);
                                             if (sNewWbsId) {
-                                                fnSaveLocation(sNewWbsId, function () {
-                                                    MessageToast.show(oBundle.getText("wbsCreatedSuccessfully"));
+                                                fnSaveLocation(sNewWbsId, function (bLocError) {
+                                                    if (!bLocError) {
+                                                        MessageToast.show(oBundle.getText("wbsCreatedSuccessfully"));
+                                                    }
                                                     oDialog.close();
                                                     that._loadWbsData();
                                                 });

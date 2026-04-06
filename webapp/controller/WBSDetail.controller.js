@@ -993,24 +993,6 @@ sap.ui.define([
                     if (sAction === sap.m.MessageBox.Action.OK) {
                         oView.setBusy(true);
 
-                        // --- OLD API CODE (COMMENTED) ---
-                        /*
-                        that.getOwnerComponent().getModel().callFunction("/StartWSProcess", {
-                            method: "POST",
-                            urlParameters: { WBS_IDS: oWbsCtx.getProperty("WbsId") },
-                            success: function () {
-                                oView.setBusy(false);
-                                sap.m.MessageToast.show(oBundle.getText("submitSuccess", ["1"]));
-                                that.getOwnerComponent().getModel().refresh(true, true);
-                            },
-                            error: function () {
-                                oView.setBusy(false);
-                                sap.m.MessageBox.error(oBundle.getText("wbsSubmitError") || "Error on submission.");
-                            }
-                        });
-                        */
-                        // --- END OLD API CODE ---
-
                         // --- NEW API CODE ---
                         that.getOwnerComponent().getModel().callFunction("/ApproveWbs", {
                             method: "POST",
@@ -1569,41 +1551,6 @@ sap.ui.define([
 
             this.onCloseWbsInfoDialog();
             oView.setBusy(true);
-
-            // --- OLD API CODE (COMMENTED) ---
-            /*
-            oModel.callFunction("/StartWSProcess", {
-                method: "POST",
-                urlParameters: {
-                    WBS_IDS: sWbsId
-                },
-                success: function (oData) {
-                    oView.setBusy(false);
-                    var sSuccessMsg = oData && oData.MESSAGE ? oData.MESSAGE : oBundle.getText("submitSuccess", ["1"]);
-                    var sErrorMsg = oData && oData.MESSAGE ? oData.MESSAGE : oBundle.getText("wbsSubmitError");
-
-                    if (oData && oData.SUCCESS === false) {
-                        sap.m.MessageBox.error(sErrorMsg);
-                        return;
-                    }
-                    sap.m.MessageBox.success(sSuccessMsg, {
-                        onClose: function () { // reload if needed
-                        }
-                    });
-                    oModel.refresh(true, true);
-                },
-                error: function (oError) {
-                    oView.setBusy(false);
-                    var sMsg = oBundle.getText("wbsSubmitError");
-                    try {
-                        var oErr = JSON.parse(oError.responseText);
-                        sMsg = oErr.error.message.value || sMsg;
-                    } catch (e) { }
-                    sap.m.MessageBox.error(sMsg);
-                }
-            });
-            */
-            // --- END OLD API CODE ---
 
             // --- NEW API CODE ---
             oModel.callFunction("/ApproveWbs", {

@@ -619,32 +619,6 @@ sap.ui.define([
             this.onFilterSearch();
         },
 
-        // ── SEARCH ──────────────────────────────────────────────────────────
-        onSearch: function (oEvent) {
-            var sQuery = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
-            clearTimeout(this._searchTimer);
-            this._searchTimer = setTimeout(function () {
-                var aFilters = [];
-                // Since expand="ToSites" is used, the items binding natively has a filter option if we pass it to the table, 
-                // but wait, $expand does not support $filter directly on the expanded collection in V2 unless done via an association.
-                // However, UI5 local filtering works on the expanded array.
-                if (sQuery && sQuery.length > 0) {
-                    aFilters.push(new Filter({
-                        filters: [
-                            new Filter("SiteCode", FilterOperator.Contains, sQuery),
-                            new Filter("SiteName", FilterOperator.Contains, sQuery)
-                        ],
-                        and: false
-                    }));
-                }
-                var oTable = this.byId("siteTable");
-                var oBinding = oTable.getBinding("items");
-                if (oBinding) {
-                    oBinding.filter(aFilters);
-                }
-            }.bind(this), 500);
-        },
-
         onSitePress: function (oEvent) {
             var oCtx = oEvent.getSource().getBindingContext();
             if (!oCtx) return;
@@ -657,7 +631,6 @@ sap.ui.define([
             this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
         },
 
-        // ── APPROVERS ──────────────────────────────────────────────────────
         // ── APPROVERS ──────────────────────────────────────────────────────
         onEditApprovers: function () {
             var oView = this.getView();
