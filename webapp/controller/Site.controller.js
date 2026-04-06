@@ -650,13 +650,14 @@ sap.ui.define([
                 return;
             }
 
-            var fnCreateSelect = function (sSelectedKey) {
+            var fnCreateSelect = function (sSelectedKey, iAuthLevel) {
                 return new Select({
                     width: "100%",
                     selectedKey: sSelectedKey || "",
                     forceSelection: false,
                     items: {
                         path: "users>/items",
+                        filters: [new sap.ui.model.Filter("AuthLevel", sap.ui.model.FilterOperator.EQ, iAuthLevel)],
                         template: new Item({
                             key: "{users>UserId}",
                             text: "{users>UserName} ({users>UserId})"
@@ -666,9 +667,9 @@ sap.ui.define([
                 });
             };
 
-            var oSelect1 = fnCreateSelect(oApproverData.Approver1Id);
-            var oSelect2 = fnCreateSelect(oApproverData.Approver2Id);
-            var oSelect3 = fnCreateSelect(oApproverData.Approver3Id);
+            var oSelect1 = fnCreateSelect(oApproverData.Approver1Id, 1);
+            var oSelect2 = fnCreateSelect(oApproverData.Approver2Id, 2);
+            var oSelect3 = fnCreateSelect(oApproverData.Approver3Id, 3);
 
             var oDialog = new Dialog({
                 title: oBundle.getText("editApprovers"),

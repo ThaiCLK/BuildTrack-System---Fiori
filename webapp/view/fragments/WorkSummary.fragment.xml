@@ -72,8 +72,8 @@
                         <Label text="{i18n>site}" design="Bold"/>
                         <Text text="{projectModel>/ProjectName} — {projectModel>/SiteName}" />
 
-                        <Label text="{i18n>completedCumulative}" design="Bold"/>
-                                <VBox>
+                        <Label text="{i18n>completedCumulative}" design="Bold" visible="{path: 'ParentId', formatter: '.isChildNode'}"/>
+                                <VBox visible="{path: 'ParentId', formatter: '.isChildNode'}">
                                     <ObjectNumber 
                                         number="{
                                             path: 'workSummaryModel>/TotalQtyDone',
@@ -85,7 +85,7 @@
                                         }" 
                                         unit="{UnitCode}" 
                                         state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
-                                    <!-- Chú thích: chỉ hiện khi là WBS cha -->
+                                    <!-- Chú thích: chỉ hiện khi là WBS cha (đã ẩn do y/c ẩn số hoàn thành của WBS cha) -->
                                     <Text
                                         text="{i18n>parentWbsAggregateNote}"
                                         visible="{path: 'ParentId', formatter: '.isParentNode'}"
