@@ -62,6 +62,14 @@ sap.ui.define([
         /* =========================================================== */
         onEditWbs: function () {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_WBS & ZBT_LOCATION — AuthLevel 1 (Lead Engineer) or 99 (System Admin)
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            if (iAuthLevel !== 1 && iAuthLevel !== 99) {
+                MessageBox.error(oBundle.getText("wbsPermissionError"));
+                return;
+            }
+
             var oProjectData = this.getView().getModel("projectModel").getData();
             var oCtx = this.getView().getBindingContext();
             var sWbsStatus = oCtx ? oCtx.getProperty("Status") : "";
@@ -135,10 +143,11 @@ sap.ui.define([
 
             var bHasError = false;
 
-            // 1. Authorization Check
-            var bIsAuthorized = (oUserModel.getProperty("/userId") === oProjectData.CreatedBy) || (oUserModel.getProperty("/authLevel") === 99);
+            // 1. Authorization Check (ZBT_LOCATION & ZBT_WBS: AuthLevel 1 or 99)
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            var bIsAuthorized = (iAuthLevel === 1 || iAuthLevel === 99);
             if (!bIsAuthorized) {
-                MessageBox.error(oBundle.getText("locationEditAuthError"));
+                MessageBox.error(oBundle.getText("locationPermissionError"));
                 return;
             }
 

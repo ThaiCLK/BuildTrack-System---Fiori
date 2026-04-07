@@ -253,6 +253,14 @@ sap.ui.define([
         },
 
         onAddLog: function () {
+            // Permission check: ZBT_DAILY_LOG — only AuthLevel 0 (Field Engineer)
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (iAuthLevel !== 0) {
+                sap.m.MessageBox.error(oBundle.getText("dailyLogPermissionError"));
+                return;
+            }
             if (!this._verifyStatusForDailyLog()) {
                 return;
             }
@@ -373,6 +381,14 @@ sap.ui.define([
         },
 
         onImportExcel: function () {
+            // Permission check: ZBT_DAILY_LOG — only AuthLevel 0 (Field Engineer)
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (iAuthLevel !== 0) {
+                sap.m.MessageBox.error(oBundle.getText("dailyLogPermissionError"));
+                return;
+            }
             if (!this._verifyStatusForDailyLog()) {
                 return;
             }
@@ -799,6 +815,14 @@ sap.ui.define([
         },
 
         onDeleteLog: function () {
+            // Permission check: ZBT_DAILY_LOG — only AuthLevel 0 (Field Engineer)
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (iAuthLevel !== 0) {
+                sap.m.MessageBox.error(oBundle.getText("dailyLogPermissionError"));
+                return;
+            }
             if (!this._verifyStatusForDailyLog(true)) {
                 return;
             }
@@ -836,6 +860,14 @@ sap.ui.define([
         },
 
         onDeleteMultipleLogs: function () {
+            // Permission check: ZBT_DAILY_LOG — only AuthLevel 0 (Field Engineer)
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (iAuthLevel !== 0) {
+                sap.m.MessageBox.error(oBundle.getText("dailyLogPermissionError"));
+                return;
+            }
             if (!this._verifyStatusForDailyLog(true)) {
                 return;
             }

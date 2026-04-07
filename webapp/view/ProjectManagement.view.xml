@@ -63,10 +63,10 @@
 
                 <Table id="projectTable"
                     inset="false"
-                    growing="true"
-                    growingThreshold="10"
                     alternateRowColors="true"
-                    items="{ path: 'pm>/projects', sorter: { path: 'ProjectCode', descending: false } }">
+                    mode="MultiSelect"
+                    selectionChange=".onProjectSelectionChange"
+                    items="{ path: 'pm>/paginatedProjects' }">
 
                 <headerToolbar>
                     <OverflowToolbar id="otbSubheader" style="Clear">
@@ -81,8 +81,27 @@
                             type="Emphasized"
                             icon="sap-icon://add"
                             press=".onPressCreate"/>
-                        <!-- <Button id="btnSortProject" icon="sap-icon://sort" type="Transparent"
-                                tooltip="{i18n>sort}"/> -->
+                        <Button
+                            id="btnEditProject"
+                            text="{i18n>edit}"
+                            icon="sap-icon://edit"
+                            type="Transparent"
+                            enabled="{= ${viewState>/selectedProjectCount} > 0 }"
+                            press=".onEditProject"/>
+                        <Button
+                            id="btnDeleteProject"
+                            text="{i18n>delete}"
+                            icon="sap-icon://delete"
+                            type="Transparent"
+                            enabled="{= ${viewState>/selectedProjectCount} > 0 }"
+                            press=".onDeleteProject"/>
+                        <!-- <Button
+                            id="btnCloseProject"
+                            text="{i18n>closeProject}"
+                            icon="sap-icon://decline"
+                            type="Reject"
+                            enabled="{= ${viewState>/selectedProjectCount} > 0 }"
+                            press=".onCloseProject"/> -->
                     </OverflowToolbar>
                 </headerToolbar>
 
@@ -107,9 +126,6 @@
                     </Column>
                     <Column id="colStatus" width="10rem" hAlign="Center">
                         <Text id="txtColStatus" text="{i18n>status}"/>
-                    </Column>
-                    <Column id="colAction" width="7rem" hAlign="Center">
-                        <Text id="txtColAction" text="{i18n>actions}"/>
                     </Column>
                 </columns>
 
@@ -165,18 +181,6 @@
                                      ${pm>Status} === 'CLOSED'   ? 'None'        :
                                                                     'None' }"
                                 inverted="true"/>
-
-                            <!-- Actions -->
-                            <HBox alignItems="Center" justifyContent="Center">
-                                <Button icon="sap-icon://edit"
-                                        type="Transparent"
-                                        tooltip="{i18n>editProject}"
-                                        press=".onEditProject"/>
-                                <Button icon="sap-icon://delete"
-                                        type="Transparent"
-                                        tooltip="{i18n>deleteProject}"
-                                        press=".onDeleteProject"/>
-                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>
@@ -189,6 +193,12 @@
                 </noData>
 
                 </Table>
+                
+                <HBox justifyContent="Center" alignItems="Center" class="sapUiSmallMarginTopBottom">
+                    <Button icon="sap-icon://navigation-left-arrow" type="Transparent" press=".onPrevPage" enabled="{pm>/canPrev}" />
+                    <Text text="{pm>/currentPage} / {pm>/totalPages}" class="sapUiSmallMarginBeginEnd" />
+                    <Button icon="sap-icon://navigation-right-arrow" type="Transparent" press=".onNextPage" enabled="{pm>/canNext}" />
+                </HBox>
             </VBox>
         </content>
     </Page>

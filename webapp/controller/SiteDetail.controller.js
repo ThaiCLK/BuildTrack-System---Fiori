@@ -154,6 +154,12 @@ sap.ui.define([
         /* INLINE EDIT MODE - SITE GENERAL INFO                        */
         /* =========================================================== */
         onEditSite: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_SITE — AuthLevel 1 (Lead Engineer) or 99 (System Admin)
+            if (!this._checkWbsSitePermission()) {
+                sap.m.MessageBox.error(oBundle.getText("createSitePermissionError"));
+                return;
+            }
             var oCtx = this.getView().getBindingContext();
             var oData = oCtx ? oCtx.getObject() : {};
             // Create a deep copy for editing to isolate from header
@@ -163,6 +169,14 @@ sap.ui.define([
 
         onCancelSite: function () {
             this.getView().getModel("viewData").setProperty("/editMode", false);
+        },
+
+        // Permission helper: ZBT_WBS and ZBT_SITE require AuthLevel 1 (Lead Engineer) or 99 (System Admin)
+        _checkWbsSitePermission: function () {
+            var oUserModel = this.getView().getModel("userModel");
+            if (!oUserModel) return false;
+            var iAuthLevel = parseInt(oUserModel.getProperty("/authLevel"), 10);
+            return iAuthLevel === 1 || iAuthLevel === 99;
         },
 
         onSaveSite: function () {
@@ -477,10 +491,16 @@ sap.ui.define([
 
         // ── WBS: CREATE (root if no row selected, child if row selected) ────────
         onAddWbs: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_WBS — AuthLevel 1 or 99
+            if (!this._checkWbsSitePermission()) {
+                sap.m.MessageBox.error(oBundle.getText("wbsPermissionError"));
+                return;
+            }
+
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length > 1) {
                 MessageToast.show(oBundle.getText("selectOneChildWbsError"));
                 return;
@@ -509,10 +529,16 @@ sap.ui.define([
 
         // ── WBS: EDIT ────────────────────────────────────────────────────────
         onEditWbs: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_WBS — AuthLevel 1 or 99
+            if (!this._checkWbsSitePermission()) {
+                sap.m.MessageBox.error(oBundle.getText("wbsPermissionError"));
+                return;
+            }
+
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
 
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (aIndices.length === 0) {
                 MessageToast.show(oBundle.getText("selectWbsToEditError"));
                 return;
@@ -527,9 +553,15 @@ sap.ui.define([
 
         // ── WBS: DELETE ───────────────────────────────────────────────────────
         onDeleteWbs: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_WBS — AuthLevel 1 or 99
+            if (!this._checkWbsSitePermission()) {
+                sap.m.MessageBox.error(oBundle.getText("wbsPermissionError"));
+                return;
+            }
+
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             if (aIndices.length === 0) {
                 MessageToast.show(oBundle.getText("selectWbsToDeleteError"));
@@ -817,9 +849,15 @@ sap.ui.define([
 
         // ── WBS: RUN (Switch from OPENED to IN_PROGRESS) ─────────────────────
         onRunWbs: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_WBS — AuthLevel 1 or 99
+            if (!this._checkWbsSitePermission()) {
+                sap.m.MessageBox.error(oBundle.getText("wbsPermissionError"));
+                return;
+            }
+
             var oTable = this.byId("wbsTreeTable");
             var aIndices = oTable ? oTable.getSelectedIndices() : [];
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
             if (aIndices.length === 0) {
                 MessageToast.show(oBundle.getText("selectWbsToRunError"));
@@ -1652,17 +1690,7 @@ sap.ui.define([
                         var oProjData = (oProjModel ? oProjModel.getData() : {}) || {};
 
                         var fnProceedSave = function (oProject) {
-                            // --- Frontend Authorization Check ---
-                            var oUserModel = that.getView().getModel("userModel");
-                            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : 0;
-                            var sUserId = oUserModel ? oUserModel.getProperty("/userId") : "";
-                            
-                            var bIsAuthorized = (iAuthLevel === 99) || (sUserId && oProject && sUserId === oProject.CreatedBy);
-                            if (!bIsAuthorized) {
-                                MessageBox.error(oBundle.getText("errorNoAuthLocation") || "Người tạo Dự án hoặc Quản Lý Hệ Thống mới có quyền tạo Vị trí thi công.");
-                                return;
-                            }
-
+                            // --- Project Date Validation ---
                             var vProjStart = oProject.StartDate || oProject.start_date || oProject.PlannedStart;
                             var vProjEnd = oProject.EndDate || oProject.end_date || oProject.PlannedEnd;
 

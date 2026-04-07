@@ -54,8 +54,18 @@ sap.ui.define([
                 typeItems: []
             }), "vh");
             this.getView().setModel(new JSONModel({
-                projects: []
+                projects: [],
+                paginatedProjects: [],
+                currentPage: 1,
+                totalPages: 1,
+                pageSize: 10,
+                canPrev: false,
+                canNext: false
             }), "pm");
+
+            this.getView().setModel(new JSONModel({
+                selectedProjectCount: 0
+            }), "viewState");
 
             var oFilterBar = this.byId("projectFilterBar");
             if (oFilterBar) {
@@ -430,7 +440,7 @@ sap.ui.define([
                     aUsers.forEach(function (u) {
                         mUserMap[u.UserId] = u.UserName || u.UserId;
                     });
-                    
+
                     // Store in a local model for easy access
                     that.getView().setModel(new JSONModel({
                         map: mUserMap,
@@ -454,7 +464,7 @@ sap.ui.define([
         _enrichProjectWithNames: function (aProjects) {
             var oUsersModel = this.getView().getModel("users");
             if (!oUsersModel) return;
-            
+
             var mUserMap = oUsersModel.getProperty("/map") || {};
             aProjects.forEach(function (p) {
                 if (p.CreatedBy) {
@@ -487,22 +497,56 @@ sap.ui.define([
                         this._detectProjectFieldMap(aResults[0]);
                     }
                     var aNormalized = aResults.map(this._normalizeProjectRow.bind(this));
-                    
+
                     // Enrich with Names
                     this._enrichProjectWithNames(aNormalized);
 
                     aNormalized = this._applyCriteriaLocal(aNormalized);
                     aNormalized.sort(function (a, b) {
-                        var iA = a.StartDate ? new Date(a.StartDate).getTime() : 0;
-                        var iB = b.StartDate ? new Date(b.StartDate).getTime() : 0;
-                        return iB - iA;
+                        var sA = (a.ProjectCode || "").toLowerCase();
+                        var sB = (b.ProjectCode || "").toLowerCase();
+                        if (sA < sB) return -1;
+                        if (sA > sB) return 1;
+                        return 0;
                     });
                     oPmModel.setProperty("/projects", aNormalized);
+                    this._updatePagination(1);
                 }.bind(this),
                 error: function () {
                     oPmModel.setProperty("/projects", []);
-                }
+                    this._updatePagination(1);
+                }.bind(this)
             });
+        },
+
+        _updatePagination: function (iPage) {
+            var oPmModel = this.getView().getModel("pm");
+            var aProjects = oPmModel.getProperty("/projects") || [];
+            var iPageSize = oPmModel.getProperty("/pageSize");
+            var iTotalPages = Math.ceil(aProjects.length / iPageSize) || 1;
+
+            if (iPage < 1) { iPage = 1; }
+            if (iPage > iTotalPages) { iPage = iTotalPages; }
+
+            var iStart = (iPage - 1) * iPageSize;
+            var iEnd = iStart + iPageSize;
+            var aPaginated = aProjects.slice(iStart, iEnd);
+
+            oPmModel.setProperty("/currentPage", iPage);
+            oPmModel.setProperty("/totalPages", iTotalPages);
+            oPmModel.setProperty("/paginatedProjects", aPaginated);
+            oPmModel.setProperty("/canPrev", iPage > 1);
+            oPmModel.setProperty("/canNext", iPage < iTotalPages);
+        },
+
+        onPrevPage: function () {
+            var oPmModel = this.getView().getModel("pm");
+            this._updatePagination(oPmModel.getProperty("/currentPage") - 1);
+        },
+
+        onNextPage: function () {
+            var oPmModel = this.getView().getModel("pm");
+            this._updatePagination(oPmModel.getProperty("/currentPage") + 1);
         },
 
         _getProjectEntityPath: function (oContext) {
@@ -641,72 +685,233 @@ sap.ui.define([
             MessageToast.show(oBundle.getText("openingProject", [sProjectName]));
         },
 
-        // ── CREATE ────────────────────────────────────────────────────────────
-        onPressCreate: function () {
-            this._openProjectDialog(null);
+        // ── CREATE ─────────�        // ── SELECTION CHANGE ─────────────────────────────────────────────────
+        onProjectSelectionChange: function () {
+            var oTable = this.byId("projectTable");
+            var iCount = oTable.getSelectedItems().length;
+            this.getView().getModel("viewState").setProperty("/selectedProjectCount", iCount);
         },
 
-        // ── EDIT ──────────────────────────────────────────────────────────────
-        onEditProject: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
-            var sStatus = oContext.getProperty("Status");
+        // ── EDIT ────────────────────────────────────────────────────────────
+        onEditProject: function () {
+            var oTable = this.byId("projectTable");
+            var aSelected = oTable.getSelectedContexts();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
-            if (sStatus !== "PLANNING") {
-                MessageBox.error(oBundle.getText("editOnlyPlanningError"));
+            if (aSelected.length > 1) {
+                MessageBox.error(oBundle.getText("editMultipleError"));
+                return;
+            }
+            var oContext = aSelected[0];
+            if (!oContext) { return; }
+
+            if (!this._checkProjectPermission()) {
+                MessageBox.error(oBundle.getText("permissionError"));
                 return;
             }
 
-            if (!this._checkProjectPermission(oContext)) {
-                MessageBox.error(oBundle.getText("permissionError"));
+            var sStatus = oContext.getProperty("Status");
+            if (sStatus !== "PLANNING") {
+                MessageBox.error(oBundle.getText("editOnlyPlanningError"));
                 return;
             }
 
             this._openProjectDialog(oContext);
         },
 
-        // ── DELETE ────────────────────────────────────────────────────────────
-        onDeleteProject: function (oEvent) {
+        // ── DELETE (BULK) ────────────────────────────────────────────────────
+        onDeleteProject: function () {
             var that = this;
-            var oContext = oEvent.getSource().getBindingContext("pm") || oEvent.getSource().getBindingContext();
-            var sStatus = oContext.getProperty("Status");
+            var oTable = this.byId("projectTable");
+            var aSelected = oTable.getSelectedContexts();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var iTotal = aSelected.length;
 
-            if (sStatus !== "PLANNING") {
-                MessageBox.error(oBundle.getText("deleteOnlyPlanningError"));
-                return;
-            }
+            if (iTotal === 0) { return; }
 
-            if (!this._checkProjectPermission(oContext)) {
+            if (!this._checkProjectPermission()) {
                 MessageBox.error(oBundle.getText("permissionError"));
                 return;
             }
 
-            var sName = oContext.getProperty("ProjectName");
-            var sPath = this._getProjectEntityPath(oContext);
-            var oModel = this.getOwnerComponent().getModel();
+            var sConfirmMsg = iTotal === 1
+                ? oBundle.getText("deleteProjectConfirm", [aSelected[0].getProperty("ProjectName")])
+                : oBundle.getText("deleteProjectConfirmMultiple", [iTotal]);
 
-            if (!sPath) {
-                MessageBox.error(oBundle.getText("projectPathError"));
+            MessageBox.confirm(sConfirmMsg, {
+                title: oBundle.getText("confirmDelete"),
+                onClose: function (sAction) {
+                    if (sAction !== MessageBox.Action.OK) { return; }
+
+                    sap.ui.core.BusyIndicator.show(0);
+                    var oModel = that.getOwnerComponent().getModel();
+                    var iSuccessCount = 0;
+                    var aFailReasons = [];
+                    var aToDelete = [];
+
+                    // Pre-filter: only PLANNING can be deleted
+                    aSelected.forEach(function (oCtx) {
+                        var sStatus = oCtx.getProperty("Status");
+                        var sName = oCtx.getProperty("ProjectName");
+                        var sPath = that._getProjectEntityPath(oCtx);
+                        if (sStatus !== "PLANNING") {
+                            aFailReasons.push(oBundle.getText("deleteProjectOnlyPlanningError", [sName, sStatus]));
+                        } else if (!sPath) {
+                            aFailReasons.push(oBundle.getText("deleteProjectODataPathError", [sName]));
+                        } else {
+                            aToDelete.push({ path: sPath, name: sName });
+                        }
+                    });
+
+                    if (aToDelete.length === 0) {
+                        sap.ui.core.BusyIndicator.hide();
+                        MessageBox.warning(oBundle.getText("deleteProjectTotalFail", [aFailReasons.join("\n")]));
+                        return;
+                    }
+
+                    var aPromises = aToDelete.map(function (item) {
+                        return new Promise(function (resolve) {
+                            oModel.remove(item.path, {
+                                success: function () {
+                                    iSuccessCount++;
+                                    resolve();
+                                },
+                                error: function (oErr) {
+                                    var sMsg = oBundle.getText("serverError");
+                                    try { sMsg = JSON.parse(oErr.responseText).error.message.value; } catch (e) { sMsg = oErr.message || sMsg; }
+                                    aFailReasons.push("❌ " + item.name + ": " + sMsg);
+                                    resolve();
+                                }
+                            });
+                        });
+                    });
+
+                    Promise.all(aPromises).then(function () {
+                        sap.ui.core.BusyIndicator.hide();
+                        oTable.removeSelections();
+                        that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                        that._readProjects("");
+                        that._loadProjectValueHelps();
+
+                        var sSummary = oBundle.getText("deleteProjectSuccessSummary", [iSuccessCount, iTotal]);
+                        if (aFailReasons.length > 0) {
+                            sSummary += oBundle.getText("deleteProjectFailSummary", [aFailReasons.length, aFailReasons.join("\n")]);
+                            MessageBox.warning(sSummary);
+                        } else {
+                            MessageToast.show(sSummary);
+                        }
+                    });
+                }
+            });
+        },
+
+        // ── CLOSE PROJECT (BULK) ──────────────────────────────────────────────
+        onCloseProject: function () {
+            var that = this;
+            var oTable = this.byId("projectTable");
+            var aSelected = oTable.getSelectedContexts();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var iTotal = aSelected.length;
+
+            if (iTotal === 0) { return; }
+
+            if (!this._checkProjectPermission()) {
+                MessageBox.error(oBundle.getText("permissionError"));
                 return;
             }
 
-            MessageBox.confirm(oBundle.getText("deleteProjectConfirm", [sName]), {
-                title: oBundle.getText("confirmDelete"),
+            var sConfirmMsg = (iTotal === 1)
+                ? oBundle.getText("closeProjectConfirmSingle", [aSelected[0].getProperty("ProjectName")])
+                : oBundle.getText("closeProjectConfirmMultiple", [iTotal]);
+
+            MessageBox.confirm(sConfirmMsg, {
+                title: oBundle.getText("confirmClose"),
                 onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.OK) {
-                        oModel.remove(sPath, {
-                            success: function () {
-                                MessageToast.show(oBundle.getText("projectDeletedSuccess"));
-                                that._readProjects("");
-                                that._loadProjectValueHelps();
-                            },
-                            error: function () {
-                                MessageBox.error(oBundle.getText("deleteProjectError"));
+                    if (sAction !== MessageBox.Action.OK) { return; }
+
+                    sap.ui.core.BusyIndicator.show(0);
+                    var oModel = that.getOwnerComponent().getModel();
+                    var iSuccessCount = 0;
+                    var aFailReasons = [];
+
+                    // For each selected project, check all its sites are CLOSED
+                    var aChecks = aSelected.map(function (oCtx) {
+                        return new Promise(function (resolve) {
+                            var sProjectId = oCtx.getProperty("ProjectId");
+                            var sName = oCtx.getProperty("ProjectName");
+                            var sStatus = oCtx.getProperty("Status");
+                            var sPath = that._getProjectEntityPath(oCtx);
+
+                            if (sStatus === "CLOSED") {
+                                aFailReasons.push(oBundle.getText("closeProjectAlreadyClosedError", [sName]));
+                                resolve(null);
+                                return;
+                            }
+
+                            oModel.read("/SiteSet", {
+                                filters: [new sap.ui.model.Filter("ProjectId", sap.ui.model.FilterOperator.EQ, sProjectId)],
+                                success: function (oData) {
+                                    var aSites = oData.results || [];
+                                    if (aSites.length > 0 && !aSites.every(function (s) { return s.Status === "CLOSED"; })) {
+                                        var aNotClosed = aSites.filter(function (s) { return s.Status !== "CLOSED"; }).map(function (s) { return s.SiteName || s.SiteCode; });
+                                        aFailReasons.push(oBundle.getText("closeProjectSitesNotClosedError", [sName, aNotClosed.join(", ")]));
+                                        resolve(null);
+                                    } else {
+                                        resolve({ path: sPath, name: sName });
+                                    }
+                                },
+                                error: function () {
+                                    aFailReasons.push(oBundle.getText("closeProjectSiteCheckError", [sName]));
+                                    resolve(null);
+                                }
+                            });
+                        });
+                    });
+
+                    Promise.all(aChecks).then(function (aValid) {
+                        var aToClose = aValid.filter(Boolean);
+
+                        if (aToClose.length === 0) {
+                            sap.ui.core.BusyIndicator.hide();
+                            oTable.removeSelections();
+                            that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                            MessageBox.error(oBundle.getText("closeProjectTotalFail", [iTotal, aFailReasons.join("\n")]));
+                            return;
+                        }
+
+                        var aUpdates = aToClose.map(function (item) {
+                            return new Promise(function (resolve) {
+                                oModel.update(item.path, { Status: "CLOSED" }, {
+                                    success: function () {
+                                        iSuccessCount++;
+                                        resolve();
+                                    },
+                                    error: function (oErr) {
+                                        var sMsg = oBundle.getText("serverError");
+                                        try { sMsg = JSON.parse(oErr.responseText).error.message.value; } catch (e) { sMsg = oErr.message || sMsg; }
+                                        aFailReasons.push("❌ " + item.name + ": " + sMsg);
+                                        resolve();
+                                    }
+                                });
+                            });
+                        });
+
+                        Promise.all(aUpdates).then(function () {
+                            sap.ui.core.BusyIndicator.hide();
+                            oTable.removeSelections();
+                            that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                            that._readProjects("");
+
+                            var sSummary = oBundle.getText("closeProjectSuccessSummary", [iSuccessCount, iTotal]);
+                            if (aFailReasons.length > 0) {
+                                sSummary += oBundle.getText("closeProjectFailSummary", [aFailReasons.length, aFailReasons.join("\n")]);
+                                MessageBox.warning(sSummary);
+                            } else {
+                                MessageToast.show(sSummary);
                             }
                         });
-                    }
-                }.bind(this)
+                    });
+                }
             });
         },
 
@@ -716,18 +921,14 @@ sap.ui.define([
                 return false;
             }
 
-            var sCurrentUser = oUserModel.getProperty("/userId");
             var iAuthLevel = oUserModel.getProperty("/authLevel");
-            
-            // Allow if System Admin (99)
-            if (iAuthLevel === 99) {
+
+            // ZBT_PROJECT: AuthLevel 1 (Lead Engineer) or 99 (System Admin)
+            if (iAuthLevel === 99 || iAuthLevel === 1) {
                 return true;
             }
 
-            var sCreatedBy = oContext.getProperty("CreatedBy") || oContext.getProperty("created_by");
-            
-            // Allow if Project Creator
-            return sCurrentUser === sCreatedBy;
+            return false;
         },
 
         // ── PRIVATE: Create/Edit Project Dialog ──────────────────────────────
@@ -856,7 +1057,7 @@ sap.ui.define([
                     "OTHER": "OTHER", "LOẠI KHÁC": "OTHER", "KHÁC": "OTHER"
                 };
                 var sKey = mLabelToKey[sTypeUpper];
-                
+
                 if (sKey) {
                     // Standard type found: set selected key to get translation
                     oComboType.setSelectedKey(sKey);
@@ -868,11 +1069,11 @@ sap.ui.define([
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
                 var oStart = oContext.getProperty("StartDate");
                 var oEnd = oContext.getProperty("EndDate");
-                
+
                 if (oStart) {
                     oPickerStart.setDateValue(oStart);
                 }
-                
+
                 if (oEnd) {
                     oPickerEnd.setDateValue(oEnd);
                 }
@@ -1046,7 +1247,7 @@ sap.ui.define([
                         var sTypeKey = oComboType.getSelectedKey() || "";
                         var sTypeValue = oComboType.getValue().trim();
                         var aStandardKeys = ["ROAD", "BRIDGE", "BUILDING", "TUNNEL"];
-                        
+
                         if (aStandardKeys.indexOf(sTypeKey.toUpperCase()) === -1 && sTypeValue) {
                             MessageBox.confirm(oBundle.getText("customTypeConfirm", [sTypeValue]), {
                                 title: oBundle.getText("confirmSaveTitle"),

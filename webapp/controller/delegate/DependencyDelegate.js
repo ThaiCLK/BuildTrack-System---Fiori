@@ -89,6 +89,14 @@ sap.ui.define([
 
         onAddDependency: function () {
             var oView = this.getView();
+            // Permission check: ZBT_DEPENDENCIES — AuthLevel 1 or 99
+            var oUserModel = oView.getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            if (iAuthLevel !== 1 && iAuthLevel !== 99) {
+                sap.m.MessageBox.error(oView.getModel("i18n").getResourceBundle().getText("dependencyPermissionError"));
+                return;
+            }
+
             var oModel = this.getOwnerComponent().getModel();
             var oDepModel = oView.getModel("dependencyModel");
             var sCurrentWbsId = this._sWbsId;
@@ -240,6 +248,13 @@ sap.ui.define([
             var oCtx = oBtn.getBindingContext("dependencyModel");
             var oDep = oCtx.getObject();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            // Permission check: ZBT_DEPENDENCIES — AuthLevel 1 or 99
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            if (iAuthLevel !== 1 && iAuthLevel !== 99) {
+                sap.m.MessageBox.error(oBundle.getText("dependencyPermissionError"));
+                return;
+            }
             var oModel = this.getOwnerComponent().getModel();
 
             sap.m.MessageBox.confirm(

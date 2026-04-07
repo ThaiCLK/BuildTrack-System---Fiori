@@ -83,5 +83,22 @@
     "UpdatedBy": "",
     "UpdatedOn": null,
     "UpdatedAt": "PT00H00M00S"
+  },
+  {
+    "Client": "302",
+    "UserId": "ADMIN-99",
+    "Email": "admin@example.com",
+    "AvatarUrl": "",
+    "UserName": "System Admin",
+    "Role": "Administrator",
+    "AuthLevel": 99,
+    "LeadId": "",
+    "Status": "ACTIVE",
+    "CreatedBy": "LEARN-553",
+    "CreatedOn": "/Date(1772755200000)/",
+    "CreatedAt": "PT05H31M30S",
+    "UpdatedBy": "",
+    "UpdatedOn": null,
+    "UpdatedAt": "PT00H00M00S"
   }
 ]

@@ -644,6 +644,14 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
 
+            // 0. Permission check: ZBT_APPROVERS — only AuthLevel 99 (System Admin)
+            var oUserModel = oView.getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            if (iAuthLevel !== 99) {
+                MessageBox.error(oBundle.getText("approverPermissionError"));
+                return;
+            }
+
             // 1. Check Project Status
             if (bExists && sProjectStatus === "CLOSED") {
                 MessageBox.error(oBundle.getText("projectClosedError"));
@@ -846,18 +854,14 @@ sap.ui.define([
             var oUserModel = this.getView().getModel("userModel");
             if (!oUserModel) return false;
 
-            var sCurrentUser = oUserModel.getProperty("/userId");
             var iAuthLevel = oUserModel.getProperty("/authLevel");
 
-            // 1. Allow if System Admin (99)
-            if (iAuthLevel === 99) return true;
+            // ZBT_SITE: AuthLevel 1 (Lead Engineer) or 99 (System Admin)
+            if (iAuthLevel === 99 || iAuthLevel === 1) {
+                return true;
+            }
 
-            // 2. Allow if Project Creator
-            var oCtx = this.getView().getBindingContext();
-            if (!oCtx) return false;
-
-            var sProjectCreator = oCtx.getProperty("CreatedBy");
-            return sCurrentUser === sProjectCreator;
+            return false;
         },
 
         _openSiteDialog: function (oContext) {
