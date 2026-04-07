@@ -727,46 +727,6 @@ sap.ui.define([
 
             var sWbsIdsStr = aWbsIds.join(",");
 
-            // --- OLD API CODE (COMMENTED) ---
-            /*
-            var sEndpoint = bIsClose ? "/CloseWbsApproval" : "/StartWSProcess";
-            var oParams = { WBS_IDS: sWbsIdsStr };
-
-            oModel.callFunction(sEndpoint, {
-                method: "POST",
-                urlParameters: oParams,
-                success: function (oData) {
-                    that.getView().setBusy(false);
-                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
-                    
-                    // Handle OData response variations
-                    var sEndpKey = sEndpoint.replace("/", "");
-                    var oResult = (oData && oData[sEndpKey]) ? oData[sEndpKey] : oData;
-                    
-                    if (oResult && oResult.SUCCESS === false) {
-                        var sErrMsg = oResult.MESSAGE || oBundle.getText("wbsSubmitError");
-                        MessageBox.warning(sErrMsg);
-                    } else {
-                        MessageToast.show(oBundle.getText("submitSuccess", [aWbsIds.length]));
-                    }
-                    
-                    that._loadWbsData();
-                    oModel.refresh(true, true);
-                },
-                error: function (oError) {
-                    that.getView().setBusy(false);
-                    var oBundle = that.getView().getModel("i18n").getResourceBundle();
-                    var sMsg = oBundle.getText("wbsSubmitError") || "Error on submission.";
-                    try {
-                        var oErr = JSON.parse(oError.responseText);
-                        sMsg = oErr.error.message.value || sMsg;
-                    } catch (e) { }
-                    MessageBox.error(sMsg);
-                }
-            });
-            */
-            // --- END OLD API CODE ---
-
             // --- NEW API CODE ---
             var sApprovalType = bIsClose ? "CLOSE" : "OPEN";
             var oParamsNew = { WbsIds: sWbsIdsStr, ApprovalType: sApprovalType };
@@ -1617,7 +1577,47 @@ sap.ui.define([
                             bHasWbsDetailError = true;
                         }
 
-                        // --- Location Validation ---
+                        // --- Parent Date Validation ---
+                        var sParentIdToLookup = bEdit ? oContext.getProperty("ParentId") : sParentId;
+                        if (sParentIdToLookup && sParentIdToLookup !== "00000000-0000-0000-0000-000000000000") {
+                            var oParentNode = that._findWbsById(aTree, sParentIdToLookup);
+                            if (oParentNode) {
+                                // 1. Validate End Date
+                                if (oParentNode.EndDate) {
+                                    var dParentEnd = (oParentNode.EndDate instanceof Date) ? oParentNode.EndDate : new Date(oParentNode.EndDate);
+                                    var dCompareParentEnd = new Date(dParentEnd); dCompareParentEnd.setHours(0, 0, 0, 0);
+                                    var dCompareWbsEnd = new Date(dEnd); dCompareWbsEnd.setHours(0, 0, 0, 0);
+
+                                    if (dEnd && dCompareWbsEnd > dCompareParentEnd) {
+                                        oPickerEnd.setValueState("Error");
+                                        oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateAfterParentError", [that.formatDate(dParentEnd)]));
+                                        bHasError = true;
+                                        bHasWbsDetailError = true;
+                                    }
+                                }
+                                // 2. Validate Start Date
+                                if (oParentNode.StartDate) {
+                                    var dParentStart = (oParentNode.StartDate instanceof Date) ? oParentNode.StartDate : new Date(oParentNode.StartDate);
+                                    var dCompareParentStart = new Date(dParentStart); dCompareParentStart.setHours(0, 0, 0, 0);
+                                    var dCompareWbsStart = new Date(dStart); dCompareWbsStart.setHours(0, 0, 0, 0);
+
+                                    if (dStart && dCompareWbsStart < dCompareParentStart) {
+                                        oPickerStart.setValueState("Error");
+                                        oPickerStart.setValueStateText(oBundle.getText("wbsStartDatePastParentError", [that.formatDate(dParentStart)]));
+                                        bHasError = true;
+                                        bHasWbsDetailError = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- Step 1: If WBS Detail has errors, jump back to WBS tab and stop ---
+                        if (bHasWbsDetailError) {
+                            oIconTabBar.setSelectedKey(oIconTabBar.getItems()[0].getId());
+                            return;
+                        }
+
+                        // --- Step 2: WBS Detail is valid. Now validate Location ---
                         var sLName = oLocName.getValue().trim();
                         var fLStart = parseFloat(oLocStart.getValue());
                         var fLEnd = parseFloat(oLocEnd.getValue());
@@ -1665,23 +1665,10 @@ sap.ui.define([
                             bHasError = true;
                             bLocationError = true;
                         }
-
-                        if (bHasError) {
-                            if (!bHasWbsDetailError && bLocationError) {
-                                // WBS validations passed, but Location failed. Alert and switch tab.
-                                MessageBox.error(aLocationErrors.join("\n"));
-                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
-                            } else {
-                                // Keep focus on first tab so the inline WBS Detail errors are seen
-                                oIconTabBar.setSelectedKey(oIconTabBar.getItems()[0].getId());
-                            }
-                            return;
-                        }
-
-                        // FE Validation: End Date after Start Date
-                        if (dEnd <= dStart) {
-                            oPickerEnd.setValueState("Error");
-                            oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
+                        
+                        // --- Stop if Location has errors ---
+                        if (bLocationError) {
+                            oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
                             return;
                         }
 
@@ -1765,18 +1752,18 @@ sap.ui.define([
                                     };
                                     if (bEdit && sEditLocationId) {
                                         oModel.update("/LocationSet(guid'" + sEditLocationId + "')", oLocPayload, {
-                                            success: function () { fnDone(); }, 
-                                            error: function (oError) { 
-                                                that._showError(oError); 
-                                                fnDone(true); 
+                                            success: function () { fnDone(); },
+                                            error: function (oError) {
+                                                that._showError(oError);
+                                                fnDone(true);
                                             }
                                         });
                                     } else {
                                         oModel.create("/LocationSet", oLocPayload, {
-                                            success: function () { fnDone(); }, 
-                                            error: function (oError) { 
-                                                that._showError(oError); 
-                                                fnDone(true); 
+                                            success: function () { fnDone(); },
+                                            error: function (oError) {
+                                                that._showError(oError);
+                                                fnDone(true);
                                             }
                                         });
                                     }
@@ -1851,6 +1838,18 @@ sap.ui.define([
             oDialog.open();
         },
 
+        _findWbsById: function (aNodes, sId) {
+            if (!aNodes || !sId) return null;
+            for (var i = 0; i < aNodes.length; i++) {
+                if (aNodes[i].WbsId === sId) return aNodes[i];
+                if (aNodes[i].children && aNodes[i].children.length > 0) {
+                    var found = this._findWbsById(aNodes[i].children, sId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        },
+
         _transformToTree: function (aData) {
             var map = {}, node, res = [], i;
             for (i = 0; i < aData.length; i++) {
@@ -1878,7 +1877,16 @@ sap.ui.define([
 
         formatDate: function (oDate) {
             if (!oDate) return "";
-            return DateFormat.getInstance({ pattern: "dd/MM/yyyy" }).format(oDate);
+            var d = oDate;
+            if (!(d instanceof Date)) {
+                if (typeof d === "string" && d.indexOf("/Date(") === 0) {
+                    d = new Date(parseInt(d.substring(6)));
+                } else {
+                    d = new Date(d);
+                }
+            }
+            if (isNaN(d.getTime())) return "";
+            return DateFormat.getInstance({ pattern: "dd/MM/yyyy" }).format(d);
         },
 
         _showError: function (oError, sDefaultI18nKey) {

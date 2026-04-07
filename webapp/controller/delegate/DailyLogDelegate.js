@@ -43,6 +43,21 @@ sap.ui.define([
             }
         },
 
+        /**
+         * Resets the Daily Log detail state to default (empty placeholder)
+         */
+        resetLogDetailState: function () {
+            // "this" will be the controller instance if mixed-in
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            if (oUIModel) {
+                oUIModel.setProperty("/selectedLog", null);
+                oUIModel.setProperty("/ui/isSelected", false);
+                oUIModel.setProperty("/ui/editMode", false);
+                oUIModel.setProperty("/ui/isNewRecord", false);
+                oUIModel.setProperty("/ui/isAddMode", false);
+            }
+        },
+
         /* =========================================================== */
         /* DAILY LOG — LIST BINDING                                    */
         /* =========================================================== */
@@ -956,6 +971,14 @@ sap.ui.define([
 
         onQuantityChange: function (oEvent) {
             var oInput = oEvent.getSource();
+            var sValue = oEvent.getParameter("newValue");
+            // Only allow digits (integers)
+            var sNumeric = sValue.replace(/[^\d]/g, "");
+            
+            if (sValue !== sNumeric) {
+                oInput.setValue(sNumeric);
+            }
+            
             oInput.setValueState("None");
             oInput.setValueStateText("");
         },
@@ -1398,6 +1421,10 @@ sap.ui.define([
                 // Keep default
             }
             return sMsg;
+        },
+
+        onCancelLog: function () {
+            this.resetLogDetailState();
         }
     };
 });

@@ -192,7 +192,7 @@
                                         }"
                                         editable="{dailyLogModel>/ui/editMode}"
                                         width="120px"
-                                        type="Number"
+                                        maxLength="10"
                                         liveChange=".onQuantityChange"/>
                                     <Input
                                         value="{dailyLogModel>/selectedLog/UnitCode}"

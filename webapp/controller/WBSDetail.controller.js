@@ -42,6 +42,9 @@ sap.ui.define([
         /* =========================================================== */
         onNavBack: function () {
             this.onCancelWbs();
+            if (this.resetLogDetailState) {
+                this.resetLogDetailState();
+            }
             var oHistory = History.getInstance();
             var sPreviousHash = oHistory.getPreviousHash();
 
@@ -55,6 +58,9 @@ sap.ui.define([
 
         onTabSelect: function (oEvent) {
             this.onCancelWbs();
+            if (this.resetLogDetailState) {
+                this.resetLogDetailState();
+            }
         },
 
         /* =========================================================== */
@@ -844,6 +850,7 @@ sap.ui.define([
 
     // Mix in DailyLogDelegate functions
     Object.assign(WBSDetailController.prototype, {
+        resetLogDetailState: DailyLogDelegate.resetLogDetailState,
         _bindDailyLogList: DailyLogDelegate._bindDailyLogList,
         onLogItemSelect: DailyLogDelegate.onLogItemSelect,
         onLogRowPress: DailyLogDelegate.onLogRowPress,
@@ -874,7 +881,8 @@ sap.ui.define([
         _persistLog: DailyLogDelegate._persistLog,
         _saveResourceUse: DailyLogDelegate._saveResourceUse,
         _updateWbsActualDates: DailyLogDelegate._updateWbsActualDates,
-        _verifyStatusForDailyLog: DailyLogDelegate._verifyStatusForDailyLog
+        _verifyStatusForDailyLog: DailyLogDelegate._verifyStatusForDailyLog,
+        onCancelLog: DailyLogDelegate.onCancelLog
     });
 
     // Mix in WorkSummaryDelegate functions to the controller prototype so XML views can resolve them during parsing
