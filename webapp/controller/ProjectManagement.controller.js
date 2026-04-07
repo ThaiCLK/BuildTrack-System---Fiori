@@ -685,7 +685,17 @@ sap.ui.define([
             MessageToast.show(oBundle.getText("openingProject", [sProjectName]));
         },
 
-        // ── CREATE ─────────�        // ── SELECTION CHANGE ─────────────────────────────────────────────────
+        // ── CREATE ────────────────────────────────────────────────────────────
+        onPressCreate: function () {
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (!this._checkProjectPermission()) {
+                MessageBox.error(oBundle.getText("permissionError"));
+                return;
+            }
+            this._openProjectDialog(null);
+        },
+
+        // ── SELECTION CHANGE ─────────────────────────────────────────────────
         onProjectSelectionChange: function () {
             var oTable = this.byId("projectTable");
             var iCount = oTable.getSelectedItems().length;
