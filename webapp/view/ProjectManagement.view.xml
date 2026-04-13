@@ -8,7 +8,7 @@
     <Page id="pageProjectList" showNavButton="true" navButtonPress=".onNavBack"
           showHeader="false">
         <content>
-            <VBox width="100%">
+            <VBox width="100%" class="sapUiLargeMarginBottom">
                 <fb:FilterBar id="projectFilterBar"
                     useToolbar="false"
                     showGoOnFB="true"
