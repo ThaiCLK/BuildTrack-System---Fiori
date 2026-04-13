@@ -60,12 +60,6 @@
                         <Column width="7rem">
                             <Text text="{i18n>weatherPM}"/>
                         </Column>
-                        <Column width="5rem" hAlign="End">
-                            <Text text="{i18n>resources}"/>
-                        </Column>
-                        <Column width="6rem" hAlign="End">
-                            <Text text="{i18n>resQty}"/>
-                        </Column>
                     </columns>
                     <items>
                         <ColumnListItem>
@@ -79,15 +73,8 @@
                                     number="{importPreviewModel>qty_done}"
                                     unit="{importPreviewModel>unit_code}"
                                     state="None"/>
-                                <Text text="{importPreviewModel>weather_am}"/>
-                                <Text text="{importPreviewModel>weather_pm}"/>
-                                <ObjectNumber
-                                    number="{= ${importPreviewModel>resources}.length }"
-                                    state="{= ${importPreviewModel>resources}.length > 0 ? 'Information' : 'None' }"/>
-                                <Text text="{
-                                        path: 'importPreviewModel>resources',
-                                        formatter: '.formatTotalResQty'
-                                    }"/>
+                                <Text text="{path: 'importPreviewModel>weather_am', formatter: '.formatWeather'}"/>
+                                <Text text="{path: 'importPreviewModel>weather_pm', formatter: '.formatWeather'}"/>
                             </cells>
                         </ColumnListItem>
                     </items>

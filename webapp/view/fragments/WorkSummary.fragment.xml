@@ -57,7 +57,7 @@
                             icon="sap-icon://display"
                             type="Emphasized"
                             press=".onPressSignAcceptanceReport"
-                            visible="{= ${Status} === 'CLOSED' || (${Status} === 'PENDING_CLOSE' &amp;&amp; ${viewData>/isAcceptanceReportReady}) }"
+                            visible="{= ${Status} === 'CLOSED' || ${Status} === 'CLOSE_REJECTED' || (${Status} === 'PENDING_CLOSE' &amp;&amp; ${viewData>/isAcceptanceReportReady}) }"
                         />
                     </Toolbar>
                 </headerToolbar>

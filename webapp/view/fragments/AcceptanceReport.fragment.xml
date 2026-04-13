@@ -17,11 +17,11 @@
                     <VBox class="acceptanceHeaderLine" />
                     
                     <Title text="{i18n>acceptanceReportHeader}" class="acceptanceTitle sapUiMediumMarginTop" />
-                    <Text text="{parts: [{path: 'i18n>reportNo'}, {path: 'WbsCode'}], type: 'sap.ui.model.type.MessageFormat'}" class="infoTableValue" />
-                    <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}, {path: 'EndActual', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}], type: 'sap.ui.model.type.MessageFormat'}" 
+                    <Text text="{parts: [{path: 'i18n>reportNo'}, {path: 'WbsCode'}], formatter: '.formatReportNo'}" class="infoTableValue" />
+                    <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartActual'}, {path: 'EndActual'}], formatter: '.formatPeriod'}" 
                             visible="{= ${StartActual} !== null || ${EndActual} !== null }"
                             class="signatureSubLabel sapUiTinyMarginTop"/>
-                    <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}, {path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: {pattern: 'dd/MM/yyyy'}}], type: 'sap.ui.model.type.MessageFormat'}" 
+                    <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartDate'}, {path: 'EndDate'}], formatter: '.formatPeriod'}" 
                             visible="{= ${StartActual} === null &amp;&amp; ${EndActual} === null }"
                             class="signatureSubLabel sapUiTinyMarginTop"/>
                 </VBox>
@@ -83,8 +83,8 @@
                                     <Text text="{path: 'Quantity', formatter: '.formatTotalQty'}" />
                                     <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" />
                                     <ObjectStatus 
-                                        text="{= ${viewData>/evaluationResult} === '1' ? ${i18n>achieved} : (${viewData>/evaluationResult} === '0' ? ${i18n>notAchieved} : '') }"
-                                        state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '0' ? 'Error' : 'None') }" />
+                                        text="{= ${viewData>/evaluationResult} === '1' ? ${i18n>achieved} : (${viewData>/evaluationResult} === '2' ? ${i18n>notAchieved} : '') }"
+                                        state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '2' ? 'Error' : 'None') }" />
                                 </cells>
                             </ColumnListItem>
                         </items>
@@ -105,7 +105,7 @@
                         <VBox alignItems="Center">
                             <Label text="{i18n>engineerRole}" class="signatureLabel" />
                             <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
-                            <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
+                            <VBox class="signatureBox" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level1/signatureUrl}" 
                                        height="60px" 
                                        visible="{= ${viewData>/signStatus/level1/signed} &amp;&amp; !!${viewData>/signStatus/level1/signatureUrl} }" 
@@ -124,7 +124,7 @@
                         <VBox alignItems="Center">
                             <Label text="{i18n>supervisorRole}" class="signatureLabel" />
                             <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
-                            <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
+                            <VBox class="signatureBox" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level2/signatureUrl}" 
                                        height="60px" 
                                        visible="{= ${viewData>/signStatus/level2/signed} &amp;&amp; !!${viewData>/signStatus/level2/signatureUrl} }" 
@@ -143,7 +143,7 @@
                         <VBox alignItems="Center">
                             <Label text="{i18n>investorRole}" class="signatureLabel" />
                             <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
-                            <VBox minHeight="90px" justifyContent="Center" alignItems="Center">
+                            <VBox class="signatureBox" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level3/signatureUrl}" 
                                        height="60px" 
                                        visible="{= ${viewData>/signStatus/level3/signed} &amp;&amp; !!${viewData>/signStatus/level3/signatureUrl} }" 

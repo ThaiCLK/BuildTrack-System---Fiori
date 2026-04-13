@@ -18,6 +18,10 @@ sap.ui.define([
             // call the base component's init function
             UIComponent.prototype.init.apply(this, arguments);
 
+            // Restore language from localStorage or default to Vietnamese ('vi')
+            var sSavedLang = localStorage.getItem("buildtrack_lang") || "vi";
+            sap.ui.getCore().getConfiguration().setLanguage(sSavedLang);
+
             // set the device model
             this.setModel(models.createDeviceModel(), "device");
 

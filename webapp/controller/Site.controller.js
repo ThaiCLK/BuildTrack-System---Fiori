@@ -58,6 +58,7 @@ sap.ui.define([
 
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("Site").attachPatternMatched(this._onObjectMatched, this);
+            sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
         // ── FORMATTERS ──────────────────────────────────────────────────────
@@ -507,6 +508,7 @@ sap.ui.define([
         },
 
         onExit: function () {
+            sap.ui.getCore().getEventBus().unsubscribe("Global", "RefreshData", this._onGlobalRefresh, this);
             var mCache = this._mSiteValueHelpCache || {};
             Object.keys(mCache).forEach(function (sKey) {
                 var oEntry = mCache[sKey];
@@ -515,6 +517,12 @@ sap.ui.define([
                 }
             });
             this._mSiteValueHelpCache = null;
+        },
+
+        _onGlobalRefresh: function () {
+            if (!this._sCurrentProjectId) return;
+            var oBinding = this.getView().getElementBinding();
+            if (oBinding) { oBinding.refresh(true); }
         },
 
         onValueHelpSiteCodeRequest: function () {

@@ -91,59 +91,16 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({}), "workSummaryModel");
             this.getView().setModel(new JSONModel({}), "projectModel");
             this.getView().setModel(new JSONModel({}), "editModel");
-
-            // --- AUTO REFRESH LOGIC ---
-            // Debounce: chỉ refresh sau 1.5 giây kể từ lần focus cuối cùng
-            // để tránh reload liên tục khi người dùng click vào cửa sổ
-            this._fnFocusHandler = function () {
-                if (this._sCurrentSiteId) {
-                    if (this._iFocusDebounce) {
-                        clearTimeout(this._iFocusDebounce);
-                    }
-                    this._iFocusDebounce = setTimeout(function () {
-                        this._iFocusDebounce = null;
-                        this._loadWbsData();
-                    }.bind(this), 1500);
-                }
-            }.bind(this);
-            window.addEventListener("focus", this._fnFocusHandler);
+            sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
         onExit: function () {
-            if (this._fnFocusHandler) {
-                window.removeEventListener("focus", this._fnFocusHandler);
-            }
-            if (this._iFocusDebounce) {
-                clearTimeout(this._iFocusDebounce);
-                this._iFocusDebounce = null;
-            }
-            this._stopPolling();
+            sap.ui.getCore().getEventBus().unsubscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
         onTabSelect: function (oEvent) {
             var sKey = oEvent.getParameter("key");
             this.onCancelSite(); // Resets editMode and any pending OData model changes
-            if (sKey === "approvalTab") {
-                this._startPolling();
-            } else {
-                this._stopPolling();
-            }
-        },
-
-        _startPolling: function () {
-            this._stopPolling(); // clear existing if any
-            this._iPollingInterval = setInterval(function () {
-                if (this._sCurrentSiteId) {
-                    this._loadWbsData();
-                }
-            }.bind(this), 10000); // Poll every 10 seconds
-        },
-
-        _stopPolling: function () {
-            if (this._iPollingInterval) {
-                clearInterval(this._iPollingInterval);
-                this._iPollingInterval = null;
-            }
         },
 
         onNavToDashboard: function () {
@@ -256,6 +213,15 @@ sap.ui.define([
             this._loadWbsData();
         },
 
+        _onGlobalRefresh: function () {
+            if (!this._sCurrentSiteId) return;
+            // Làm tươi lại Header Bindings
+            var oBinding = this.getView().getElementBinding();
+            if (oBinding) { oBinding.refresh(true); }
+            // Nạp lại danh sách WBS và Log Duyệt
+            this._loadWbsData();
+        },
+
         _loadWbsData: function () {
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
@@ -263,6 +229,11 @@ sap.ui.define([
                 urlParameters: {
                     "$expand": "ToSubWbs,ToSubWbs/ToApprovalLog,ToApprovalLog",
                     "$orderby": "StartDate"
+                },
+                headers: {
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
                 },
                 success: function (oData) {
                     var aRawResults = oData.results || [];
@@ -548,6 +519,14 @@ sap.ui.define([
             }
 
             var oCtx = oTable.getContextByIndex(aIndices[0]);
+
+            // Validate WBS Status: Only allow editing if Status is PLANNING
+            var sStatus = oCtx.getProperty("Status");
+            if (sStatus !== "PLANNING") {
+                sap.m.MessageBox.error(oBundle.getText("wbsEditPlanningOnlyError"));
+                return;
+            }
+
             this._openWbsDialog(oCtx, null, null);
         },
 
@@ -1430,24 +1409,19 @@ sap.ui.define([
             var sEditLocationId = null;
             if (bEdit) {
                 var sEditWbsId = oContext.getProperty("WbsId");
-                oModel.read("/LocationSet", {
-                    filters: [new sap.ui.model.Filter("WbsId", sap.ui.model.FilterOperator.EQ, sEditWbsId)],
+                var sPath = "/LocationSet(guid'" + sEditWbsId + "')";
+                oModel.read(sPath, {
                     success: function (oData) {
-                        if (oData && oData.results && oData.results.length > 0) {
-                            // Client-side fallback just in case backend ignores filters
-                            var aMatches = oData.results.filter(function (loc) { return loc.WbsId === sEditWbsId; });
-                            if (aMatches.length > 0) {
-                                var oFirstLoc = aMatches[0];
-                                sEditLocationId = oFirstLoc.WbsId; // WbsId is the key
-                                oLocName.setValue(oFirstLoc.LocationName);
-                                if (oFirstLoc.PosStart) oLocStart.setValue(parseFloat(oFirstLoc.PosStart));
-                                if (oFirstLoc.PosEnd) oLocEnd.setValue(parseFloat(oFirstLoc.PosEnd));
-                                if (oFirstLoc.PosTop) oLocTop.setValue(parseFloat(oFirstLoc.PosTop));
-                                if (oFirstLoc.PosBot) oLocBot.setValue(parseFloat(oFirstLoc.PosBot));
-                            }
+                        if (oData) {
+                            sEditLocationId = oData.LocationId || oData.WbsId; // fallback
+                            oLocName.setValue(oData.LocationName);
+                            if (oData.PosStart) oLocStart.setValue(parseFloat(oData.PosStart));
+                            if (oData.PosEnd) oLocEnd.setValue(parseFloat(oData.PosEnd));
+                            if (oData.PosTop) oLocTop.setValue(parseFloat(oData.PosTop));
+                            if (oData.PosBot) oLocBot.setValue(parseFloat(oData.PosBot));
                         }
                     },
-                    error: function (e) { console.error("Error fetching location data", e); }
+                    error: function (e) { console.warn("Location not found or error fetching", e); }
                 });
             }
 
@@ -1619,15 +1593,19 @@ sap.ui.define([
 
                         // --- Step 2: WBS Detail is valid. Now validate Location ---
                         var sLName = oLocName.getValue().trim();
-                        var fLStart = parseFloat(oLocStart.getValue());
-                        var fLEnd = parseFloat(oLocEnd.getValue());
-                        var fLTop = parseFloat(oLocTop.getValue());
-                        var fLBot = parseFloat(oLocBot.getValue());
+                        var sLStartVal = oLocStart.getValue().trim();
+                        var sLEndVal = oLocEnd.getValue().trim();
+                        var sLTopVal = oLocTop.getValue().trim();
+                        var sLBotVal = oLocBot.getValue().trim();
+                        var fLStart = parseFloat(sLStartVal);
+                        var fLEnd = parseFloat(sLEndVal);
+                        var fLTop = parseFloat(sLTopVal);
+                        var fLBot = parseFloat(sLBotVal);
 
                         var bLocationError = false;
                         var aLocationErrors = [];
 
-                        // Location Name is mandatory
+                        // 1. Location Name: mandatory + max 100 chars
                         if (!sLName) {
                             oLocName.setValueState("Error");
                             oLocName.setValueStateText(oBundle.getText("locationNameRequired"));
@@ -1646,6 +1624,33 @@ sap.ui.define([
                             bLocationError = true;
                         }
 
+                        // 2. POS fields: mandatory
+                        if (!sLStartVal) {
+                            oLocStart.setValueState("Error");
+                            oLocStart.setValueStateText(oBundle.getText("posStartRequired"));
+                            bHasError = true;
+                            bLocationError = true;
+                        }
+                        if (!sLEndVal) {
+                            oLocEnd.setValueState("Error");
+                            oLocEnd.setValueStateText(oBundle.getText("posEndRequired"));
+                            bHasError = true;
+                            bLocationError = true;
+                        }
+                        if (!sLBotVal) {
+                            oLocBot.setValueState("Error");
+                            oLocBot.setValueStateText(oBundle.getText("posBotRequired"));
+                            bHasError = true;
+                            bLocationError = true;
+                        }
+                        if (!sLTopVal) {
+                            oLocTop.setValueState("Error");
+                            oLocTop.setValueStateText(oBundle.getText("posTopRequired"));
+                            bHasError = true;
+                            bLocationError = true;
+                        }
+
+                        // 3. POS_START <= POS_END
                         if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
                             oLocStart.setValueState("Error");
                             oLocStart.setValueStateText(oBundle.getText("posStartEndError"));
@@ -1656,6 +1661,7 @@ sap.ui.define([
                             bLocationError = true;
                         }
 
+                        // 4. POS_BOT <= POS_TOP
                         if (!isNaN(fLTop) && !isNaN(fLBot) && fLBot > fLTop) {
                             oLocBot.setValueState("Error");
                             oLocBot.setValueStateText(oBundle.getText("posBotTopError"));
@@ -1665,8 +1671,8 @@ sap.ui.define([
                             bHasError = true;
                             bLocationError = true;
                         }
-                        
-                        // --- Stop if Location has errors ---
+
+                        // --- Stop if Location has errors, switch to Location tab ---
                         if (bLocationError) {
                             oIconTabBar.setSelectedKey(oIconTabBar.getItems()[1].getId());
                             return;

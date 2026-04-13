@@ -604,6 +604,10 @@
     border-color: #27ae60;
 }
 
+.signatureBox {
+    min-height: 90px;
+}
+
 .btnAcceptanceSign {
     background-color: #0056b3 !important;
     color: #ffffff !important;

@@ -53,27 +53,52 @@ sap.ui.define([
          * Export Excel with dynamic data or a blank template if no data is provided.
          * @param {Array} aLogs - Array of DailyLog objects.
          * @param {Array} aResources - Array of ResourceUse objects linked to the logs.
+         * @param {Object} oBundle - The i18n resource bundle for multilinguality.
          */
-        exportDailyLogs: function (aLogs, aResources) {
+        exportDailyLogs: function (aLogs, aResources, oBundle) {
             var that = this;
+
+            var _getText = function (sKey, sFallback) {
+                if (oBundle) {
+                    var sRet = oBundle.getText(sKey);
+                    return sRet !== sKey ? sRet : sFallback;
+                }
+                return sFallback;
+            };
+
             this._loadXlsxLibrary().then(function (XLSX) {
                 try {
                     var wb = XLSX.utils.book_new();
 
                     // Generate DailyLog Sheet Data
                     var dailyLogData = [
-                        ["CONSTRUCTION DAILY LOG"],
+                        [_getText("excelTitle", "CONSTRUCTION DAILY LOG")],
                         [],
-                        ["Log Num", "Report Date", "Quantity Done", "Morning Weather", "Afternoon Weather", "General Note", "Safety Note", "Contractor Note"]
+                        [
+                            _getText("excelNo", "Log Num"),
+                            _getText("excelReportDate", "Report Date"),
+                            _getText("excelQuantity", "Quantity Done"),
+                            _getText("excelMorningWea", "Morning Weather"),
+                            _getText("excelAfternoonWea", "Afternoon Weather"),
+                            _getText("excelGeneralNote", "General Note"),
+                            _getText("excelSafetyNote", "Safety Note"),
+                            _getText("excelContractorNote", "Contractor Note")
+                        ]
                     ];
+
+                    var wMap = {
+                        "SUNNY": _getText("excelSunny", "SUNNY"),
+                        "COOL": _getText("excelCool", "COOL"),
+                        "RAINY": _getText("excelRainy", "RAINY")
+                    };
 
                     if (aLogs && aLogs.length > 0) {
                         aLogs.forEach(function (log, idx) {
                             var iLogNum = idx + 1;  // sequential 1-based number
                             var dD = log.LogDate;
                             var sDate = dD ? (dD.getDate().toString().padStart(2, '0') + "/" + (dD.getMonth() + 1).toString().padStart(2, '0') + "/" + dD.getFullYear()) : "";
-                            var sAm = log.WeatherAm || "SUNNY";
-                            var sPm = log.WeatherPm || "SUNNY";
+                            var sAm = wMap[log.WeatherAm] || wMap["SUNNY"];
+                            var sPm = wMap[log.WeatherPm] || wMap["SUNNY"];
 
                             // Store the mapping LogId -> LogNum for resource linking
                             log._exportNum = iLogNum;
@@ -91,14 +116,14 @@ sap.ui.define([
                         });
                     } else {
                         // Template fallback
-                        dailyLogData.push([1, "28/02/2026", "100", "SUNNY", "COOL", "General construction work", "Safety checked", "On schedule"]);
+                        dailyLogData.push([1, "28/02/2026", "100", wMap["SUNNY"], wMap["COOL"], _getText("excelFallbackNote1", "General construction work"), _getText("excelFallbackNote2", "Safety checked"), _getText("excelFallbackNote3", "Material delivered")]);
                     }
 
                     dailyLogData.push([]);
-                    dailyLogData.push(["NOTES:"]);
-                    dailyLogData.push(["- Log Num: Sequential number to link Resources to this Log. Do NOT change."]);
-                    dailyLogData.push(["- Quantity Done: Number format required."]);
-                    dailyLogData.push(["- Weather: Enter 'SUNNY', 'COOL', or 'RAINY'."]);
+                    dailyLogData.push([_getText("excelNotes", "NOTES:")]);
+                    dailyLogData.push([_getText("excelNote1", "- Log Num: Sequential number to link Resources to this Log. Do NOT change.")]);
+                    dailyLogData.push([_getText("excelNote2", "- Quantity Done: Number format required.")]);
+                    dailyLogData.push([_getText("excelNote3", "- Weather: Enter 'SUNNY', 'COOL', or 'RAINY'.")]);
 
                     var ws1 = XLSX.utils.aoa_to_sheet(dailyLogData);
 
@@ -118,16 +143,16 @@ sap.ui.define([
 
                     // Generate Resource Use Sheet Data
                     var resourceUseData = [
-                        ["RESOURCE USAGE"],
+                        [_getText("excelResourceUsage", "RESOURCE USAGE (MATERIALS/EQUIPMENT/LABOR)")],
                         [],
-                        ["Log Num", "Resource ID", "Quantity"]
+                        [_getText("excelNo", "Log Num"), _getText("excelResId", "Resource ID"), _getText("excelQuantityUsed", "Quantity")]
                     ];
 
                     // Generate Resource Master Sheet Data
                     var resourceMasterData = [
-                        ["RESOURCE MASTER"],
+                        [_getText("excelResMaster", "RESOURCE MASTER (REFERENCE)")],
                         [],
-                        ["Resource ID", "Resource Name", "Type", "Unit"]
+                        [_getText("excelResId", "Resource ID"), _getText("excelResName", "Resource Name"), _getText("excelType", "Type"), _getText("excelUnit", "Unit")]
                     ];
 
                     var oAddedResIds = {};
@@ -162,13 +187,13 @@ sap.ui.define([
                         });
                     } else {
                         resourceUseData.push([1, "XI_MANG", "1"]);
-                        resourceMasterData.push(["XI_MANG", "Cement", "MATERIAL", "KG"]);
+                        resourceMasterData.push(["XI_MANG", _getText("excelCement", "Cement"), "MATERIAL", "KG"]);
                     }
 
                     resourceUseData.push([]);
-                    resourceUseData.push(["NOTES:"]);
-                    resourceUseData.push(["- Log Num: Must match the Log Num from the DailyLog sheet."]);
-                    resourceUseData.push(["- Resource ID: Required field. Must exist in Resource Master sheet."]);
+                    resourceUseData.push([_getText("excelNotes", "NOTES:")]);
+                    resourceUseData.push([_getText("excelResNote1", "- Log Num: Must match the Log Num from the DailyLog sheet.")]);
+                    resourceUseData.push([_getText("excelResNote2", "- Resource ID: Required field. Must exist in Resource Master sheet.")]);
 
                     var ws2 = XLSX.utils.aoa_to_sheet(resourceUseData);
                     ws2['!cols'] = [
@@ -180,9 +205,9 @@ sap.ui.define([
                     XLSX.utils.book_append_sheet(wb, ws2, "ResourceUsage");
 
                     resourceMasterData.push([]);
-                    resourceMasterData.push(["NOTES:"]);
-                    resourceMasterData.push(["- Resource ID: Unique identifier."]);
-                    resourceMasterData.push(["- Type: 'MATERIAL', 'EQUIPMENT', or 'LABOR'."]);
+                    resourceMasterData.push([_getText("excelNotes", "NOTES:")]);
+                    resourceMasterData.push([_getText("excelResNote3", "- Resource ID: Unique identifier.")]);
+                    resourceMasterData.push([_getText("excelResNote4", "- Type: 'MATERIAL', 'EQUIPMENT', or 'LABOR'.")]);
 
                     var ws3 = XLSX.utils.aoa_to_sheet(resourceMasterData);
                     ws3['!cols'] = [
@@ -195,8 +220,8 @@ sap.ui.define([
                     XLSX.utils.book_append_sheet(wb, ws3, "ResourceMaster");
 
                     // Download file
-                    var sFileName = (aLogs && aLogs.length > 0) ? "DailyLogs_Export.xlsx" : "DailyLog_Template.xlsx";
-                    XLSX.writeFile(wb, sFileName);
+                    var sFileNameVal = (aLogs && aLogs.length > 0) ? _getText("excelFileNameExport", "DailyLogs_Export.xlsx") : _getText("excelFileNameTemplate", "DailyLog_Template.xlsx");
+                    XLSX.writeFile(wb, sFileNameVal);
                     MessageToast.show("Đã tải xuống thành công!");
 
                 } catch (error) {
@@ -279,10 +304,25 @@ sap.ui.define([
          * @param {Array} resourceRows - Dữ liệu từ sheet Resources
          * @returns {Array} - Mảng các object daily log
          */
-        transformExcelData: function (dailyLogRows, resourceUseRows, resourceMasterRows) {
+        transformExcelData: function (dailyLogRows, resourceUseRows, resourceMasterRows, oBundle) {
             var results = [];
+            var aErrors = [];
 
-            // Map thời tiết
+            var _getText = function (sKey, aArgs, sFallback) {
+                if (oBundle) {
+                    var sRet = oBundle.getText(sKey, aArgs);
+                    return sRet !== sKey ? sRet : sFallback;
+                }
+                return sFallback;
+            };
+
+            var _isValidNumber = function (str) {
+                if (str === null || str === undefined || str.toString().trim() === "") return false;
+                var n = Number(str.toString().trim());
+                return !isNaN(n);
+            };
+
+            // Map thời tiết (Valid maps only)
             var weatherMap = {
                 "SUNNY": "SUNNY",
                 "COOL": "COOL",
@@ -292,39 +332,65 @@ sap.ui.define([
                 "Mưa": "RAINY"
             };
 
-            // Tạo map resource master
+            // 1. Tạo map resource master & Validate
             var masterMap = {};
             if (resourceMasterRows && resourceMasterRows.length > 3) {
                 for (var j = 3; j < resourceMasterRows.length; j++) {
                     var mRow = resourceMasterRows[j];
                     if (!mRow || mRow.length === 0) continue;
 
-                    var resId = mRow[0] ? mRow[0].toString().trim() : "";
-                    if (!resId || resId.indexOf("NOTES") >= 0) continue;
+                    var resIdRaw = mRow[0] !== undefined ? mRow[0].toString().trim() : "";
+                    if (!resIdRaw || resIdRaw.indexOf("NOTES") >= 0 || resIdRaw.indexOf("LƯU Ý") >= 0) break;
 
-                    masterMap[resId] = {
-                        resource_name: mRow[1] ? mRow[1].toString() : "",
-                        resource_type: mRow[2] ? mRow[2].toString() : "MATERIAL",
-                        unit_code: mRow[3] ? mRow[3].toString() : ""
+                    var resName = mRow[1] ? mRow[1].toString().trim() : "";
+                    var resType = mRow[2] ? mRow[2].toString().toUpperCase().trim() : "MATERIAL";
+                    var unitCode = mRow[3] ? mRow[3].toString().trim() : "";
+
+                    if (!resIdRaw || !resName || !unitCode || ["MATERIAL", "EQUIPMENT", "LABOR"].indexOf(resType) === -1) {
+                        aErrors.push(_getText("errResMasterInvalid", [j + 1], "Sheet RESOURCE MASTER, Row " + (j + 1) + ": Resource information is invalid."));
+                    }
+
+                    masterMap[resIdRaw] = {
+                        resource_name: resName,
+                        resource_type: resType,
+                        unit_code: unitCode
                     };
                 }
             }
 
-            // Tạo map resources use theo mã nhật ký
+            // 2. Tạo map resources use theo mã nhật ký & Validate
             var resourceMap = {};
+            var usedResourceLogNums = {};
             if (resourceUseRows && resourceUseRows.length > 3) {
                 for (var i = 3; i < resourceUseRows.length; i++) {
                     var resRow = resourceUseRows[i];
                     if (!resRow || resRow.length === 0) continue;
 
                     var logNum = resRow[0] !== undefined ? resRow[0].toString().trim() : "";
-                    if (!logNum || logNum.indexOf("NOTES") >= 0 || logNum.indexOf("LƯU Ý") >= 0) continue;
+                    if (!logNum || logNum.indexOf("NOTES") >= 0 || logNum.indexOf("LƯU Ý") >= 0) break;
+
+                    var rId = resRow[1] ? resRow[1].toString().trim() : "";
+                    if (!rId) {
+                        aErrors.push(_getText("errResUsageNoId", [i + 1], "Sheet RESOURCE USAGE, Row " + (i + 1) + ": Resource ID is required."));
+                    } else if (!masterMap[rId]) {
+                        aErrors.push(_getText("errResUsageUnknownId", [i + 1, rId], "Sheet RESOURCE USAGE, Row " + (i + 1) + ": Resource '" + rId + "' not found."));
+                    }
+
+                    var qtyStrUse = resRow[2] !== undefined ? resRow[2].toString().trim() : "";
+                    var fQty = 0;
+                    if (!_isValidNumber(qtyStrUse)) {
+                        aErrors.push(_getText("errResUsageQty", [i + 1], "Sheet RESOURCE USAGE, Row " + (i + 1) + ": Quantity must be > 0."));
+                    } else {
+                        fQty = Number(qtyStrUse);
+                        if (fQty <= 0) {
+                            aErrors.push(_getText("errResUsageQty", [i + 1], "Sheet RESOURCE USAGE, Row " + (i + 1) + ": Quantity must be > 0."));
+                        }
+                    }
 
                     if (!resourceMap[logNum]) {
                         resourceMap[logNum] = [];
                     }
 
-                    var rId = resRow[1] ? resRow[1].toString() : "";
                     var mData = masterMap[rId] || {};
 
                     resourceMap[logNum].push({
@@ -332,48 +398,88 @@ sap.ui.define([
                         resource_id: rId,
                         resource_name: mData.resource_name || "",
                         resource_type: mData.resource_type || "MATERIAL",
-                        quantity: parseFloat(resRow[2]) || 0,
+                        quantity: isNaN(fQty) ? 0 : fQty,
                         unit_code: mData.unit_code || "KG"
+                    });
+                    usedResourceLogNums[logNum] = true;
+                }
+            }
+
+            // 3. Parse Daily Log & Validate
+            var processedLogNums = {};
+            if (dailyLogRows && dailyLogRows.length > 3) {
+                for (var k = 3; k < dailyLogRows.length; k++) {
+                    var row = dailyLogRows[k];
+
+                    if (!row || row.length === 0) continue;
+
+                    var tempFirstCol = row[0] !== undefined ? row[0].toString().trim() : "";
+                    // Bỏ qua dòng trống hoặc end-of-data
+                    if (!tempFirstCol && (!row[1] || row[1].toString().trim() === "")) continue;
+                    if (tempFirstCol.indexOf("NOTES") >= 0 || tempFirstCol.indexOf("LƯU Ý") >= 0) break;
+
+                    var logNumD = row[0] !== undefined ? row[0].toString().trim() : "";
+                    if (!logNumD) {
+                        aErrors.push(_getText("errDailyLogNoNum", [k + 1], "Sheet DailyLog, Row " + (k + 1) + ": Log Num is required."));
+                    } else {
+                        processedLogNums[logNumD] = true;
+                    }
+
+                    var dateStr = row[1] ? row[1].toString().trim() : "";
+                    if (!dateStr) {
+                        aErrors.push(_getText("errDailyLogNoDate", [k + 1], "Sheet DailyLog, Row " + (k + 1) + ": Report Date is required."));
+                    }
+                    var logDate = this._parseDate(dateStr);
+                    if (dateStr && (!logDate || isNaN(logDate.getTime()))) {
+                        aErrors.push(_getText("errDailyLogInvDate", [k + 1, dateStr], "Sheet DailyLog, Row " + (k + 1) + ": Date '" + dateStr + "' is invalid."));
+                    }
+
+                    var qtyStr = row[2] !== undefined ? row[2].toString().trim() : "";
+                    var qtyDone = 0;
+                    if (!_isValidNumber(qtyStr)) {
+                        aErrors.push(_getText("errDailyLogInvQty", [k + 1, qtyStr], "Sheet DailyLog, Row " + (k + 1) + ": Quantity Done '" + qtyStr + "' must be a number."));
+                    } else {
+                        qtyDone = Number(qtyStr);
+                    }
+
+                    var wAm = row[3] ? row[3].toString().trim() : "";
+                    var wPm = row[4] ? row[4].toString().trim() : "";
+
+                    if (wAm && !weatherMap[wAm]) {
+                        aErrors.push(_getText("errDailyLogWeaAm", [k + 1, wAm], "Sheet DailyLog, Row " + (k + 1) + ": Morning Weather '" + wAm + "' is invalid (Must be Sun/Rain/Cool)."));
+                    }
+                    if (wPm && !weatherMap[wPm]) {
+                        aErrors.push(_getText("errDailyLogWeaPm", [k + 1, wPm], "Sheet DailyLog, Row " + (k + 1) + ": Afternoon Weather '" + wPm + "' is invalid."));
+                    }
+
+                    // Proceed to construct log if no fatal errors so far
+                    var resources = resourceMap[logNumD] || [];
+
+                    results.push({
+                        log_id: "",
+                        wbs_id: "",
+                        log_num: logNumD,
+                        qty_done: isNaN(qtyDone) ? 0 : qtyDone,
+                        log_date: logDate || new Date(),
+                        weather_am: weatherMap[wAm] || "SUNNY", // Store safe fallback locally
+                        weather_pm: weatherMap[wPm] || "SUNNY",
+                        general_note: row[5] ? row[5].toString() : "",
+                        safe_note: row[6] ? row[6].toString() : "",
+                        contractor_note: row[7] ? row[7].toString() : "",
+                        resources: resources
                     });
                 }
             }
 
-            // Parse Daily Log (bắt đầu từ dòng 3, dòng 0-2 là header)
-            if (dailyLogRows && dailyLogRows.length > 3) {
-                for (var i = 3; i < dailyLogRows.length; i++) {
-                    var row = dailyLogRows[i];
-
-                    // Bỏ qua dòng trống hoặc dòng ghi chú
-                    if (!row || row.length === 0 || !row[1] || row[1].toString().trim() === "") continue;
-                    if (row[0] && (row[0].toString().indexOf("NOTES") >= 0 || row[0].toString().indexOf("LƯU Ý") >= 0)) break;
-
-                    try {
-                        var logNum = row[0] !== undefined ? row[0].toString().trim() : "";
-                        var dateStr = row[1] ? row[1].toString().trim() : "";
-                        var logDate = this._parseDate(dateStr);
-                        var qtyDone = parseFloat(row[2]) || 0;
-
-                        // Resources keyed by Log Num (not GUID — GUID never stored)
-                        var resources = resourceMap[logNum] || [];
-
-                        var dailyLog = {
-                            log_id: "",  // always empty — backend generates a new GUID
-                            wbs_id: "",  // supplied by controller
-                            qty_done: qtyDone,
-                            log_date: logDate,
-                            weather_am: weatherMap[row[3]] || "SUNNY",
-                            weather_pm: weatherMap[row[4]] || "SUNNY",
-                            general_note: row[5] ? row[5].toString() : "",
-                            safe_note: row[6] ? row[6].toString() : "",
-                            contractor_note: row[7] ? row[7].toString() : "",
-                            resources: resources
-                        };
-
-                        results.push(dailyLog);
-                    } catch (e) {
-                        console.error("Error parsing row " + i + ":", e, row);
-                    }
+            // 4. Cross-Sheet Validation: Check if usages reference non-existent logs
+            Object.keys(usedResourceLogNums).forEach(function (lNum) {
+                if (!processedLogNums[lNum]) {
+                    aErrors.push(_getText("errResUsageDangling", [lNum], "Sheet RESOURCE USAGE: Log Num '" + lNum + "' does not exist in DailyLog sheet."));
                 }
+            });
+
+            if (aErrors.length > 0) {
+                throw new Error(aErrors.join("\n"));
             }
 
             return results;

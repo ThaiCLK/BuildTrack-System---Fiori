@@ -87,6 +87,7 @@ sap.ui.define([
                     this._buildCharts(sKey || null);
                 }.bind(this), 300);
             }.bind(this));
+            sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
         // ── onAfterRendering ───────────────────────────────────────────────
@@ -111,6 +112,15 @@ sap.ui.define([
         _onDashboardMatched: function () {
             this._loadStats();
             this._loadWeather();
+            this._loadAnalyticsData();
+        },
+
+        onExit: function () {
+            sap.ui.getCore().getEventBus().unsubscribe("Global", "RefreshData", this._onGlobalRefresh, this);
+        },
+
+        _onGlobalRefresh: function () {
+            this._loadStats();
             this._loadAnalyticsData();
         },
 

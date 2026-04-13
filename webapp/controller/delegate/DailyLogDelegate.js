@@ -189,7 +189,6 @@ sap.ui.define([
                 GeneralNote: oODataLog.GeneralNote || "",
                 ContractorNote: oODataLog.ContractorNote || ""
             };
-            console.log("Showing Log Detail (parsed): ", oLog);
             oUIModel.setProperty("/selectedLog", oLog);
             oUIModel.setProperty("/ui/isSelected", true);
             oUIModel.setProperty("/ui/editMode", false);
@@ -344,7 +343,7 @@ sap.ui.define([
                     });
 
                     if (aUniqueIds.length === 0) {
-                        DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources);
+                        DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources, oBundle);
                         return;
                     }
 
@@ -365,12 +364,12 @@ sap.ui.define([
                                         r.ResourceType = oDetail.ResourceType || "MATERIAL";
                                         r.UnitCode = oDetail.UnitCode || "";
                                     });
-                                    DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources);
+                                    DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources, oBundle);
                                 }
                             },
                             error: function () {
                                 if (++iDone >= aUniqueIds.length) {
-                                    DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources);
+                                    DailyLogExcelHandler.exportDailyLogs(aLogs, aAllResources, oBundle);
                                 }
                             }
                         });
@@ -392,7 +391,8 @@ sap.ui.define([
         },
 
         onDownloadTemplate: function () {
-            DailyLogExcelHandler.exportDailyLogs([], []);
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            DailyLogExcelHandler.exportDailyLogs([], [], oBundle);
         },
 
         onImportExcel: function () {
@@ -419,18 +419,23 @@ sap.ui.define([
                 MessageToast.show(oBundle.getText("importingFile", [oFile.name]));
 
                 DailyLogExcelHandler.parseExcelFile(oFile).then(function (oParsed) {
-                    var aLogs = DailyLogExcelHandler.transformExcelData(
-                        oParsed.dailyLogs,
-                        oParsed.resourceUses,
-                        oParsed.resourceMasters
-                    );
+                    try {
+                        var aLogs = DailyLogExcelHandler.transformExcelData(
+                            oParsed.dailyLogs,
+                            oParsed.resourceUses,
+                            oParsed.resourceMasters,
+                            oBundle
+                        );
 
-                    if (!aLogs || aLogs.length === 0) {
-                        MessageToast.show(oBundle.getText("noValidDataFound"));
-                        return;
+                        if (!aLogs || aLogs.length === 0) {
+                            MessageToast.show(oBundle.getText("noValidDataFound"));
+                            return;
+                        }
+                        that.getView().getModel("importPreviewModel").setProperty("/logs", aLogs);
+                        that._openImportPreviewDialog();
+                    } catch (eTransform) {
+                        MessageBox.error(eTransform.message);
                     }
-                    that.getView().getModel("importPreviewModel").setProperty("/logs", aLogs);
-                    that._openImportPreviewDialog();
                 }).catch(function (e) {
                     MessageBox.error(oBundle.getText("parseExcelError", [e.message]));
                 });
@@ -675,6 +680,18 @@ sap.ui.define([
                 d.getFullYear());
         },
 
+        formatWeather: function(sWeather) {
+            if (!sWeather) return "";
+            var sCode = sWeather.toUpperCase();
+            var sKey = "sunny";
+            if (sCode === "RAINY") sKey = "rainy";
+            else if (sCode === "COOL") sKey = "cool";
+            else if (sCode === "STORM") sKey = "storm";
+            else if (sCode === "CLOUDY") sKey = "cloudy";
+            var oBndl = this.getView().getModel("i18n").getResourceBundle();
+            return oBndl.getText(sKey);
+        },
+
         formatImportPreviewLogCount: function(sText, iLength) {
             if (!sText) return "";
             return sText.replace("{0}", iLength || 0);
@@ -743,7 +760,6 @@ sap.ui.define([
                 WbsId: this._sWbsId,
                 LogDate: dUtcMidnight,
                 QuantityDone: oLog.qty_done ? String(parseFloat(oLog.qty_done) || 0) : "0",
-                UnitCode: sWbsUnit,
                 WeatherAm: oLog.weather_am || "SUNNY",
                 WeatherPm: oLog.weather_pm || "SUNNY",
                 GeneralNote: oLog.general_note || "",
@@ -1221,7 +1237,6 @@ sap.ui.define([
                 WeatherAm: oLog.WeatherAm || "SUNNY",
                 WeatherPm: oLog.WeatherPm || "SUNNY",
                 QuantityDone: String(parseFloat(oLog.QuantityDone) || 0),
-                UnitCode: oLog.UnitCode || "",
                 SafeNote: oLog.SafeNote || "",
                 GeneralNote: oLog.GeneralNote || "",
                 ContractorNote: oLog.ContractorNote || ""

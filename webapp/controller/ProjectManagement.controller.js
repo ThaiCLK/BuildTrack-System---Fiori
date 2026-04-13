@@ -78,6 +78,7 @@ sap.ui.define([
             this._loadProjectValueHelps();
             this._fetchUserRoles(); // Fetch users for ID -> Name mapping
             this._readProjects("");
+            sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
         _resolveProjectCollectionPath: function () {
@@ -620,6 +621,14 @@ sap.ui.define([
         // ── NAVIGATE BACK TO DASHBOARD ────────────────────────────────────────
         onNavBack: function () {
             this.getOwnerComponent().getRouter().navTo("Dashboard", {}, true);
+        },
+
+        onExit: function () {
+            sap.ui.getCore().getEventBus().unsubscribe("Global", "RefreshData", this._onGlobalRefresh, this);
+        },
+
+        _onGlobalRefresh: function () {
+            this._readProjects("");
         },
 
         // ── FILTER BAR (GO) ───────────────────────────────────────────────

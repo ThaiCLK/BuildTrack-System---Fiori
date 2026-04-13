@@ -13,6 +13,7 @@
                         </HBox>
                     </contentLeft>
                     <contentRight>
+                        <Button icon="sap-icon://refresh" tooltip="{i18n>refresh}" type="Transparent" press=".onGlobalRefresh" class="dashboardHeaderBtn"/>
                         <MenuButton icon="sap-icon://world" tooltip="{i18n>language}" class="dashboardHeaderBtn">
                             <menu>
                                 <Menu itemSelected=".onLanguageSelect">

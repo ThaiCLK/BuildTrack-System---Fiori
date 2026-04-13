@@ -21,6 +21,11 @@ sap.ui.define([
               ]
           }), "assistant");
       },
+      onGlobalRefresh: function () {
+          sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
+          var oBundle = this.getOwnerComponent().getModel("i18n").getResourceBundle();
+          MessageToast.show(oBundle.getText("refreshSuccess") || "Đã làm mới dữ liệu");
+      },
       onNavToDashboard: function () {
           this.getOwnerComponent().getRouter().navTo("Dashboard");
       },
@@ -409,6 +414,7 @@ sap.ui.define([
           
           if (oConfiguration.getLanguage() !== sKey) {
               oConfiguration.setLanguage(sKey);
+              localStorage.setItem("buildtrack_lang", sKey);
               var oBundle = this.getView().getModel("i18n").getResourceBundle();
               var sMsg = oBundle.getText("languageChanged", [sKey === "vi" ? oBundle.getText("vietnamese") : oBundle.getText("english")]);
               sap.m.MessageToast.show(sMsg);

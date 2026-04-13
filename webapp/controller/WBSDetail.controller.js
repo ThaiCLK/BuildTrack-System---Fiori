@@ -89,8 +89,8 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("locationEditSiteClosed"));
                 return;
             }
-            if (sWbsStatus === "CLOSED") {
-                MessageBox.error(oBundle.getText("locationEditWbsClosed"));
+            if (sWbsStatus !== "PLANNING") {
+                MessageBox.error(oBundle.getText("wbsEditPlanningOnlyError"));
                 return;
             }
 
@@ -166,8 +166,8 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("locationEditSiteClosed"));
                 return;
             }
-            if (sWbsStatus === "CLOSED") {
-                MessageBox.error(oBundle.getText("locationEditWbsClosed"));
+            if (sWbsStatus !== "PLANNING") {
+                MessageBox.error(oBundle.getText("wbsEditPlanningOnlyError"));
                 return;
             }
 
@@ -230,16 +230,45 @@ sap.ui.define([
                 bHasError = true;
             }
 
-            var fLStart = parseFloat(oLocationModel.getProperty("/PosStart"));
-            var fLEnd = parseFloat(oLocationModel.getProperty("/PosEnd"));
+            // POS fields: mandatory
+            var sLStartVal = (oLocationModel.getProperty("/PosStart") !== null && oLocationModel.getProperty("/PosStart") !== undefined) ? String(oLocationModel.getProperty("/PosStart")).trim() : "";
+            var sLEndVal   = (oLocationModel.getProperty("/PosEnd")   !== null && oLocationModel.getProperty("/PosEnd")   !== undefined) ? String(oLocationModel.getProperty("/PosEnd")).trim()   : "";
+            var sLBotVal   = (oLocationModel.getProperty("/PosBot")   !== null && oLocationModel.getProperty("/PosBot")   !== undefined) ? String(oLocationModel.getProperty("/PosBot")).trim()   : "";
+            var sLTopVal   = (oLocationModel.getProperty("/PosTop")   !== null && oLocationModel.getProperty("/PosTop")   !== undefined) ? String(oLocationModel.getProperty("/PosTop")).trim()   : "";
+
+            if (!sLStartVal) {
+                oInLocStart.setValueState("Error");
+                oInLocStart.setValueStateText(oBundle.getText("posStartRequired"));
+                bHasError = true;
+            }
+            if (!sLEndVal) {
+                oInLocEnd.setValueState("Error");
+                oInLocEnd.setValueStateText(oBundle.getText("posEndRequired"));
+                bHasError = true;
+            }
+            if (!sLBotVal) {
+                oInLocBot.setValueState("Error");
+                oInLocBot.setValueStateText(oBundle.getText("posBotRequired"));
+                bHasError = true;
+            }
+            if (!sLTopVal) {
+                oInLocTop.setValueState("Error");
+                oInLocTop.setValueStateText(oBundle.getText("posTopRequired"));
+                bHasError = true;
+            }
+
+            // POS_START <= POS_END
+            var fLStart = parseFloat(sLStartVal);
+            var fLEnd = parseFloat(sLEndVal);
             if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
                 oInLocStart.setValueState("Error");
                 oInLocStart.setValueStateText(oBundle.getText("posStartEndError"));
                 bHasError = true;
             }
 
-            var fLBot = parseFloat(oLocationModel.getProperty("/PosBot"));
-            var fLTop = parseFloat(oLocationModel.getProperty("/PosTop"));
+            // POS_BOT <= POS_TOP
+            var fLBot = parseFloat(sLBotVal);
+            var fLTop = parseFloat(sLTopVal);
             if (!isNaN(fLBot) && !isNaN(fLTop) && fLBot > fLTop) {
                 oInLocBot.setValueState("Error");
                 oInLocBot.setValueStateText(oBundle.getText("posBotTopError"));
@@ -389,73 +418,35 @@ sap.ui.define([
                 editMode: false
             });
             this.getView().setModel(oViewData, "viewData");
-
-            // --- AUTO REFRESH LOGIC ---
-            // Debounce: chỉ refresh sau 1.5 giây kể từ lần focus cuối cùng
-            // để tránh reload liên tục khi người dùng click vào cửa sổ / tab
-            this._fnFocusHandler = function () {
-                if (window.location.hash.indexOf("/WBS/") !== -1 && this._sWbsId) {
-                    if (this._iFocusDebounce) {
-                        clearTimeout(this._iFocusDebounce);
-                    }
-                    this._iFocusDebounce = setTimeout(function () {
-                        this._iFocusDebounce = null;
-                        var oModel = this.getOwnerComponent().getModel();
-                        // Explicitly fetch data to bypass refresh() blocks (e.g., pending changes)
-                        oModel.read("/WBSSet(guid'" + this._sWbsId + "')", {
-                            urlParameters: { "$expand": "ToApprovalLog" },
-                            headers: {
-                                "Cache-Control": "no-cache, no-store, must-revalidate",
-                                "Pragma": "no-cache",
-                                "Expires": "0"
-                            },
-                            success: function (oData) {
-                                var sPath = "/WBSSet(guid'" + this._sWbsId + "')";
-                                var bStatusChanged = oModel.getProperty(sPath + "/Status") !== oData.Status;
-
-                                // Manually run check to ensure buttons appear without relying on view binding events
-                                this._checkIfActionable(this._sWbsId, oData.Status);
-
-                                // Force OData V2 model to notify bindings
-                                if (bStatusChanged) {
-                                    oModel.setProperty(sPath + "/Status", oData.Status);
-                                }
-                                if (oModel.getProperty(sPath + "/Quantity") !== oData.Quantity) {
-                                    oModel.setProperty(sPath + "/Quantity", oData.Quantity);
-                                }
-
-                                if (typeof this._loadWorkSummary === "function") {
-                                    this._loadWorkSummary(this._sWbsId);
-                                }
-                                if (typeof this.updateProcessFlow === "function") {
-                                    this.updateProcessFlow(this._aGlobalLogs || []);
-                                }
-                            }.bind(this)
-                        });
-                    }.bind(this), 1500);
-                }
-            }.bind(this);
-            window.addEventListener("focus", this._fnFocusHandler);
-
             // --- DATE PICKER RESTRICTIONS ---
             var oDelegate = {
                 onAfterRendering: function (oEvent) {
                     oEvent.srcControl.$().find("input").attr("readonly", "readonly");
                 }
             };
-            this.byId("inWbsStartDate").addEventDelegate(oDelegate);
-            this.byId("inWbsEndDate").addEventDelegate(oDelegate);
+            var oWbsStart = this.byId("inWbsStartDate");
+            var oWbsEnd = this.byId("inWbsEndDate");
+            if (oWbsStart) oWbsStart.addEventDelegate(oDelegate);
+            if (oWbsEnd) oWbsEnd.addEventDelegate(oDelegate);
+            sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
         onExit: function () {
-            if (this._fnFocusHandler) {
-                window.removeEventListener("focus", this._fnFocusHandler);
+            if (this._stopPolling) {
+                this._stopPolling();
             }
-            if (this._iFocusDebounce) {
-                clearTimeout(this._iFocusDebounce);
-                this._iFocusDebounce = null;
-            }
-            this._stopPolling();
+            sap.ui.getCore().getEventBus().unsubscribe("Global", "RefreshData", this._onGlobalRefresh, this);
+        },
+
+        _onGlobalRefresh: function () {
+            if (!this._sWbsId) return;
+            var oBinding = this.getView().getElementBinding();
+            if (oBinding) { oBinding.refresh(true); }
+            this._bindDailyLogList(this._sWbsId);
+            this._bindApprovalLogList(this._sWbsId);
+            this._loadWorkSummary(this._sWbsId);
+            this._loadLocation(this._sWbsId);
+            if (this._sSiteId) { this._loadProjectInfo(this._sSiteId); }
         },
 
         /* =========================================================== */
@@ -833,6 +824,27 @@ sap.ui.define([
         onLocRangeChange: function (oEvent) {
             oEvent.getSource().setValueState("None");
         },
+
+        /**
+         * Formatter: "Số: NT-{0}" + WbsCode
+         * Used in AcceptanceReport to replace sap.ui.model.type.MessageFormat
+         */
+        formatReportNo: function (sTemplate, sWbsCode) {
+            if (!sTemplate) return "";
+            return sTemplate.replace("{0}", sWbsCode || "");
+        },
+
+        /**
+         * Formatter: "(Giai đoạn: {0} - {1})" with date objects
+         * Used in AcceptanceReport to replace sap.ui.model.type.MessageFormat
+         */
+        formatPeriod: function (sTemplate, dStart, dEnd) {
+            if (!sTemplate) return "";
+            var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+            var sStart = dStart ? oDateFormat.format(dStart instanceof Date ? dStart : new Date(dStart)) : "—";
+            var sEnd = dEnd ? oDateFormat.format(dEnd instanceof Date ? dEnd : new Date(dEnd)) : "—";
+            return sTemplate.replace("{0}", sStart).replace("{1}", sEnd);
+        },
     });
 
     // Mix in DependencyDelegate functions
@@ -866,6 +878,7 @@ sap.ui.define([
         onConfirmImport: DailyLogDelegate.onConfirmImport,
         onCancelImport: DailyLogDelegate.onCancelImport,
         formatImportDate: DailyLogDelegate.formatImportDate,
+        formatWeather: DailyLogDelegate.formatWeather,
         formatTotalResQty: DailyLogDelegate.formatTotalResQty,
         formatImportPreviewLogCount: DailyLogDelegate.formatImportPreviewLogCount,
         _importLogsSequentially: DailyLogDelegate._importLogsSequentially,
@@ -1205,8 +1218,8 @@ sap.ui.define([
                         var oUserModel = that.getOwnerComponent().getModel("userModel");
                         var myAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : 0;
 
-                        // Force View Mode if closed
-                        if (oWbs && oWbs.Status === "CLOSED") {
+                        // Force View Mode if closed or rejected
+                        if (oWbs && (oWbs.Status === "CLOSED" || oWbs.Status === "CLOSE_REJECTED")) {
                             bIsSignMode = false;
                         }
 
@@ -1220,23 +1233,19 @@ sap.ui.define([
                         aLogs.forEach(function (log) {
                             if (bCycleEnded) return;
 
-                            if (!sEvalRes && (log.EvaluationResult === "1" || log.EvaluationResult === "0")) {
-                                sEvalRes = log.EvaluationResult;
+                            // Safely convert EvaluationResult to string to avoid strict equality failure if it's an integer
+                            var sLogEval = String(log.EvaluationResult || "").trim();
+                            if (!sEvalRes && (sLogEval === "1" || sLogEval === "2")) {
+                                sEvalRes = sLogEval;
                             }
 
                             var sAction = (log.Action || "").toUpperCase().trim();
                             var iLevel = parseInt(log.ApprovalLevel) || 0;
 
                             // Extract WorkItemId directly from logs if CheckDecision didn't provide one.
-                            // Prioritise the log matching myAuthLevel, but fall back to any log with a WorkItemId
-                            // (Approval Log no longer filters by user, so all agents' logs are visible)
                             if (log.WorkItemId) {
-                                if (!sFoundWorkItemId) {
-                                    // Accept any WorkItemId as initial fallback
-                                    sFoundWorkItemId = log.WorkItemId;
-                                }
+                                if (!sFoundWorkItemId) sFoundWorkItemId = log.WorkItemId;
                                 if (sAction.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 && iLevel === myAuthLevel) {
-                                    // Prefer the log addressed specifically to this user's level
                                     sFoundWorkItemId = log.WorkItemId;
                                 }
                             }
@@ -1246,7 +1255,7 @@ sap.ui.define([
                                 return;
                             }
 
-                            // Identify Submit actions (cycle start). Do NOT use iLevel === 0 alone to avoid terminating on blank system logs
+                            // Identify Submit actions (cycle start).
                             var bIsSubmit = sAction === "0000" || sAction === "SUBMITTED" || sAction === "TẠO WBS";
                             if (bIsSubmit || (sAction.indexOf("GỬI") !== -1 && sAction.indexOf("YÊU CẦU") !== -1)) {
                                 bCycleEnded = true;
@@ -1263,7 +1272,7 @@ sap.ui.define([
                             if (sAction === "0001" || sAction.indexOf("APPROVE") !== -1 || sAction.indexOf("SUCCESS") !== -1 || sAction.indexOf("ĐÃ KÝ") !== -1 || sAction.indexOf("KÝ DUY") !== -1 || sAction.indexOf("CHẤP THUẬN") !== -1) {
                                 bApproved = true;
                             }
-                            if (sAction.indexOf("DUYỆT") !== -1) {
+                            if (sAction.indexOf("DUYỆT") !== -1 && sAction.indexOf("CHẤM DỨT") === -1) {
                                 bApproved = true;
                             }
                             if (sAction === "" && iLevel > 0) bApproved = true;
@@ -1450,11 +1459,65 @@ sap.ui.define([
         },
 
         onRejectFromReport: function () {
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            this._submitDecisionFromReport("0002", oBundle.getText("reject"));
+            var that = this;
+            var oView = this.getView();
+            var oBundle = oView.getModel("i18n").getResourceBundle();
+            var oViewData = oView.getModel("viewData");
+            var oActiveWbs = oViewData.getProperty("/activeWbs");
+
+            if (!oActiveWbs || !oActiveWbs.WorkItemId) {
+                MessageBox.error(oBundle.getText("workItemIdNotFoundError") || "Không tìm thấy mã công việc (WorkItemId) để xử lý.");
+                return;
+            }
+
+            // Build a dialog with a mandatory TextArea for rejection reason
+            var oTextArea = new sap.m.TextArea({
+                width: "100%",
+                rows: 4,
+                placeholder: oBundle.getText("rejectNotePlaceholder") || "Nhập lý do từ chối...",
+                liveChange: function (oEvent) {
+                    var sVal = oEvent.getParameter("value").trim();
+                    oRejectDialog.getBeginButton().setEnabled(sVal.length > 0);
+                    oEvent.getSource().setValueState(sVal.length > 0 ? "None" : "Error");
+                }
+            });
+            oTextArea.setValueState("Error");
+            oTextArea.setValueStateText(oBundle.getText("rejectNoteRequired") || "Bắt buộc nhập lý do từ chối.");
+
+            var oRejectDialog = new sap.m.Dialog({
+                title: oBundle.getText("rejectTitle") || "Từ chối nghiệm thu",
+                type: "Message",
+                contentWidth: "400px",
+                content: [
+                    new sap.m.Label({ text: oBundle.getText("rejectNoteLabel") || "Lý do từ chối:", required: true }),
+                    oTextArea
+                ],
+                beginButton: new sap.m.Button({
+                    text: oBundle.getText("confirmReject") || "Xác nhận Từ chối",
+                    type: "Reject",
+                    enabled: false,
+                    press: function () {
+                        var sNote = oTextArea.getValue().trim();
+                        oRejectDialog.close();
+                        that._submitDecisionFromReport("0002", oBundle.getText("reject"), sNote);
+                    }
+                }),
+                endButton: new sap.m.Button({
+                    text: oBundle.getText("cancel") || "Hủy",
+                    press: function () {
+                        oRejectDialog.close();
+                    }
+                }),
+                afterClose: function () {
+                    oRejectDialog.destroy();
+                }
+            });
+
+            oView.addDependent(oRejectDialog);
+            oRejectDialog.open();
         },
 
-        _submitDecisionFromReport: function (sDecisionCode, sTitle) {
+        _submitDecisionFromReport: function (sDecisionCode, sTitle, sNote) {
             var that = this;
             var oView = this.getView();
             var oModel = this.getOwnerComponent().getModel();
@@ -1467,53 +1530,63 @@ sap.ui.define([
                 return;
             }
 
-            MessageBox.confirm(oBundle.getText("decisionConfirm", [sTitle]) || "Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
-                onClose: function (sAction) {
-                    if (sAction === MessageBox.Action.OK) {
-                        var sEvalResult = "";
-                        if (sDecisionCode === "0001") sEvalResult = "1";
-                        if (sDecisionCode === "0002") sEvalResult = "0";
+            var fnExecute = function () {
+                var sEvalResult = "";
+                if (sDecisionCode === "0001") sEvalResult = "1";
+                if (sDecisionCode === "0002") sEvalResult = "2";
 
-                        oView.setBusy(true);
-                        oModel.callFunction("/PostDecision", {
-                            method: "POST",
-                            urlParameters: {
-                                WI_ID: oActiveWbs.WorkItemId,
-                                Decision: sDecisionCode,
-                                Note: "Processed from Acceptance Report",
-                                EvaluationResult: sEvalResult
-                            },
-                            success: function (oData) {
-                                oView.setBusy(false);
-                                if (typeof that.onCloseAcceptanceDialog === "function") {
-                                    that.onCloseAcceptanceDialog();
-                                }
-                                MessageBox.success(oBundle.getText("processSuccess", ["1"]) || "Đã xử lý quyết định thành công.");
-                                oModel.refresh(true); // Force cache invalidation to prevent signing loops
-                                that._bindApprovalLogList(oActiveWbs.WbsId);
+                oView.setBusy(true);
+                oModel.callFunction("/PostDecision", {
+                    method: "POST",
+                    urlParameters: {
+                        WI_ID: oActiveWbs.WorkItemId,
+                        Decision: sDecisionCode,
+                        Note: sNote || "Processed from Acceptance Report",
+                        EvaluationResult: sEvalResult
+                    },
+                    success: function (oData) {
+                        oView.setBusy(false);
+                        if (typeof that.onCloseAcceptanceDialog === "function") {
+                            that.onCloseAcceptanceDialog();
+                        }
+                        MessageBox.success(oBundle.getText("processSuccess", ["1"]) || "Đã xử lý quyết định thành công.");
+                        oModel.refresh(true); // Force cache invalidation to prevent signing loops
+                        that._bindApprovalLogList(oActiveWbs.WbsId);
 
-                                // Re-check actionability so button text updates to 'Xem biên bản'
-                                if (typeof that._checkIfActionable === "function") {
-                                    that._checkIfActionable(oActiveWbs.WbsId);
-                                }
+                        // Re-check actionability so button text updates to 'Xem biên bản'
+                        if (typeof that._checkIfActionable === "function") {
+                            that._checkIfActionable(oActiveWbs.WbsId);
+                        }
 
-                                // Refresh WBS Detail
-                                var oBinding = oView.getElementBinding();
-                                if (oBinding) { oBinding.refresh(); }
-                            },
-                            error: function (oError) {
-                                oView.setBusy(false);
-                                var sMsg = "Lỗi khi xử lý quyết định.";
-                                try {
-                                    var oErr = JSON.parse(oError.responseText);
-                                    sMsg = oErr.error.message.value || sMsg;
-                                } catch (e) { }
-                                MessageBox.error(sMsg);
-                            }
-                        });
+                        // Refresh WBS Detail
+                        var oBinding = oView.getElementBinding();
+                        if (oBinding) { oBinding.refresh(); }
+                    },
+                    error: function (oError) {
+                        oView.setBusy(false);
+                        var sMsg = "Lỗi khi xử lý quyết định.";
+                        try {
+                            var oErr = JSON.parse(oError.responseText);
+                            sMsg = oErr.error.message.value || sMsg;
+                        } catch (e) { }
+                        MessageBox.error(sMsg);
                     }
-                }
-            });
+                });
+            };
+
+            // For approve, show a confirmation dialog; for reject, note was already collected
+            if (sDecisionCode === "0001") {
+                MessageBox.confirm(oBundle.getText("decisionConfirm", [sTitle]) || "Bạn có chắc chắn muốn thực hiện " + sTitle + " cho hạng mục này?", {
+                    onClose: function (sAction) {
+                        if (sAction === MessageBox.Action.OK) {
+                            fnExecute();
+                        }
+                    }
+                });
+            } else {
+                // Reject: note already provided, execute directly
+                fnExecute();
+            }
         },
 
         onSubmitForApproval: function () {
