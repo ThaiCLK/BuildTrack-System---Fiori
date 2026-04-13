@@ -4,10 +4,10 @@
     xmlns:f="sap.ui.layout.form"
     xmlns:l="sap.ui.layout">
     <Dialog 
-        title="{i18n>acceptanceReportTitle}" 
-        contentWidth="750px"
-        horizontalScrolling="false"
-        verticalScrolling="false">
+        showHeader="false"
+        contentWidth="820px"
+        verticalScrolling="true"
+        class="transparentDialog">
         <content>
             <VBox class="paperA4Dialog">
                 <!-- Header -->
@@ -30,25 +30,25 @@
                 <VBox class="sapUiMediumMarginTop">
                     <Label text="{i18n>sectionIGeneralInfo}" class="signatureLabel sapUiSmallMarginBottom" />
                     <VBox class="sapUiSmallMarginBegin">
-                        <HBox class="infoTableRow">
+                        <HBox class="infoTableRow" width="100%">
+                            <Label text="{i18n>contractorLabel}" class="infoTableLabel" />
+                            <Text text="{i18n>defaultContractor}" class="infoTableValue" />
+                        </HBox>
+                        <HBox class="infoTableRow" width="100%">
                             <Label text="{i18n>projectPackageLabel}" class="infoTableLabel" />
                             <Text text="{projectModel>/ProjectName}" class="infoTableValue" />
                         </HBox>
-                        <HBox class="infoTableRow">
+                        <HBox class="infoTableRow" width="100%">
                             <Label text="{i18n>wbsItemLabel}" class="infoTableLabel" />
                             <Text text="{WbsName} (Mã: {WbsCode})" class="infoTableValue" />
                         </HBox>
-                        <HBox class="infoTableRow">
+                        <HBox class="infoTableRow" width="100%">
                             <Label text="{i18n>siteLabel}" class="infoTableLabel" />
                             <Text text="{projectModel>/SiteName}" class="infoTableValue" />
                         </HBox>
-                        <HBox class="infoTableRow">
+                        <HBox class="infoTableRow" width="100%">
                             <Label text="{i18n>locationLabel}" class="infoTableLabel" />
                             <Text text="{locationModel>/LocationName}" class="infoTableValue" />
-                        </HBox>
-                        <HBox class="infoTableRow">
-                            <Label text="{i18n>contractorLabel}" class="infoTableLabel" />
-                            <Text text="{i18n>defaultContractor}" class="infoTableValue" />
                         </HBox>
                     </VBox>
                 </VBox>
@@ -57,38 +57,29 @@
                 <VBox class="sapUiMediumMarginTop">
                     <Label text="{i18n>sectionIIAcceptanceContent}" class="signatureLabel sapUiSmallMarginBottom" />
                     
-                    <Table class="acceptanceTable" showNoData="false">
-                        <columns>
-                            <Column hAlign="Begin">
-                                <Text text="{i18n>workContent}" />
-                            </Column>
-                            <Column width="10%" hAlign="Center">
-                                <Text text="{i18n>unitShort}" />
-                            </Column>
-                            <Column width="15%" hAlign="End">
-                                <Text text="{i18n>planned}" />
-                            </Column>
-                            <Column width="15%" hAlign="End">
-                                <Text text="{i18n>actual}" />
-                            </Column>
-                            <Column width="15%" hAlign="Center">
-                                <Text text="{i18n>evaluation}" />
-                            </Column>
-                        </columns>
-                        <items>
-                            <ColumnListItem>
-                                <cells>
-                                    <Text text="{WbsName}" />
-                                    <Text text="{UnitCode}" />
-                                    <Text text="{path: 'Quantity', formatter: '.formatTotalQty'}" />
-                                    <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" />
-                                    <ObjectStatus 
-                                        text="{= ${viewData>/evaluationResult} === '1' ? ${i18n>achieved} : (${viewData>/evaluationResult} === '2' ? ${i18n>notAchieved} : '') }"
-                                        state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '2' ? 'Error' : 'None') }" />
-                                </cells>
-                            </ColumnListItem>
-                        </items>
-                    </Table>
+                    <!-- Simulated Table for 1 row to guarantee rendering on all devices -->
+                    <VBox class="acceptanceTableWrapper sapUiTinyMarginTop" width="100%">
+                        <!-- Header Row -->
+                        <HBox class="acceptanceTableHeader" width="100%" renderType="Bare">
+                            <Text text="{i18n>workContent}" class="tableHeaderCell colMain" />
+                            <Text text="{i18n>unitShort}" class="tableHeaderCell col10 cellCenter" />
+                            <Text text="{i18n>planned}" class="tableHeaderCell col15 cellEnd" />
+                            <Text text="{i18n>actual}" class="tableHeaderCell col15 cellEnd" />
+                            <Text text="{i18n>evaluation}" class="tableHeaderCell col15 cellCenter" />
+                        </HBox>
+                        <!-- Data Row -->
+                        <HBox class="acceptanceTableRow" width="100%" renderType="Bare">
+                            <Text text="{WbsName}" class="tableDataCell colMain" />
+                            <Text text="{UnitCode}" class="tableDataCell col10 cellCenter" />
+                            <Text text="{path: 'Quantity', formatter: '.formatTotalQty'}" class="tableDataCell col15 cellEnd" />
+                            <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" class="tableDataCell col15 cellEnd" />
+                            <VBox class="tableDataCell col15 cellCenter">
+                                <ObjectStatus 
+                                    text="{= ${viewData>/evaluationResult} === '1' ? ${i18n>achieved} : (${viewData>/evaluationResult} === '2' ? ${i18n>notAchieved} : '') }"
+                                    state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '2' ? 'Error' : 'None') }" />
+                            </VBox>
+                        </HBox>
+                    </VBox>
                 </VBox>
 
                 <!-- Section III: Kết luận -->
@@ -159,12 +150,14 @@
                         </VBox>
                     </l:content>
                 </l:Grid>
+
+                <!-- Footer Buttons placed inside the A4 Document -->
+                <HBox justifyContent="End" class="paperA4DialogFooter">
+                    <Button text="{i18n>submitForCloseApproval}" type="Accept" class="sapUiSmallMarginEnd" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
+                    <Button text="{i18n>reject}" type="Reject" class="sapUiSmallMarginEnd" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
+                    <Button text="{i18n>close}" press=".onCloseAcceptanceDialog" type="Default" />
+                </HBox>
             </VBox>
         </content>
-        <buttons>
-             <Button text="{i18n>submitForCloseApproval}" type="Accept" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
-             <Button text="{i18n>reject}" type="Reject" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
-             <Button text="{i18n>close}" press=".onCloseAcceptanceDialog" />
-        </buttons>
     </Dialog>
 </core:FragmentDefinition>

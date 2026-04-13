@@ -44,7 +44,8 @@
 
 /* 1. NODE CHA: Màu Đen (Hardcoded for diagnostic) */
 .gantt-bar-parent {
-    background-color: #333333 !important; /* Force solid color no variables */
+    background-color: #333333 !important;
+    /* Force solid color no variables */
     height: 10px;
     border-radius: 2px;
     min-width: 2px;
@@ -157,7 +158,7 @@
 .dashboardHeaderBtn .sapMBtnIcon {
     color: #ffffff !important;
     font-weight: 600 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* ── SAP FLP SHELL FULL-WIDTH OVERRIDE ───────────────────────────
@@ -429,18 +430,46 @@
     font-family: "Times New Roman", Times, serif !important;
 }
 
+/* Transparent Dialog shell so it looks like floating A4 paper */
+.transparentDialog {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.transparentDialog>section,
+.transparentDialog .sapMDialogSection {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.transparentDialog footer {
+    display: none !important;
+}
+
+.transparentDialog header {
+    display: none !important;
+}
+
 .paperA4Dialog {
     background: #ffffff !important;
-    padding: 10px 20px !important;
+    padding: 30px 40px !important;
     color: var(--sapTextColor);
     font-family: "Times New Roman", Times, serif !important;
     width: 100% !important;
+    max-width: 794px !important;
+    margin: 0 auto !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     box-sizing: border-box !important;
+}
+
+.paperA4DialogFooter {
+    padding-top: 20px !important;
 }
 
 /* Overrides for Dialog version to fit without scrolling */
 .paperA4Dialog .acceptanceTitle {
-    font-size: 16px !important;
+    font-size: 18px !important;
     margin-top: 5px !important;
 }
 
@@ -474,15 +503,66 @@
     font-size: 13px !important;
 }
 
-.paperA4Dialog .acceptanceTable th,
-.paperA4Dialog .acceptanceTable td {
-    padding: 4px !important;
-    /* Reduced from 6px */
-    font-size: 12px !important;
+/* Simulated Flex Table for Acceptance Content */
+.paperA4Dialog .acceptanceTableWrapper {
+    border: 1px solid #ccc;
+    border-bottom: none;
+    width: 100%;
+}
+
+.paperA4Dialog .acceptanceTableHeader {
+    background-color: #f7f7f7 !important;
+    border-bottom: 1px solid #ccc;
+    font-weight: bold;
+}
+
+.paperA4Dialog .acceptanceTableRow {
+    border-bottom: 1px solid #ccc;
+}
+
+.paperA4Dialog .tableHeaderCell,
+.paperA4Dialog .tableDataCell {
+    padding: 8px !important;
+    border-right: 1px solid #ccc;
+    font-size: 14px !important;
+    align-items: center;
+    word-break: break-word;
+    /* Ensure text wraps cleanly */
+    white-space: normal;
+}
+
+.paperA4Dialog .colMain {
+    flex: 0 0 45%;
+    max-width: 45%;
+}
+
+.paperA4Dialog .col10 {
+    flex: 0 0 10%;
+    max-width: 10%;
+}
+
+.paperA4Dialog .col15 {
+    flex: 0 0 15%;
+    max-width: 15%;
+}
+
+.paperA4Dialog .tableHeaderCell:last-child,
+.paperA4Dialog .tableDataCell:last-child {
+    border-right: none;
+}
+
+.paperA4Dialog .cellEnd {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.paperA4Dialog .cellCenter {
+    justify-content: center;
+    text-align: center;
 }
 
 .paperA4Dialog .signatureLabel {
-    font-size: 12px !important;
+    font-size: 15px !important;
 }
 
 .paperA4Dialog .signatureSubLabel {
@@ -663,7 +743,8 @@
     justify-content: center;
     align-items: center;
     width: 100%;
-    background: var(--sapBackgroundColor); /* Slightly off-white background for depth */
+    background: var(--sapBackgroundColor);
+    /* Slightly off-white background for depth */
     overflow: visible !important;
     border-bottom: 1px solid var(--sapList_BorderColor);
 }
@@ -673,7 +754,8 @@
     max-width: 1200px;
     display: flex;
     justify-content: space-between;
-    align-items: center; /* Center-align children vertically */
+    align-items: center;
+    /* Center-align children vertically */
     overflow: visible !important;
 }
 
@@ -682,7 +764,8 @@
     flex-direction: column !important;
     align-items: center !important;
     position: relative;
-    flex: 0 0 100px !important; /* Wider base for larger circles */
+    flex: 0 0 100px !important;
+    /* Wider base for larger circles */
     z-index: 5;
     overflow: visible !important;
 }
@@ -706,7 +789,8 @@
     height: 2px !important;
     background: var(--sapField_BorderColor) !important;
     flex-grow: 1 !important;
-    margin-top: -30px !important; /* Align with center of 60px circle */
+    margin-top: -30px !important;
+    /* Align with center of 60px circle */
     position: relative;
     z-index: 1;
     display: flex;
@@ -722,7 +806,8 @@
     line-height: 1;
     margin: 0 0.5rem;
     user-select: none;
-    margin-top: -30px; /* Align with center of circles */
+    margin-top: -30px;
+    /* Align with center of circles */
 }
 
 /* Labels below circles */
@@ -819,6 +904,7 @@
     height: auto !important;
     max-height: 30rem !important;
 }
+
 /* Completed connectors (active steps) */
 .lineCompleted,
 .lineActive {
@@ -942,6 +1028,7 @@
     font-weight: 600 !important;
     color: var(--sapTextColor) !important;
 }
+
 /* BuildTrack Assistant */
 .assistantDialogContent {
     height: 100%;
@@ -1010,6 +1097,7 @@
     height: auto !important;
     max-height: 30rem !important;
 }
+
 /* Completed connectors (active steps) */
 .lineCompleted,
 .lineActive {
@@ -1184,7 +1272,7 @@
     }
 
     /* ── DAILY LOG SPLITTER ── stack vertically on tablet */
-    .sapUiLoSplitter > .sapUiLoSplitterBar {
+    .sapUiLoSplitter>.sapUiLoSplitterBar {
         display: none !important;
     }
 
@@ -1205,7 +1293,7 @@
     }
 
     /* ── OVERFLOW TOOLBAR BUTTONS ── show icon only on tablet */
-    .sapMOTB .sapMBtn .sapMBtnIcon + .sapMBtnContent {
+    .sapMOTB .sapMBtn .sapMBtnIcon+.sapMBtnContent {
         max-width: 6rem;
         overflow: hidden;
         text-overflow: ellipsis;
