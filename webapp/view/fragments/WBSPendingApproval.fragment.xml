@@ -26,22 +26,22 @@
                 </OverflowToolbar>
             </headerToolbar>
             <columns>
-                <Column width="8rem">
+                <Column>
                     <Text text="{i18n>wbsCode}" />
                 </Column>
                 <Column>
                     <Text text="{i18n>wbsName}" />
                 </Column>
-                <Column width="10rem">
+                <Column>
                     <Text text="{i18n>senderName}" />
                 </Column>
-                <Column width="10rem">
+                <Column>
                     <Text text="{i18n>sendTime}" />
                 </Column>
-                <Column width="10rem" hAlign="Center">
+                <Column hAlign="Center">
                     <Text text="{i18n>status}" />
                 </Column>
-                <Column width="9rem" hAlign="End">
+                <Column hAlign="End">
                     <Text text="{i18n>quantity}" />
                 </Column>
             </columns>

@@ -1058,3 +1058,184 @@
 .readonly-datepicker {
     cursor: pointer !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   TABLET RESPONSIVE – iPad Mini 5 (1024×768) & similar tablets
+   ═══════════════════════════════════════════════════════════════════ */
+@media screen and (max-width: 1100px) {
+
+    /* ── HEADER ── shrink for tablet */
+    .dashboardHeader {
+        height: 2.75rem;
+    }
+
+    .dashboardHeaderBtn {
+        margin-right: 0.25rem;
+    }
+
+    .dashboardHeaderBtn .sapMBtnInner {
+        padding: 0 0.4rem !important;
+        min-width: 2rem !important;
+    }
+
+    /* Hide "Assistant" text label, keep icon only */
+    .dashboardHeaderBtn .sapMBtnContent .sapMBtnText {
+        display: none !important;
+    }
+
+    /* ── DASHBOARD ── */
+    .dashboardContent {
+        padding: 0.25rem 0.5rem !important;
+    }
+
+    .dashboardTopRow {
+        gap: 0.5rem !important;
+    }
+
+    .dashboardCardRow {
+        gap: 0.5rem;
+    }
+
+    .dashboardCard {
+        padding: 0.75rem 1rem;
+        min-width: 150px;
+        border-radius: 8px;
+    }
+
+    .dashboardBigNumber,
+    .dashboardBigNumberWhite {
+        font-size: 1.6rem !important;
+    }
+
+    .dashboardChartCard {
+        min-height: 280px !important;
+    }
+
+    .dashboardChartRow {
+        gap: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .dashboardSectionTitle {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    /* ── FILTER BAR ── compact on tablet */
+    .sapUiCompFilterBar .sapMFB .sapMFlexBoxInner {
+        gap: 0.25rem !important;
+    }
+
+    /* ── TABLE ── tighter rows for tablet */
+    .sapMList .sapMListTblRow .sapMListTblCell {
+        padding: 0.35rem 0.5rem !important;
+    }
+
+    /* Prevent extreme text wrapping in table cells */
+    .sapMListTblCell .sapMObjStatusText,
+    .sapMListTblCell .sapMText,
+    .sapMListTblCell .sapMObjIdTitle {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+
+    /* ── GANTT ── */
+    .gantt-label-nc {
+        font-size: 9px;
+    }
+
+    /* ── WBS STATUS STEPPER ── */
+    .wbsStatusStepper {
+        padding: 2rem 0;
+    }
+
+    .wbsStepCircle {
+        width: 45px !important;
+        height: 45px !important;
+    }
+
+    .wbsStepLine {
+        margin-top: -22px !important;
+    }
+
+    .wbsStepSeparator {
+        font-size: 1.2rem;
+        margin-top: -22px;
+    }
+
+    .wbsStepLabelText {
+        font-size: 0.75rem !important;
+        width: 120px;
+        margin-top: 1rem !important;
+    }
+
+    .wbsStep {
+        flex: 0 0 70px !important;
+    }
+
+    /* ── PAPER A4 (Acceptance Report) ── */
+    .paperA4 {
+        padding: 30px 40px !important;
+    }
+
+    /* ── ICON TAB BAR ── */
+    .sapMITBText {
+        font-size: 0.8rem !important;
+    }
+
+    /* ── DAILY LOG SPLITTER ── stack vertically on tablet */
+    .sapUiLoSplitter > .sapUiLoSplitterBar {
+        display: none !important;
+    }
+
+    /* ── TREE TABLE (WBS Gantt) ── compact font */
+    .sapUiTableCellInner {
+        font-size: 0.8125rem !important;
+        padding: 0 0.35rem !important;
+    }
+
+    /* ── DIALOGS ── limit size on tablet */
+    .sapMDialog {
+        max-width: 90vw !important;
+    }
+
+    /* ── FORM LAYOUTS ── tighter on tablet */
+    .sapUiRGLContainer {
+        padding: 0 !important;
+    }
+
+    /* ── OVERFLOW TOOLBAR BUTTONS ── show icon only on tablet */
+    .sapMOTB .sapMBtn .sapMBtnIcon + .sapMBtnContent {
+        max-width: 6rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TABLET PORTRAIT – iPad Mini 5 portrait (768×1024)
+   ═══════════════════════════════════════════════════════════════════ */
+@media screen and (max-width: 800px) {
+
+    /* Dashboard columns stack vertically */
+    .dashboardTopRow {
+        flex-direction: column !important;
+    }
+
+    .dashboardChartRow {
+        flex-direction: column !important;
+    }
+
+    .dashboardChartCard {
+        min-height: 240px !important;
+    }
+
+    /* Cards side-by-side still */
+    .dashboardCardRow {
+        flex-wrap: wrap;
+    }
+
+    .dashboardCard {
+        min-width: 120px;
+    }
+}

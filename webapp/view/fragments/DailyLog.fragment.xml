@@ -20,7 +20,7 @@
         <!-- ║  LEFT PANEL — Log entry list         ║ -->
         <!-- ╚══════════════════════════════════════╝ -->
         <VBox height="100%">
-            <layoutData><l:SplitterLayoutData size="380px" minSize="300px"/></layoutData>
+            <layoutData><l:SplitterLayoutData size="280px" minSize="220px"/></layoutData>
 
             <!-- Toolbar: title + add button -->
             <OverflowToolbar design="Solid">
@@ -28,10 +28,10 @@
                 <ToolbarSpacer/>
                 <!-- Excel actions grouped in a dropdown MenuButton -->
                 <MenuButton
-                    text="{i18n>excelActions}"
+                    text="Excel"
                     icon="sap-icon://excel-attachment"
                     type="Default"
-                    tooltip="{i18n>excelActions}"
+                    tooltip="Excel"
                     menuPosition="BeginBottom">
                     <menu>
                         <Menu>
@@ -76,7 +76,7 @@
                 noDataText="{i18n>noLogsFound}">
                 <columns>
                     <Column><Text text="{i18n>logDate}"/></Column>
-                    <Column hAlign="End" width="120px"><Text text="{i18n>qtyDone}"/></Column>
+                    <Column hAlign="End"><Text text="{i18n>qtyDone}"/></Column>
                 </columns>
                 <items>
                     <ColumnListItem type="Active" press=".onLogRowPress">
@@ -191,13 +191,13 @@
                                             }
                                         }"
                                         editable="{dailyLogModel>/ui/editMode}"
-                                        width="120px"
+                                        width="7rem"
                                         maxLength="10"
                                         liveChange=".onQuantityChange"/>
                                     <Input
                                         value="{dailyLogModel>/selectedLog/UnitCode}"
                                         editable="false"
-                                        width="80px"
+                                        width="5rem"
                                         placeholder="{i18n>unit}"
                                         class="sapUiTinyMarginBegin"/>
                                 </HBox>
@@ -273,11 +273,11 @@
                             noDataText="{i18n>noResourcesAdded}"
                             sticky="ColumnHeaders">
                             <columns>
-                                <Column width="20%"><Text text="{i18n>resourceCode}"/></Column>
-                                <Column width="30%"><Text text="{i18n>resourceName}"/></Column>
-                                <Column width="15%"><Text text="{i18n>resourceType}"/></Column>
-                                <Column width="20%" hAlign="Center"><Text text="{i18n>resourceQty}"/></Column>
-                                <Column width="15%"><Text text="{i18n>resourceUnit}"/></Column>
+                                <Column><Text text="{i18n>resourceCode}"/></Column>
+                                <Column><Text text="{i18n>resourceName}"/></Column>
+                                <Column><Text text="{i18n>resourceType}"/></Column>
+                                <Column hAlign="Center"><Text text="{i18n>resourceQty}"/></Column>
+                                <Column><Text text="{i18n>resourceUnit}"/></Column>
                             </columns>
                             <items>
                                 <ColumnListItem>

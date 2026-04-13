@@ -1,7 +1,7 @@
 <core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:suite="sap.suite.ui.commons">
     <suite:ProcessFlow
         id="wbsProcessFlow"
-        scrollable="false"
+        scrollable="true"
         wheelZoomable="false"
         foldedCorners="true"
         nodes="{pfModel>/nodes}"

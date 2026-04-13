@@ -528,6 +528,15 @@ sap.ui.define([
                 var oProcessFlow = oView.byId("wbsProcessFlow");
                 if (oProcessFlow && typeof oProcessFlow.updateModel === "function") {
                     oProcessFlow.updateModel();
+                    
+                    // Force the iPad/Tablet to render at high-detail (Two) instead of shrinking to Three/Four
+                    if (oProcessFlow.setZoomLevel) {
+                        try {
+                            oProcessFlow.setZoomLevel("Two");
+                        } catch (e) {
+                            console.warn("ProcessFlow setZoomLevel warning:", e);
+                        }
+                    }
                 }
             }
         },

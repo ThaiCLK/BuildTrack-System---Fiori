@@ -95,36 +95,39 @@
                             type="Transparent"
                             enabled="{= ${viewState>/selectedProjectCount} > 0 }"
                             press=".onDeleteProject"/>
-                        <!-- <Button
-                            id="btnCloseProject"
-                            text="{i18n>closeProject}"
-                            icon="sap-icon://decline"
-                            type="Reject"
-                            enabled="{= ${viewState>/selectedProjectCount} > 0 }"
-                            press=".onCloseProject"/> -->
                     </OverflowToolbar>
                 </headerToolbar>
 
+                <infoToolbar>
+                    <OverflowToolbar style="Clear">
+                        <ToolbarSpacer/>
+                        <Button icon="sap-icon://navigation-left-arrow" type="Transparent" press=".onPrevPage" enabled="{pm>/canPrev}" />
+                        <Text text="{pm>/currentPage} / {pm>/totalPages}" />
+                        <Button icon="sap-icon://navigation-right-arrow" type="Transparent" press=".onNextPage" enabled="{pm>/canNext}" />
+                        <ToolbarSpacer/>
+                    </OverflowToolbar>
+                </infoToolbar>
+
                 <columns>
-                    <Column id="colProjectCode" width="10rem">
+                    <Column id="colProjectCode">
                         <Text id="txtColProjectCode" text="{i18n>projectCode}"/>
                     </Column>
-                    <Column id="colProjectName" minScreenWidth="Tablet" demandPopin="true">
+                    <Column id="colProjectName">
                         <Text id="txtColProjectName" text="{i18n>projectName}"/>
                     </Column>
-                    <Column id="colProjectType" width="9rem" minScreenWidth="Tablet" demandPopin="true" hAlign="Center">
+                    <Column id="colProjectType" hAlign="Center">
                         <Text id="txtColProjectType" text="{i18n>type}"/>
                     </Column>
-                    <Column id="colCreatedBy" width="8rem" minScreenWidth="Desktop" demandPopin="true">
+                    <Column id="colCreatedBy" minScreenWidth="Desktop" demandPopin="true">
                         <Text id="txtColCreatedBy" text="{i18n>createBy}"/>
                     </Column>
-                    <Column id="colStartDate" width="8rem" hAlign="End">
+                    <Column id="colStartDate" hAlign="End">
                         <Text id="txtColStartDate" text="{i18n>startDate}"/>
                     </Column>
-                    <Column id="colEndDate" width="9rem" hAlign="End">
+                    <Column id="colEndDate" hAlign="End">
                         <Text id="txtColEndDate" text="{i18n>estEndDate}"/>
                     </Column>
-                    <Column id="colStatus" width="10rem" hAlign="Center">
+                    <Column id="colStatus" hAlign="Center">
                         <Text id="txtColStatus" text="{i18n>status}"/>
                     </Column>
                 </columns>
@@ -193,12 +196,6 @@
                 </noData>
 
                 </Table>
-                
-                <HBox justifyContent="Center" alignItems="Center" class="sapUiSmallMarginTopBottom">
-                    <Button icon="sap-icon://navigation-left-arrow" type="Transparent" press=".onPrevPage" enabled="{pm>/canPrev}" />
-                    <Text text="{pm>/currentPage} / {pm>/totalPages}" class="sapUiSmallMarginBeginEnd" />
-                    <Button icon="sap-icon://navigation-right-arrow" type="Transparent" press=".onNextPage" enabled="{pm>/canNext}" />
-                </HBox>
             </VBox>
         </content>
     </Page>

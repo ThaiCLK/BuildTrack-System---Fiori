@@ -134,22 +134,22 @@
             <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
                 <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
                     <columns>
-                        <Column width="4.5rem">
+                        <Column>
                             <Text text="{i18n>wbsCode}" />
                         </Column>
-                        <Column width="12rem">
+                        <Column>
                             <Text text="{i18n>itemName}" />
                         </Column>
-                        <Column hAlign="End" width="6.5rem">
+                        <Column hAlign="End">
                             <Text text="{i18n>targetPlanned}" />
                         </Column>
-                        <Column hAlign="End" width="6.5rem">
+                        <Column hAlign="End">
                             <Text text="{i18n>actualTotalDone}" />
                         </Column>
-                        <Column width="8rem">
+                        <Column>
                             <Text text="{i18n>status}" />
                         </Column>
-                        <Column hAlign="Begin" width="18rem">
+                        <Column hAlign="Begin">
                             <Text text="{i18n>workProgress}" />
                         </Column>
                     </columns>
