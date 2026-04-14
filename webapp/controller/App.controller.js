@@ -51,7 +51,9 @@ sap.ui.define([
                     }
 
                     // Đồng thời giật còi cho tất cả các biểu đồ, màn hình con biết để vẽ lại UI
-                    sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
+                    setTimeout(function () {
+                        sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
+                    }, 1500);
                 }.bind(this);
 
                 this._ws.onerror = function (e) {
