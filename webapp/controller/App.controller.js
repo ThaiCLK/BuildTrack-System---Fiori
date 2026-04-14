@@ -9,6 +9,7 @@ sap.ui.define([
 
   return BaseController.extend("z.bts.buildtrack551.controller.App", {
       onInit() {
+          /*
           this.getView().setModel(new JSONModel({
               draft: "",
               isBusy: false,
@@ -20,6 +21,50 @@ sap.ui.define([
                   )
               ]
           }), "assistant");
+          */
+
+          // Bật công tắc lắng nghe chảo thu sóng vệ tinh WebSocket
+          this._initWebSocket();
+      },
+
+      _initWebSocket: function () {
+          // Do Fiori deploy trên BE SAP, ta sẽ lấy luôn cấu hình kết nối host/port hiện tại của người dùng
+          var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+          var host = window.location.host;
+          // Đường dẫn chính xác trỏ về cái SAPC mình vừa kích hoạt trên T-Code
+          var wsUrl = protocol + host + "/sap/bc/apc/sap/zapc_buildtrack";
+          
+          try {
+              if (this._ws) { return; } // Nếu cắm điện rồi thì thôi
+              
+              this._ws = new WebSocket(wsUrl);
+              this._ws.onopen = function (e) {
+                  console.log("🔥 [BuildTrack] Cắm thành công ống dẫn WebSocket tới SAPC!");
+              };
+              this._ws.onmessage = function (e) {
+                  console.log("⚡ [BuildTrack] Có biến! Nhận tín hiệu thời gian thực từ SAMC:", e.data);
+                  
+                  // Ra lệnh cho Model OData tự động cào ngầm lại dữ liệu mới nhất mà không xé rách giao diện
+                  var oModel = this.getView().getModel();
+                  if (oModel) {
+                      oModel.refresh(true, true); 
+                  }
+                  
+                  // Đồng thời giật còi cho tất cả các biểu đồ, màn hình con biết để vẽ lại UI
+                  sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
+              }.bind(this);
+              
+              this._ws.onerror = function (e) {
+                  console.warn("⚠️ [BuildTrack] Lỗi nối WebSocket. Chú ý: Nếu bạn đang chạy 'npm run start-local' thì kết nối có thể xịt, nhưng khi ấn lênh deploy lên hẳn hệ thống SAP ABAP thì nó sẽ chạy 100%!");
+              };
+              this._ws.onclose = function (e) {
+                  // Chức năng thông minh của dây: nếu giật mạnh đứt mạng, tự thò tay cắm 5s/lần
+                  this._ws = null;
+                  setTimeout(this._initWebSocket.bind(this), 5000); 
+              }.bind(this);
+          } catch(e) {
+              console.error(e);
+          }
       },
       onGlobalRefresh: function () {
           sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
@@ -29,6 +74,7 @@ sap.ui.define([
       onNavToDashboard: function () {
           this.getOwnerComponent().getRouter().navTo("Dashboard");
       },
+      /* --- OLD GEMINI ASSISTANT METHODS (COMMENTED OUT) ---
       _getAssistantModel: function () {
           return this.getView().getModel("assistant");
       },
@@ -159,6 +205,7 @@ sap.ui.define([
               oModel.setProperty("/isBusy", false);
           }
       },
+      ------------------------------------------------------- */
       onPressProfile: function (oEvent) {
           var oButton = oEvent.getSource();
           if (this._oProfilePopover) {
@@ -392,16 +439,20 @@ sap.ui.define([
               this._oUserRoleDialog.close();
           }
       },
+      /*
       onCloseAssistant: function () {
           if (this._oAssistantDialog) {
               this._oAssistantDialog.close();
           }
       },
+      */
       onExit: function () {
+          /*
           if (this._oAssistantDialog) {
               this._oAssistantDialog.destroy();
               this._oAssistantDialog = null;
           }
+          */
           if (this._oProfilePopover) {
               this._oProfilePopover.destroy();
               this._oProfilePopover = null;

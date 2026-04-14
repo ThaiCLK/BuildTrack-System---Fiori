@@ -32,6 +32,15 @@
     }' data-sap-ui-onInit="module:sap/ui/core/ComponentSupport" data-sap-ui-compatVersion="edge"
         data-sap-ui-async="true">
         </script>
+        
+    <!-- SAP Joule Web Client Integration (Hướng A - Native SAP) -->
+    <!-- TODO: Thay thế YOUR_JOULE_DOMAIN, YOUR_COPILOT_ID và YOUR_HOST_ID bằng thông tin từ SAP BTP Cockpit của bạn -->
+    <script 
+        src="https://YOUR_JOULE_DOMAIN/webclient/bootstrap.js" 
+        data-copilot-id="YOUR_COPILOT_ID" 
+        data-host-id="YOUR_HOST_ID"
+        id="sap-joule-plugin">
+    </script>
 </head>
 
 <body class="sapUiBody sapUiSizeCompact" id="content">
