@@ -506,8 +506,8 @@ sap.ui.define([
                     aNormalized.sort(function (a, b) {
                         var sA = (a.ProjectCode || "").toLowerCase();
                         var sB = (b.ProjectCode || "").toLowerCase();
-                        if (sA < sB) return -1;
-                        if (sA > sB) return 1;
+                        if (sA < sB) return 1;
+                        if (sA > sB) return -1;
                         return 0;
                     });
                     oPmModel.setProperty("/projects", aNormalized);

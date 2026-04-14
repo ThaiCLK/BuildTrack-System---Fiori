@@ -39,18 +39,16 @@ sap.ui.define([
 
                 this._ws = new WebSocket(wsUrl);
                 this._ws.onopen = function (e) {
-                    console.log("🔥 [BuildTrack] Cắm thành công ống dẫn WebSocket tới SAPC!");
+                    console.log("🔥 [BuildTrack] Kết nối thành công WebSocket tới SAPC!");
                 };
                 this._ws.onmessage = function (e) {
-                    console.log("⚡ [BuildTrack] Có biến! Nhận tín hiệu thời gian thực từ SAMC:", e.data);
+                    console.log("⚡ [BuildTrack] Nhận tín hiệu thời gian thực từ SAMC:", e.data);
 
                     // Ra lệnh cho Model OData tự động cào ngầm lại dữ liệu mới nhất mà không xé rách giao diện
                     var oModel = this.getView().getModel();
                     if (oModel) {
                         oModel.refresh(true, true);
                     }
-
-                    // Đồng thời giật còi cho tất cả các biểu đồ, màn hình con biết để vẽ lại UI
                     setTimeout(function () {
                         sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
                     }, 3300);
@@ -60,7 +58,7 @@ sap.ui.define([
                     console.warn("⚠️ [BuildTrack] Lỗi nối WebSocket. Chú ý: Nếu bạn đang chạy 'npm run start-local' thì kết nối có thể xịt, nhưng khi ấn lênh deploy lên hẳn hệ thống SAP ABAP thì nó sẽ chạy 100%!");
                 };
                 this._ws.onclose = function (e) {
-                    // Chức năng thông minh của dây: nếu giật mạnh đứt mạng, tự thò tay cắm 5s/lần
+                    // 5s/lần
                     this._ws = null;
                     setTimeout(this._initWebSocket.bind(this), 5000);
                 }.bind(this);
