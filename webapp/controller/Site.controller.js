@@ -332,13 +332,33 @@ sap.ui.define([
                 return;
             }
 
+            var oView = this.getView();
+            if (oView) {
+                oView.setBusyIndicatorDelay(0);
+                oView.setBusy(true);
+            }
+
+            var fnReleaseBusy = function () {
+                if (oView) {
+                    oView.setBusy(false);
+                }
+            };
+
             if (this._sSiteVhProjectId === this._sCurrentProjectId) {
-                this._openSimpleSiteValueHelpDialog(mOptions);
+                try {
+                    this._openSimpleSiteValueHelpDialog(mOptions);
+                } finally {
+                    fnReleaseBusy();
+                }
                 return;
             }
 
             this._loadSiteValueHelps(function () {
-                this._openSimpleSiteValueHelpDialog(mOptions);
+                try {
+                    this._openSimpleSiteValueHelpDialog(mOptions);
+                } finally {
+                    fnReleaseBusy();
+                }
             }.bind(this));
         },
 

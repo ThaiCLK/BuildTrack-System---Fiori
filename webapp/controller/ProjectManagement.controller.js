@@ -176,6 +176,18 @@ sap.ui.define([
         },
 
         _openSimpleValueHelpDialog: function (mOptions) {
+            var oView = this.getView();
+            if (oView) {
+                oView.setBusyIndicatorDelay(0);
+                oView.setBusy(true);
+            }
+
+            var fnReleaseBusy = function () {
+                if (oView) {
+                    oView.setBusy(false);
+                }
+            };
+
             var oInput = this.byId(mOptions.inputId);
             var oVhModel = this.getView().getModel("vh");
             var aAllItems = (oVhModel && oVhModel.getProperty(mOptions.itemsPath)) || [];
@@ -211,6 +223,7 @@ sap.ui.define([
                     oDialog.close();
                 },
                 afterClose: function () {
+                    fnReleaseBusy();
                     oDialog.destroy();
                 }
             });
@@ -277,6 +290,9 @@ sap.ui.define([
                 }
 
                 oDialog.update();
+                fnReleaseBusy();
+            }).catch(function () {
+                fnReleaseBusy();
             });
 
             oDialog.open();
