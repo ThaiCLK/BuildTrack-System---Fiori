@@ -55,10 +55,10 @@
                                 </VBox>
 
                                 <Label text="{i18n>actualStart}" />
-                                <Text text="{path: 'workSummaryModel>/ActualStart', formatter: '.formatActualDate'}" />
+                                <Text text="{path: 'StartActual', formatter: '.formatActualDate'}" />
 
                                 <Label text="{i18n>actualEnd}" />
-                                <Text text="{path: 'workSummaryModel>/ActualEnd', formatter: '.formatActualDate'}" />
+                                <Text text="{path: 'EndActual', formatter: '.formatActualDate'}" />
 
                                 <core:Title text="{i18n>metricsAndStatus}" />
 

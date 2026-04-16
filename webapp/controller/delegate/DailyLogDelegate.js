@@ -1821,20 +1821,13 @@ sap.ui.define([
                     maxDate = new Date(maxDate);
                     maxDate.setMinutes(maxDate.getMinutes() - maxDate.getTimezoneOffset());
 
-                    // Chỉ cập nhật EndActual - Xử lý lỗi Silent Fail nếu thiếu quyền (SY/530)
-                    oModel.update("/WBSSet(guid'" + sWbsId + "')", { EndActual: maxDate }, {
-                        success: function () {
-                            if (oBinding) { oBinding.refresh(true); }
-                        },
-                        error: function (oError) {
-                            // Nếu lỗi là do phân quyền (400 - SY/530), thầm lặng bỏ qua
-                            if (oError && (oError.statusCode === "400" || oError.statusCode === 400)) {
-                                console.warn("WBS Update failed (likely permission issue). Skipping silently.");
-                                MessageToast.show(oBundle.getText("wbsUpdateStatusWait"), { duration: 2000 });
-                            }
-                            if (oBinding) { oBinding.refresh(true); }
-                        }
-                    });
+                    // Chỉ xuất sự kiện để báo cho SiteDetail (biểu đồ Gantt) tự fetch lại data và tính toán local
+                    // Thông báo toàn cục lý do: Biểu đồ Gantt ở các trang khác cần tính toán lại dữ liệu
+                    sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
+
+                    if (oBinding) {
+                        oBinding.refresh(true);
+                    }
                 },
                 error: function () {
                     if (oBinding) { oBinding.refresh(true); }
