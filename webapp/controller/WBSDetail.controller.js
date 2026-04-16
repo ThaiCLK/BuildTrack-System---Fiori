@@ -441,15 +441,25 @@ sap.ui.define([
         _onGlobalRefresh: function () {
             if (!this._sWbsId) return;
             var oView = this.getView();
+            var oModel = this.getOwnerComponent().getModel();
             var oBinding = oView.getElementBinding();
             
-            // Centralize busy state
+            // Centralize busy state - Start of a single, stable loading session
             oView.setBusy(true);
             this._bIsGlobalRefreshing = true;
 
             var aPromises = [];
 
-            // 1. Element Binding (Main WBS data)
+            // 1. Model Refresh (previously in App.controller, moved here for coordination)
+            aPromises.push(new Promise(function(resolve) {
+                if (oModel) {
+                    oModel.refresh(true, true, resolve, resolve); // refresh completes or fails
+                } else {
+                    resolve();
+                }
+            }));
+
+            // 2. Element Binding (Main WBS data)
             if (oBinding) {
                 aPromises.push(new Promise(function(resolve) {
                     var fnHandler = function() {
@@ -461,19 +471,11 @@ sap.ui.define([
                 }));
             }
 
-            // 2. Daily Log List
+            // 3. Delegation List and Detail Refresh
             aPromises.push(this._bindDailyLogList(this._sWbsId));
-
-            // 3. Approval Log List
             aPromises.push(this._bindApprovalLogList(this._sWbsId));
-
-            // 4. Work Summary
             aPromises.push(this._loadWorkSummary(this._sWbsId));
-
-            // 5. Location
             aPromises.push(this._loadLocation(this._sWbsId));
-
-            // 6. Project Info (Fast, but included for completeness)
             this._loadProjectInfo(this._sSiteId);
 
             Promise.allSettled(aPromises).finally(function() {
@@ -491,21 +493,22 @@ sap.ui.define([
             var sWbsId = oArgs.wbsId || "";
             var sSiteId = oArgs.site_id || "";
 
-            // Helper to normalize GUIDs (strip guid'...' and lowercase)
+            // Helper to normalize GUIDs (strip guid'...' and lowercase/whitespace/hyphens)
             var fnNormalize = function(s) {
                 if (!s) return "";
-                return s.replace(/^guid'/i, "").replace(/'$/, "").toLowerCase();
+                return s.replace(/^guid'/i, "").replace(/'$/, "").replace(/[-\s]/g, "").toLowerCase();
             };
 
             var sCurrentId = fnNormalize(this._sWbsId);
             var sNewId = fnNormalize(sWbsId);
-            var bIsNewContext = (sCurrentId !== sNewId);
+            var bIsSameWbs = (sCurrentId === sNewId);
+            var bIsNewContext = !bIsSameWbs;
             
             this._sWbsId = sWbsId;
             this._sSiteId = sSiteId;
 
-            // Reset models if it's a new context
-            if (bIsNewContext) {
+            // Reset models if it's a new context and NOT a refresh
+            if (bIsNewContext && !this._bIsGlobalRefreshing) {
                 this.onCancelWbs(); 
                 var oWSModel = this.getView().getModel("workSummaryModel");
                 if (oWSModel) {

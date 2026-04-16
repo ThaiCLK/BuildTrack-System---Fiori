@@ -43,15 +43,10 @@ sap.ui.define([
                 };
                 this._ws.onmessage = function (e) {
                     console.log("⚡ [BuildTrack] Nhận tín hiệu thời gian thực từ SAMC:", e.data);
-
-                    // Ra lệnh cho Model OData tự động cào ngầm lại dữ liệu mới nhất mà không xé rách giao diện
-                    var oModel = this.getView().getModel();
-                    if (oModel) {
-                        oModel.refresh(true, true);
-                    }
-                    setTimeout(function () {
-                        sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
-                    }, 3300);
+                    
+                    // Do NOT refresh model here to avoid independent UI flashing.
+                    // Instead, signal the active view to handle a coordinated refresh immediately.
+                    sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
                 }.bind(this);
 
                 this._ws.onerror = function (e) {
