@@ -35,121 +35,117 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oWSModel = this.getView().getModel("workSummaryModel");
 
-            // 1. Reset model immediately to clear stale data
+            // 1. Reset model immediately to clear stale data from previous navigation
             oWSModel.setData({
                 TotalQtyDone: "0",
                 Children: [],
                 WbsId: sWbsId
             });
 
+            // Race-condition guard: stamp the current request token.
+            // Callbacks will abort if this token has changed (i.e. user navigated away).
             this._sWorkSummaryToken = sWbsId;
 
-            // 2. Wrap in Promise to coordinate with Global Refresh
-            return new Promise(function(resolve, reject) {
-                oModel.read("/WBSSet(guid'" + sWbsId + "')", {
-                    success: function (oWbs) {
-                        if (that._sWorkSummaryToken !== sWbsId) { return resolve(); }
+            // 2. Fetch the WBS record to get the ABSOLUTE LATEST ParentId for this ID
+            oModel.read("/WBSSet(guid'" + sWbsId + "')", {
+                success: function (oWbs) {
+                    // Abort if user already navigated to another WBS
+                    if (that._sWorkSummaryToken !== sWbsId) { return; }
 
-                        var bIsParent = false;
-                        var vParentId = oWbs.ParentId;
+                    var bIsParent = false;
+                    var vParentId = oWbs.ParentId;
 
-                        if (!vParentId) {
-                            bIsParent = true;
-                        } else {
-                            var sClean = vParentId.toString().replace(/-/g, "");
-                            if (/^0+$/.test(sClean)) bIsParent = true;
-                        }
-
-                        if (bIsParent) {
-                            WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oModel)
-                                .then(resolve).catch(resolve);
-                        } else {
-                            WorkSummaryDelegate._loadLeafNodeAggregation.call(that, sWbsId, oWSModel, oModel)
-                                .then(resolve).catch(resolve);
-                        }
-                    },
-                    error: function () {
-                        console.error("Failed to load WBS metadata for Work Summary:", sWbsId);
-                        resolve();
+                    if (!vParentId) {
+                        bIsParent = true;
+                    } else {
+                        var sClean = vParentId.toString().replace(/-/g, "");
+                        if (/^0+$/.test(sClean)) bIsParent = true;
                     }
-                });
+
+                    if (bIsParent) {
+                        // 3. Parent Branch: Calculate aggregate from children
+                        WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oModel);
+                    } else {
+                        // 4. Leaf Node Branch: Aggregate logs for THIS WBS
+                        WorkSummaryDelegate._loadLeafNodeAggregation.call(that, sWbsId, oWSModel, oModel);
+                    }
+                },
+                error: function () {
+                    console.error("Failed to load WBS metadata for Work Summary:", sWbsId);
+                }
             });
         },
 
         _loadParentAggregation: function (sWbsId, oWSModel, oModel) {
             var that = this;
-            var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
+            oModel.read("/WBSSet", {
+                filters: sWbsId ? [new Filter("ParentId", FilterOperator.EQ, sWbsId)] : [],
+                urlParameters: {
+                    "$expand": "ToApprovalLog"
+                },
+                success: function (oData) {
+                    // Race-condition guard
+                    if (that._sWorkSummaryToken !== sWbsId) { return; }
 
-            return new Promise(function(resolve, reject) {
-                oModel.read("/WBSSet", {
-                    filters: [new Filter("ParentId", FilterOperator.EQ, sWbsId)],
-                    urlParameters: {
-                        "$expand": "ToApprovalLog"
-                    },
-                    success: function (oData) {
-                        if (that._sWorkSummaryToken !== sWbsId) { return resolve(); }
+                    var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
+                    var aChildren = (oData.results || []).filter(function (w) {
+                        if (!w.ParentId) return false;
+                        return w.ParentId.toLowerCase().replace(/-/g, "") === sNormParentId;
+                    });
 
-                        var aChildren = (oData.results || []).filter(function (w) {
-                            if (!w.ParentId) return false;
-                            return w.ParentId.toLowerCase().replace(/-/g, "") === sNormParentId;
-                        });
+                    if (aChildren.length === 0) {
+                        oWSModel.setProperty("/Children", []);
+                        return;
+                    }
 
-                        if (aChildren.length === 0) {
-                            oWSModel.setProperty("/Children", []);
-                            return resolve();
-                        }
+                    var iProcessed = 0;
+                    aChildren.forEach(function (oChild) {
+                        var sChildId = oChild.WbsId;
+                        var sNormChildId = sChildId ? sChildId.toLowerCase().replace(/-/g, "") : "";
 
-                        var iProcessed = 0;
-                        var fParentAggregate = 0;
+                        oModel.read("/DailyLogSet", {
+                            filters: sChildId ? [new Filter("WbsId", FilterOperator.EQ, sChildId)] : [],
+                            success: function (oLogData) {
+                                // Race-condition guard
+                                if (that._sWorkSummaryToken !== sWbsId) { return; }
 
-                        aChildren.forEach(function (child) {
-                            var sChildId = child.WbsId;
-                            var sNormChildId = sChildId ? sChildId.toLowerCase().replace(/-/g, "") : "";
+                                var fSum = 0;
+                                // Client-side filter: backend có thể ignore $filter và trả về tất cả logs
+                                (oLogData.results || []).forEach(function (l) {
+                                    var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                                    if (!sLogWbsId || sLogWbsId === sNormChildId) {
+                                        fSum += parseFloat(l.QuantityDone) || 0;
+                                    }
+                                });
+                                oChild.TotalQtyDone = Math.round(fSum).toString();
 
-                            oModel.read("/DailyLogSet", {
-                                filters: [new Filter("WbsId", FilterOperator.EQ, sChildId)],
-                                success: function (oLogData) {
-                                    if (that._sWorkSummaryToken !== sWbsId) return;
-
-                                    var fSum = 0;
-                                    (oLogData.results || []).forEach(function (l) {
-                                        var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
-                                        if (!sLogWbsId || sLogWbsId === sNormChildId) {
-                                            fSum += parseFloat(l.QuantityDone) || 0;
-                                        }
+                                iProcessed++;
+                                if (iProcessed === aChildren.length) {
+                                    var fParentAggregate = 0;
+                                    aChildren.forEach(function (c) {
+                                        fParentAggregate += parseFloat(c.TotalQtyDone) || 0;
                                     });
 
-                                    child.TotalQtyDone = Math.round(fSum).toString();
-                                    child.WbsStatus = child.Status;
-                                    child.ApprovalLog = child.ToApprovalLog;
-                                    
-                                    fParentAggregate += fSum;
-                                    iProcessed++;
-
-                                    if (iProcessed === aChildren.length) {
-                                        oWSModel.setData({
-                                            Children: aChildren,
-                                            TotalQtyDone: Math.round(fParentAggregate).toString(),
-                                            WbsId: sWbsId
-                                        });
-                                        resolve();
-                                    }
-                                },
-                                error: function () {
-                                    iProcessed++;
-                                    if (iProcessed === aChildren.length) {
-                                        oWSModel.setProperty("/Children", aChildren);
-                                        resolve();
-                                    }
+                                    oWSModel.setData({
+                                        Children: aChildren,
+                                        TotalQtyDone: Math.round(fParentAggregate).toString(),
+                                        WbsId: sWbsId
+                                    });
                                 }
-                            });
+                            },
+                            error: function () {
+                                if (that._sWorkSummaryToken !== sWbsId) { return; }
+                                iProcessed++;
+                                if (iProcessed === aChildren.length) {
+                                    oWSModel.setProperty("/Children", aChildren);
+                                }
+                            }
                         });
-                    },
-                    error: function () {
-                        oWSModel.setProperty("/Children", []);
-                        resolve();
-                    }
-                });
+                    });
+                },
+                error: function () {
+                    oWSModel.setProperty("/Children", []);
+                }
             });
         },
 
@@ -157,48 +153,46 @@ sap.ui.define([
             var that = this;
             var sNormWbsId = sWbsId ? sWbsId.toLowerCase().replace(/-/g, "") : "";
 
-            return new Promise(function(resolve, reject) {
-                oModel.read("/DailyLogSet", {
-                    filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                    success: function (oData) {
-                        if (that._sWorkSummaryToken !== sWbsId) { return resolve(); }
-                        
-                        var aLogs = oData.results || [];
-                        var fTotal = 0;
-                        var sUnit = "";
-                        var dMinLog = null;
-                        var dMaxLog = null;
+            oModel.read("/DailyLogSet", {
+                filters: sWbsId ? [new Filter("WbsId", FilterOperator.EQ, sWbsId)] : [],
+                success: function (oData) {
+                    // Race-condition guard: nếu user đã navigate sang WBS khác thì bỏ qua
+                    if (that._sWorkSummaryToken !== sWbsId) { return; }
 
-                        aLogs.forEach(function (oLog) {
-                            var sLogWbsId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
-                            if (!sLogWbsId || sLogWbsId === sNormWbsId) {
-                                fTotal += parseFloat(oLog.QuantityDone) || 0;
-                                if (oLog.UnitCode) sUnit = oLog.UnitCode;
-                                
-                                if (oLog.LogDate) {
-                                    var d = (oLog.LogDate instanceof Date) ? oLog.LogDate : new Date(oLog.LogDate);
-                                    if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
-                                        if (!dMinLog || d < dMinLog) dMinLog = d;
-                                        if (!dMaxLog || d > dMaxLog) dMaxLog = d;
-                                    }
+                    var fTotal = 0;
+                    var dMinLog = null;
+                    var dMaxLog = null;
+                    // Client-side filter: backend có thể ignore $filter và trả về tất cả logs
+                    // Nếu WbsId trên log không khớp thì bỏ qua (tránh hiện data của WBS khác)
+                    (oData.results || []).forEach(function (oLog) {
+                        var sLogWbsId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
+                        if (!sLogWbsId || sLogWbsId === sNormWbsId) {
+                            fTotal += parseFloat(oLog.QuantityDone) || 0;
+                            if (oLog.LogDate) {
+                                var d = (oLog.LogDate instanceof Date) ? oLog.LogDate : new Date(oLog.LogDate);
+                                if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
+                                    if (!dMinLog || d < dMinLog) dMinLog = d;
+                                    if (!dMaxLog || d > dMaxLog) dMaxLog = d;
                                 }
                             }
-                        });
+                        }
+                    });
 
-                        oWSModel.setData({
-                            TotalQtyDone: Math.round(fTotal).toString(),
-                            ActualStart: dMinLog,
-                            ActualEnd: dMaxLog,
-                            UnitCode: sUnit,
-                            WbsId: sWbsId,
-                            Children: []
-                        });
-                        resolve();
-                    },
-                    error: function () {
-                        resolve();
+                    oWSModel.setData({
+                        TotalQtyDone: Math.round(fTotal).toString(),
+                        ActualStart: dMinLog,
+                        ActualEnd: dMaxLog,
+                        WbsId: sWbsId,
+                        Children: []
+                    });
+
+                    if (typeof that._bindApprovalLogList === "function") {
+                        that._bindApprovalLogList(sWbsId);
                     }
-                });
+                },
+                error: function () {
+                    console.error("Failed to aggregate logs for leaf WBS:", sWbsId);
+                }
             });
         },
 

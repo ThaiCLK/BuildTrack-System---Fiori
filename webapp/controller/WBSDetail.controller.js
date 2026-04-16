@@ -440,48 +440,13 @@ sap.ui.define([
 
         _onGlobalRefresh: function () {
             if (!this._sWbsId) return;
-            var oView = this.getView();
-            var oModel = this.getOwnerComponent().getModel();
-            var oBinding = oView.getElementBinding();
-            
-            // Centralize busy state - Start of a single, stable loading session
-            oView.setBusy(true);
-            this._bIsGlobalRefreshing = true;
-
-            var aPromises = [];
-
-            // 1. Model Refresh (previously in App.controller, moved here for coordination)
-            aPromises.push(new Promise(function(resolve) {
-                if (oModel) {
-                    oModel.refresh(true, true, resolve, resolve); // refresh completes or fails
-                } else {
-                    resolve();
-                }
-            }));
-
-            // 2. Element Binding (Main WBS data)
-            if (oBinding) {
-                aPromises.push(new Promise(function(resolve) {
-                    var fnHandler = function() {
-                        oBinding.detachDataReceived(fnHandler);
-                        resolve();
-                    };
-                    oBinding.attachDataReceived(fnHandler);
-                    oBinding.refresh(true);
-                }));
-            }
-
-            // 3. Delegation List and Detail Refresh
-            aPromises.push(this._bindDailyLogList(this._sWbsId));
-            aPromises.push(this._bindApprovalLogList(this._sWbsId));
-            aPromises.push(this._loadWorkSummary(this._sWbsId));
-            aPromises.push(this._loadLocation(this._sWbsId));
-            this._loadProjectInfo(this._sSiteId);
-
-            Promise.allSettled(aPromises).finally(function() {
-                this._bIsGlobalRefreshing = false;
-                oView.setBusy(false);
-            }.bind(this));
+            var oBinding = this.getView().getElementBinding();
+            if (oBinding) { oBinding.refresh(true); }
+            this._bindDailyLogList(this._sWbsId);
+            this._bindApprovalLogList(this._sWbsId);
+            this._loadWorkSummary(this._sWbsId);
+            this._loadLocation(this._sWbsId);
+            if (this._sSiteId) { this._loadProjectInfo(this._sSiteId); }
         },
 
         /* =========================================================== */
@@ -490,38 +455,31 @@ sap.ui.define([
 
         _onObjectMatched: function (oEvent) {
             var oArgs = oEvent.getParameter("arguments");
-            var sWbsId = oArgs.wbsId || "";
-            var sSiteId = oArgs.site_id || "";
-
-            // Helper to normalize GUIDs (strip guid'...' and lowercase/whitespace/hyphens)
-            var fnNormalize = function(s) {
-                if (!s) return "";
-                return s.replace(/^guid'/i, "").replace(/'$/, "").replace(/[-\s]/g, "").toLowerCase();
-            };
-
-            var sCurrentId = fnNormalize(this._sWbsId);
-            var sNewId = fnNormalize(sWbsId);
-            var bIsSameWbs = (sCurrentId === sNewId);
-            var bIsNewContext = !bIsSameWbs;
-            
+            var sWbsId = oArgs.wbsId;
+            var sSiteId = oArgs.site_id;
             this._sWbsId = sWbsId;
-            this._sSiteId = sSiteId;
+            this._sSiteId = sSiteId;   // remember for onNavBack
+            var oModel = this.getOwnerComponent().getModel();
 
-            // Reset models if it's a new context and NOT a refresh
-            if (bIsNewContext && !this._bIsGlobalRefreshing) {
-                this.onCancelWbs(); 
-                var oWSModel = this.getView().getModel("workSummaryModel");
-                if (oWSModel) {
-                    oWSModel.setData({ TotalQtyDone: "0", Children: [], WbsId: sWbsId });
-                }
-
-                var oIconTabBar = this.byId("idIconTabBarWBS");
-                if (oIconTabBar) {
-                    oIconTabBar.setSelectedKey("infoTab");
-                }
+            // Reset edit mode and models immediately to avoid stale data during navigation
+            this.onCancelWbs();
+            var oWSModel = this.getView().getModel("workSummaryModel");
+            if (oWSModel) {
+                oWSModel.setData({
+                    TotalQtyDone: "0",
+                    Children: [],
+                    WbsId: sWbsId
+                });
             }
 
-            // Trigger Work Summary load
+            // Reset Tab Selection to Info tab
+            var oIconTabBar = this.byId("idIconTabBarWBS");
+            if (oIconTabBar) {
+                oIconTabBar.setSelectedKey("infoTab");
+            }
+
+            // Trigger Work Summary load immediately. 
+            // The delegate now handles its own OData metadata fetch to avoid context race conditions.
             this._loadWorkSummary(sWbsId);
 
             // Bind the WBS detail form — WbsId is Edm.Guid so use guid'' syntax
@@ -534,9 +492,7 @@ sap.ui.define([
                 events: {
                     dataRequested: function () { this.getView().setBusy(true); }.bind(this),
                     dataReceived: function () {
-                        if (!this._bIsGlobalRefreshing) {
-                            this.getView().setBusy(false);
-                        }
+                        this.getView().setBusy(false);
                         var oCtx = this.getView().getBindingContext();
                         if (oCtx) {
                             this._checkIfActionable(oCtx.getProperty("WbsId"), oCtx.getProperty("Status"));
@@ -695,31 +651,25 @@ sap.ui.define([
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
             var oLocationModel = this.getView().getModel("locationModel");
-            var bBusyNeeded = !this._bIsGlobalRefreshing;
 
             // Reset
             oLocationModel.setData({});
 
             if (!sWbsId) {
-                return Promise.resolve();
+                return;
             }
 
-            if (bBusyNeeded) { this.getView().setBusy(true); }
+            this.getView().setBusy(true);
             var sPath = "/LocationSet(guid'" + sWbsId + "')";
-            
-            return new Promise(function(resolve, reject) {
-                oModel.read(sPath, {
-                    success: function (oData) {
-                        oLocationModel.setData(oData);
-                        if (bBusyNeeded) { that.getView().setBusy(false); }
-                        resolve(oData);
-                    },
-                    error: function (oError) {
-                        oLocationModel.setData({});
-                        if (bBusyNeeded) { that.getView().setBusy(false); }
-                        resolve({}); // Resolve as empty to satisfy Promise.all
-                    }
-                });
+            oModel.read(sPath, {
+                success: function (oData) {
+                    oLocationModel.setData(oData);
+                    that.getView().setBusy(false);
+                },
+                error: function () {
+                    oLocationModel.setData({});
+                    that.getView().setBusy(false);
+                }
             });
         },
 

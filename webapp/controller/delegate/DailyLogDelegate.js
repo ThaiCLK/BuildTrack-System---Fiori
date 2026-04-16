@@ -70,77 +70,77 @@ sap.ui.define([
         /* =========================================================== */
         /* DAILY LOG — LIST BINDING                                    */
         /* =========================================================== */
+
         _bindDailyLogList: function (sWbsId) {
             var that = this;
             var oTable = this.byId("idDailyLogList");
-            if (!oTable) { return Promise.resolve(); }
+            if (!oTable) { return; }
 
             var oUIModel = this.getView().getModel("dailyLogModel");
             var oModel = this.getOwnerComponent().getModel();
-            var bBusyNeeded = !this._bIsGlobalRefreshing;
 
             oTable.unbindAggregation("items");
 
-            if (!sWbsId) { return Promise.resolve(); }
+            if (!sWbsId) { return; }
             var oFilter = new Filter("WbsId", FilterOperator.EQ, sWbsId);
-            
-            if (bBusyNeeded) { oTable.setBusy(true); }
+            oTable.setBusy(true);
 
-            return new Promise(function(resolve, reject) {
-                oModel.read("/DailyLogSet", {
-                    filters: [oFilter],
-                    success: function (oData) {
-                        if (bBusyNeeded) { oTable.setBusy(false); }
-                        var aLogs = oData.results || [];
+            oModel.read("/DailyLogSet", {
+                filters: [oFilter],
+                success: function (oData) {
+                    oTable.setBusy(false);
+                    var aLogs = oData.results || [];
 
-                        // FALLBACK: Force client-side filtering
-                        var aFilteredLogs = aLogs.filter(function (log) {
-                            if (log.QuantityDone !== undefined && log.QuantityDone !== null) {
-                                log.QuantityDone = Math.round(parseFloat(log.QuantityDone) || 0).toString();
-                            }
-                            return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
-                        });
+                    // FALLBACK: Force client-side filtering because 
+                    // the backend ignores the $filter=WbsId eq '...'
+                    // FALLBACK: Force client-side filtering because 
+                    // the backend ignores the $filter=WbsId eq '...'
+                    var aFilteredLogs = aLogs.filter(function (log) {
+                        // Round to integer while we are at it
+                        if (log.QuantityDone !== undefined && log.QuantityDone !== null) {
+                            log.QuantityDone = Math.round(parseFloat(log.QuantityDone) || 0).toString();
+                        }
+                        return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                    });
 
-                        aFilteredLogs.sort(function (a, b) {
-                            var d1 = new Date(a.LogDate).getTime();
-                            var d2 = new Date(b.LogDate).getTime();
-                            return d2 - d1;
-                        });
+                    // Sort descending by LogDate manually
+                    aFilteredLogs.sort(function (a, b) {
+                        var d1 = new Date(a.LogDate).getTime();
+                        var d2 = new Date(b.LogDate).getTime();
+                        return d2 - d1;
+                    });
 
-                        oUIModel.setProperty("/list", aFilteredLogs);
+                    oUIModel.setProperty("/list", aFilteredLogs);
 
-                        var oTemplate = new sap.m.ColumnListItem({
-                            type: "Active",
-                            cells: [
-                                new sap.m.Text({
-                                    text: {
-                                        path: "dailyLogModel>LogDate",
-                                        type: "sap.ui.model.type.Date",
-                                        formatOptions: { pattern: "dd/MM/yyyy" }
-                                    }
-                                }),
-                                new sap.m.ObjectNumber({
-                                    number: "{dailyLogModel>QuantityDone}",
-                                    unit: "{dailyLogModel>UnitCode}",
-                                    state: "None"
-                                })
-                            ],
-                            press: that.onLogRowPress.bind(that)
-                        });
+                    var oTemplate = new sap.m.ColumnListItem({
+                        type: "Active",
+                        cells: [
+                            new sap.m.Text({
+                                text: {
+                                    path: "dailyLogModel>LogDate",
+                                    type: "sap.ui.model.type.Date",
+                                    formatOptions: { pattern: "dd/MM/yyyy" }
+                                }
+                            }),
+                            new sap.m.ObjectNumber({
+                                number: "{dailyLogModel>QuantityDone}",
+                                unit: "{dailyLogModel>UnitCode}",
+                                state: "None"
+                            })
+                        ],
+                        press: that.onLogRowPress.bind(that)
+                    });
 
-                        oTable.bindItems({
-                            path: "dailyLogModel>/list",
-                            template: oTemplate,
-                            templateShareable: false
-                        });
-                        resolve(aFilteredLogs);
-                    },
-                    error: function () {
-                        if (bBusyNeeded) { oTable.setBusy(false); }
-                        oUIModel.setProperty("/list", []);
-                        resolve([]);
-                    }
-                });
+                    oTable.bindItems({
+                        path: "dailyLogModel>/list",
+                        template: oTemplate,
+                        templateShareable: false
+                    });
+                },
+                error: function () {
+                    oTable.setBusy(false);
+                    oUIModel.setProperty("/list", []);
+                }
             });
         },
 
@@ -1746,62 +1746,51 @@ sap.ui.define([
 
         _saveResourceUse: function (sLogId, aResUse, fnSuccess, bAppendOnly) {
             var oModel = this.getOwnerComponent().getModel();
-            var that = this;
-            
-            var fnActualSubmit = function(aOldItems) {
-                var aQueue = [];
-                
-                // 1. Queue Deletions (if not append-only)
-                if (!bAppendOnly && aOldItems && aOldItems.length > 0) {
-                    aOldItems.forEach(function(u) {
-                        aQueue.push({ type: "DELETE", path: "/ResourceUseSet(guid'" + u.ResourceUseId + "')" });
-                    });
-                }
 
-                // 2. Queue Creations
-                aResUse.forEach(function(u) {
-                    aQueue.push({ 
-                        type: "CREATE", 
-                        path: "/ResourceUseSet", 
-                        payload: {
-                            ResourceId: u.ResourceId,
-                            LogId: sLogId,
-                            Quantity: String(parseFloat(u.Quantity) || 0)
-                        }
+            var fnSequentialProcess = function (aOld, aNew) {
+                var iOldIdx = 0;
+                var fnProcessOld = function () {
+                    if (bAppendOnly || iOldIdx >= aOld.length) {
+                        fnProcessNew();
+                        return;
+                    }
+                    var u = aOld[iOldIdx++];
+                    oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
+                        success: fnProcessOld,
+                        error: fnProcessOld
                     });
-                });
+                };
 
-                // 3. Recursive Process - MUST wait for previous to avoid 500 error
-                var processQueue = function() {
-                    if (aQueue.length === 0) {
+                var iNewIdx = 0;
+                var fnProcessNew = function () {
+                    if (iNewIdx >= aNew.length) {
                         fnSuccess();
                         return;
                     }
-                    var oTask = aQueue.shift();
-                    if (oTask.type === "DELETE") {
-                        oModel.remove(oTask.path, { success: processQueue, error: processQueue });
-                    } else {
-                        oModel.create(oTask.path, oTask.payload, { success: processQueue, error: processQueue });
-                    }
+                    var u = aNew[iNewIdx++];
+                    var oPayload = {
+                        ResourceId: u.ResourceId,
+                        LogId: sLogId,
+                        Quantity: String(parseFloat(u.Quantity) || 0)
+                    };
+                    oModel.create("/ResourceUseSet", oPayload, {
+                        success: fnProcessNew,
+                        error: fnProcessNew
+                    });
                 };
 
-                processQueue();
+                fnProcessOld();
             };
 
-            // Fetch existing if not append-only
-            if (bAppendOnly) {
-                fnActualSubmit([]);
-            } else {
-                oModel.read("/ResourceUseSet", {
-                    filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
-                    success: function (oData) {
-                        fnActualSubmit(oData.results || []);
-                    },
-                    error: function () {
-                        fnActualSubmit([]);
-                    }
-                });
-            }
+            oModel.read("/ResourceUseSet", {
+                filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
+                success: function (oData) {
+                    fnSequentialProcess(oData.results || [], aResUse);
+                },
+                error: function () {
+                    fnSequentialProcess([], aResUse);
+                }
+            });
         },
 
         _updateWbsActualDates: function (sWbsId) {
