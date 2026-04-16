@@ -78,17 +78,17 @@ sap.ui.define([
 
         _loadParentAggregation: function (sWbsId, oWSModel, oModel) {
             var that = this;
+            var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
+
             return new Promise(function(resolve, reject) {
                 oModel.read("/WBSSet", {
-                    filters: sWbsId ? [new Filter("ParentId", FilterOperator.EQ, sWbsId)] : [],
+                    filters: [new Filter("ParentId", FilterOperator.EQ, sWbsId)],
                     urlParameters: {
                         "$expand": "ToApprovalLog"
                     },
                     success: function (oData) {
-                        // Race-condition guard
                         if (that._sWorkSummaryToken !== sWbsId) { return resolve(); }
 
-                        var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
                         var aChildren = (oData.results || []).filter(function (w) {
                             if (!w.ParentId) return false;
                             return w.ParentId.toLowerCase().replace(/-/g, "") === sNormParentId;
@@ -99,31 +99,46 @@ sap.ui.define([
                             return resolve();
                         }
 
-                        // Further aggregation logic follows...
-                        // (simplified for brevity, keeping existing logic but wrapping in promise)
                         var iProcessed = 0;
-                        aChildren.forEach(function (child) {
-                            var sWbsIdChild = child.WbsId;
-                            oModel.callFunction("/GetWorkSummary", {
-                                method: "GET",
-                                urlParameters: { WbsId: sWbsIdChild },
-                                success: function (oWSData) {
-                                    if (that._sWorkSummaryToken !== sWbsId) return;
-                                    var oRes = oWSData.GetWorkSummary || oWSData;
-                                    child.TotalQtyDone = oRes.TotalQtyDone || "0";
-                                    child.WbsStatus = child.Status; 
-                                    child.ApprovalLog = child.ToApprovalLog;
+                        var fParentAggregate = 0;
 
+                        aChildren.forEach(function (child) {
+                            var sChildId = child.WbsId;
+                            var sNormChildId = sChildId ? sChildId.toLowerCase().replace(/-/g, "") : "";
+
+                            oModel.read("/DailyLogSet", {
+                                filters: [new Filter("WbsId", FilterOperator.EQ, sChildId)],
+                                success: function (oLogData) {
+                                    if (that._sWorkSummaryToken !== sWbsId) return;
+
+                                    var fSum = 0;
+                                    (oLogData.results || []).forEach(function (l) {
+                                        var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                                        if (!sLogWbsId || sLogWbsId === sNormChildId) {
+                                            fSum += parseFloat(l.QuantityDone) || 0;
+                                        }
+                                    });
+
+                                    child.TotalQtyDone = Math.round(fSum).toString();
+                                    child.WbsStatus = child.Status;
+                                    child.ApprovalLog = child.ToApprovalLog;
+                                    
+                                    fParentAggregate += fSum;
                                     iProcessed++;
+
                                     if (iProcessed === aChildren.length) {
-                                        WorkSummaryDelegate._computeParentTotal(aChildren, oWSModel);
+                                        oWSModel.setData({
+                                            Children: aChildren,
+                                            TotalQtyDone: Math.round(fParentAggregate).toString(),
+                                            WbsId: sWbsId
+                                        });
                                         resolve();
                                     }
                                 },
                                 error: function () {
                                     iProcessed++;
                                     if (iProcessed === aChildren.length) {
-                                        WorkSummaryDelegate._computeParentTotal(aChildren, oWSModel);
+                                        oWSModel.setProperty("/Children", aChildren);
                                         resolve();
                                     }
                                 }
@@ -131,6 +146,7 @@ sap.ui.define([
                         });
                     },
                     error: function () {
+                        oWSModel.setProperty("/Children", []);
                         resolve();
                     }
                 });
@@ -139,16 +155,45 @@ sap.ui.define([
 
         _loadLeafNodeAggregation: function (sWbsId, oWSModel, oModel) {
             var that = this;
+            var sNormWbsId = sWbsId ? sWbsId.toLowerCase().replace(/-/g, "") : "";
+
             return new Promise(function(resolve, reject) {
-                oModel.callFunction("/GetWorkSummary", {
-                    method: "GET",
-                    urlParameters: { WbsId: sWbsId },
+                oModel.read("/DailyLogSet", {
+                    filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                     success: function (oData) {
                         if (that._sWorkSummaryToken !== sWbsId) { return resolve(); }
-                        var oRes = oData.GetWorkSummary || oData;
-                        oWSModel.setProperty("/TotalQtyDone", oRes.TotalQtyDone || "0");
-                        oWSModel.setProperty("/UnitCode", oRes.UnitCode || "");
-                        resolve(oRes);
+                        
+                        var aLogs = oData.results || [];
+                        var fTotal = 0;
+                        var sUnit = "";
+                        var dMinLog = null;
+                        var dMaxLog = null;
+
+                        aLogs.forEach(function (oLog) {
+                            var sLogWbsId = oLog.WbsId ? oLog.WbsId.toLowerCase().replace(/-/g, "") : "";
+                            if (!sLogWbsId || sLogWbsId === sNormWbsId) {
+                                fTotal += parseFloat(oLog.QuantityDone) || 0;
+                                if (oLog.UnitCode) sUnit = oLog.UnitCode;
+                                
+                                if (oLog.LogDate) {
+                                    var d = (oLog.LogDate instanceof Date) ? oLog.LogDate : new Date(oLog.LogDate);
+                                    if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
+                                        if (!dMinLog || d < dMinLog) dMinLog = d;
+                                        if (!dMaxLog || d > dMaxLog) dMaxLog = d;
+                                    }
+                                }
+                            }
+                        });
+
+                        oWSModel.setData({
+                            TotalQtyDone: Math.round(fTotal).toString(),
+                            ActualStart: dMinLog,
+                            ActualEnd: dMaxLog,
+                            UnitCode: sUnit,
+                            WbsId: sWbsId,
+                            Children: []
+                        });
+                        resolve();
                     },
                     error: function () {
                         resolve();

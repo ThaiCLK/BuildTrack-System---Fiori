@@ -488,36 +488,32 @@ sap.ui.define([
 
         _onObjectMatched: function (oEvent) {
             var oArgs = oEvent.getParameter("arguments");
-            var sWbsId = oArgs.wbsId;
-            var sSiteId = oArgs.site_id;
+            var sWbsId = oArgs.wbsId || "";
+            var sSiteId = oArgs.site_id || "";
 
-            // PRE-CHECK: Is this a new navigation or just a refresh of the same object?
-            var bIsNewContext = (this._sWbsId !== sWbsId);
+            // PRE-CHECK: Case-insensitive comparison is critical for GUIDs in SAP
+            var sCurrentId = (this._sWbsId || "").toLowerCase();
+            var sNewId = sWbsId.toLowerCase();
+            var bIsNewContext = (sCurrentId !== sNewId);
             
             this._sWbsId = sWbsId;
-            this._sSiteId = sSiteId;   // remember for onNavBack
+            this._sSiteId = sSiteId;
 
-            var oModel = this.getOwnerComponent().getModel();
+            // Reset models if it's a new context
+            if (bIsNewContext) {
+                this.onCancelWbs(); // This might reset state, only do if truly new
+                var oWSModel = this.getView().getModel("workSummaryModel");
+                if (oWSModel) {
+                    oWSModel.setData({ TotalQtyDone: "0", Children: [], WbsId: sWbsId });
+                }
 
-            // Reset edit mode and models immediately to avoid stale data during navigation
-            this.onCancelWbs();
-            var oWSModel = this.getView().getModel("workSummaryModel");
-            if (oWSModel) {
-                oWSModel.setData({
-                    TotalQtyDone: "0",
-                    Children: [],
-                    WbsId: sWbsId
-                });
+                var oIconTabBar = this.byId("idIconTabBarWBS");
+                if (oIconTabBar) {
+                    oIconTabBar.setSelectedKey("infoTab");
+                }
             }
 
-            // Only Reset Tab Selection if navigating to a DIFFERENT WBS
-            var oIconTabBar = this.byId("idIconTabBarWBS");
-            if (oIconTabBar && bIsNewContext) {
-                oIconTabBar.setSelectedKey("infoTab");
-            }
-
-            // Trigger Work Summary load immediately. 
-            // The delegate now handles its own OData metadata fetch to avoid context race conditions.
+            // Trigger Work Summary load
             this._loadWorkSummary(sWbsId);
 
             // Bind the WBS detail form — WbsId is Edm.Guid so use guid'' syntax
