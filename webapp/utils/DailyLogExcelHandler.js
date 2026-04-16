@@ -392,15 +392,27 @@ sap.ui.define([
                     }
 
                     var mData = masterMap[rId] || {};
+                    var fFinalQty = isNaN(fQty) ? 0 : fQty;
+                    
+                    var bFound = false;
+                    for (var m = 0; m < resourceMap[logNum].length; m++) {
+                        if (resourceMap[logNum][m].resource_id === rId) {
+                            resourceMap[logNum][m].quantity += fFinalQty;
+                            bFound = true;
+                            break;
+                        }
+                    }
 
-                    resourceMap[logNum].push({
-                        log_num: logNum,
-                        resource_id: rId,
-                        resource_name: mData.resource_name || "",
-                        resource_type: mData.resource_type || "MATERIAL",
-                        quantity: isNaN(fQty) ? 0 : fQty,
-                        unit_code: mData.unit_code || "KG"
-                    });
+                    if (!bFound) {
+                        resourceMap[logNum].push({
+                            log_num: logNum,
+                            resource_id: rId,
+                            resource_name: mData.resource_name || "",
+                            resource_type: mData.resource_type || "MATERIAL",
+                            quantity: fFinalQty,
+                            unit_code: mData.unit_code || "KG"
+                        });
+                    }
                     usedResourceLogNums[logNum] = true;
                 }
             }

@@ -277,60 +277,28 @@ sap.ui.define([
                         return sNameA.localeCompare(sNameB);
                     });
 
-                    // Sync actual dates from DailyLog before building Gantt
-                    oModel.read("/DailyLogSet", {
-                        success: function (oLogData) {
-                            var aLogs = oLogData.results || [];
-
-                            // First pass: patch leaf WBS with min/max log dates
-                            aResults.forEach(function (item) {
-                                var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
-                                var dMin = null, dMax = null;
-                                aLogs.forEach(function (l) {
-                                    if ((l.WbsId || "").toLowerCase().replace(/-/g, "") === sId) {
-                                        var d = (l.LogDate instanceof Date) ? l.LogDate : new Date(l.LogDate);
-                                        if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
-                                            if (!dMin || d < dMin) dMin = d;
-                                            if (!dMax || d > dMax) dMax = d;
-                                        }
-                                    }
-                                });
-                                // Always overwrite: use log dates if found, null if not
-                                item.StartActual = dMin;
-                                item.EndActual = dMax;
-                            });
-
-                            // Second pass: aggregate parent dates from children
-                            aResults.forEach(function (item) {
-                                var vPid = item.ParentId;
-                                if (!vPid || String(vPid).replace(/-/g, "").replace(/0/g, "") === "") {
-                                    var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
-                                    var pMin = item.StartActual || null;
-                                    var pMax = item.EndActual || null;
-                                    aResults.forEach(function (c) {
-                                        if ((c.ParentId || "").toLowerCase().replace(/-/g, "") === sId) {
-                                            if (c.StartActual && (!pMin || c.StartActual < pMin)) pMin = c.StartActual;
-                                            if (c.EndActual && (!pMax || c.EndActual > pMax)) pMax = c.EndActual;
-                                        }
-                                    });
-                                    if (pMin) item.StartActual = pMin;
-                                    if (pMax) item.EndActual = pMax;
+                    // Aggregate parent actual dates from children based solely on children's OData actual dates
+                    aResults.forEach(function (item) {
+                        var vPid = item.ParentId;
+                        if (!vPid || String(vPid).replace(/-/g, "").replace(/0/g, "") === "") {
+                            var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
+                            var pMin = item.StartActual || null;
+                            var pMax = item.EndActual || null;
+                            aResults.forEach(function (c) {
+                                if ((c.ParentId || "").toLowerCase().replace(/-/g, "") === sId) {
+                                    if (c.StartActual && (!pMin || c.StartActual < pMin)) pMin = c.StartActual;
+                                    if (c.EndActual && (!pMax || c.EndActual > pMax)) pMax = c.EndActual;
                                 }
                             });
-
-                            var aTreeData = that._transformToTree(aResults);
-                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
-                            that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
-                            that.getView().getModel("viewConfig").setData(oGanttConfig);
-                        },
-                        error: function () {
-                            // Fallback: build Gantt without log sync
-                            var aTreeData = that._transformToTree(aResults);
-                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
-                            that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
-                            that.getView().getModel("viewConfig").setData(oGanttConfig);
+                            if (pMin) item.StartActual = pMin;
+                            if (pMax) item.EndActual = pMax;
                         }
                     });
+
+                    var aTreeData = that._transformToTree(aResults);
+                    var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
+                    that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
+                    that.getView().getModel("viewConfig").setData(oGanttConfig);
 
 
                     // 1. Filter items that are globally in a PENDING status
@@ -866,13 +834,44 @@ sap.ui.define([
                         aValid.reduce(function (pChain, oWbs) {
                             return pChain.then(function () {
                                 return new Promise(function (resolve) {
-                                    oModel.update("/WBSSet(guid'" + oWbs.WbsId + "')", { Status: "IN_PROGRESS" }, {
-                                        success: function () {
-                                            aSuccess.push(oWbs.WbsName);
+                                    oModel.callFunction("/UpdateStatus", {
+                                        method: "POST",
+                                        urlParameters: {
+                                            ObjectType: "WBS",
+                                            ObjectId: oWbs.WbsId,
+                                            NewStatus: "IN_PROGRESS"
+                                        },
+                                        success: function (oData) {
+                                            // SAP UI5 OData V2: unwraps d{} but may keep function name as key
+                                            var oResult = (oData && oData.UpdateStatus) ? oData.UpdateStatus : oData;
+                                            var sSuccessVal = oResult ? String(oResult.Success).toLowerCase() : "false";
+                                            var sMsg = (oResult && oResult.Message) ? oResult.Message : "";
+                                            console.log("[RunWbs] Response for", oWbs.WbsName, ":", JSON.stringify(oResult));
+                                            if (sSuccessVal === "true" || sSuccessVal === "1") {
+                                                aSuccess.push(oWbs.WbsName);
+                                            } else {
+                                                // If backend message is empty, show a generic reason
+                                                if (!sMsg) {
+                                                    sMsg = oBundle.getText("runWbsFailedDefault") || "Không thể bắt đầu. Có thể do điều kiện tiên quyết chưa hoàn thành hoặc trạng thái chưa phù hợp.";
+                                                }
+                                                aFailed.push(oWbs.WbsName + ": " + sMsg);
+                                            }
                                             resolve();
                                         },
-                                        error: function () {
-                                            aFailed.push(oWbs.WbsName);
+                                        error: function (oError) {
+                                            var sErrMsg = "";
+                                            try {
+                                                var oResp = JSON.parse(oError.responseText);
+                                                if (oResp.error && oResp.error.message) {
+                                                    sErrMsg = oResp.error.message.value || oResp.error.message || "";
+                                                } else if (oResp.d && oResp.d.UpdateStatus) {
+                                                    sErrMsg = oResp.d.UpdateStatus.Message || "";
+                                                }
+                                            } catch (e) {
+                                                sErrMsg = oError.message || "";
+                                            }
+                                            console.log("[RunWbs] HTTP Error for", oWbs.WbsName, ":", sErrMsg, oError.statusCode);
+                                            aFailed.push(oWbs.WbsName + (sErrMsg ? ": " + sErrMsg : ""));
                                             resolve(); // Don't break chain on error
                                         }
                                     });
@@ -1308,14 +1307,29 @@ sap.ui.define([
 
             var oSelectUnit = new Select({
                 width: "100%",
-                visible: bIsChild,
-                items: [
-                    new Item({ key: "M3", text: "Cubic Meter (M3)" }),
-                    new Item({ key: "M2", text: "Square Meter (M2)" }),
-                    new Item({ key: "M", text: "Linear Meter (M)" }),
-                    new Item({ key: "TON", text: "Ton (TON)" }),
-                    new Item({ key: "EA", text: "Each (EA)" })
-                ]
+                visible: bIsChild
+            });
+            oSelectUnit.setModel(oModel);
+            oSelectUnit.bindItems({
+                path: "/UnitSet",
+                templateShareable: false,
+                template: new Item({
+                    key: "{UnitCode}",
+                    text: {
+                        parts: [
+                            {path: "UnitCode"},
+                            {path: "UnitName"},
+                            {path: "InternalChar"}
+                        ],
+                        formatter: function(sCode, sName, sChar) {
+                            if (!sCode) return "";
+                            var sDisplay = sCode;
+                            if (sName) sDisplay += " - " + sName;
+                            if (sChar) sDisplay += " (" + sChar + ")";
+                            return sDisplay;
+                        }
+                    }
+                })
             });
             var oSelectStatus = new Select({
                 width: "100%",

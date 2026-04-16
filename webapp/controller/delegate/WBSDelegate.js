@@ -233,9 +233,9 @@ sap.ui.define([
          * Tính toán chiều rộng của thanh task dựa trên số ngày làm việc
          */
         calcWidth: function (sStart, sEnd) {
-            if (!sStart || !sEnd) return "0px";
+            if (!sStart && !sEnd) return "0px";
             var dStart = this._parseDate(sStart);
-            var dEnd = this._parseDate(sEnd);
+            var dEnd = this._parseDate(sEnd || sStart); // Nếu chưa có EndActual, tạm lấy StartActual
             if (!dStart || !dEnd) return "0px";
 
             dStart.setHours(0, 0, 0, 0);

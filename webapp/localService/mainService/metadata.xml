@@ -91,7 +91,7 @@
                 <Property Name="WeatherAm"      Type="Edm.String"   MaxLength="50"  sap:label="Weather AM" />
                 <Property Name="WeatherPm"      Type="Edm.String"   MaxLength="50"  sap:label="Weather PM" />
                 <Property Name="QuantityDone"   Type="Edm.Decimal"  Precision="7"  Scale="3" sap:label="Quantity Done" />
-                <Property Name="UnitCode"       Type="Edm.String"   MaxLength="10" sap:label="Unit Code" />
+                <Property Name="UnitCode"       Type="Edm.String"   MaxLength="3" sap:label="Unit Code" />
                 <Property Name="SafeNote"       Type="Edm.String"   MaxLength="255" sap:label="Safe Note" />
                 <Property Name="GeneralNote"    Type="Edm.String"   MaxLength="255" sap:label="General Note" />
                 <Property Name="ContractorNote" Type="Edm.String"   MaxLength="255" sap:label="Contractor Note" />
@@ -158,6 +158,19 @@
             <ComplexType Name="WsProcessResult">
                 <Property Name="SUCCESS" Type="Edm.Boolean" />
                 <Property Name="MESSAGE" Type="Edm.String" MaxLength="255" />
+            </ComplexType>
+
+            <!-- Return type for UpdateStatus -->
+            <ComplexType Name="UpdateStatusResult">
+                <Property Name="Success" Type="Edm.Boolean" />
+                <Property Name="Message" Type="Edm.String" MaxLength="255" />
+            </ComplexType>
+
+            <!-- Return type for ApproveWbs -->
+            <ComplexType Name="ApproveWbsResult">
+                <Property Name="ReturnType" Type="Edm.String" MaxLength="1" />
+                <Property Name="Message"    Type="Edm.String" MaxLength="255" />
+                <Property Name="WbsId"      Type="Edm.Guid" />
             </ComplexType>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
@@ -405,6 +418,17 @@
                     <Parameter Name="Decision" Type="Edm.String" Mode="In" />
                     <Parameter Name="Note"     Type="Edm.String" Mode="In" />
                     <Parameter Name="EvaluationResult" Type="Edm.String" Mode="In" />
+                </FunctionImport>
+
+                <FunctionImport Name="UpdateStatus" ReturnType="ZBT_ODATA_SRV.UpdateStatusResult" m:HttpMethod="POST">
+                    <Parameter Name="ObjectType" Type="Edm.String" Mode="In" />
+                    <Parameter Name="ObjectId"   Type="Edm.String" Mode="In" />
+                    <Parameter Name="NewStatus"  Type="Edm.String" Mode="In" />
+                </FunctionImport>
+
+                <FunctionImport Name="ApproveWbs" ReturnType="Collection(ZBT_ODATA_SRV.ApproveWbsResult)" m:HttpMethod="POST">
+                    <Parameter Name="WbsIds"       Type="Edm.String" Mode="In" />
+                    <Parameter Name="ApprovalType" Type="Edm.String" Mode="In" />
                 </FunctionImport>
             </EntityContainer>
         </Schema>

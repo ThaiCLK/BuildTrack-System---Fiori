@@ -276,9 +276,9 @@ sap.ui.define([
             if (oTable) {
                 oTable.removeSelections(true);
             }
-            var oWbsContext = this.getView().getBindingContext();
-            var sWbsUnitCode = oWbsContext ? oWbsContext.getProperty("UnitCode") : "";
-
+            var oModel = this.getOwnerComponent().getModel();
+            var sPath = "/WBSSet(guid'" + this._sWbsId + "')";
+            var sWbsUnitCode = oModel.getProperty(sPath + "/UnitCode") || "";
             oUIModel.setProperty("/selectedLog", {
                 LogId: "",
                 WbsId: this._sWbsId || "",
@@ -295,6 +295,7 @@ sap.ui.define([
             oUIModel.setProperty("/ui/isSelected", true);
             oUIModel.setProperty("/ui/editMode", true);
             oUIModel.setProperty("/ui/isNewRecord", true);
+            console.log("DailyLogDelegate: onAddLog");
         },
 
         onExportExcel: function () {
@@ -1049,15 +1050,42 @@ sap.ui.define([
             if (!oSelectedItem) { return; }
             var sResourceId = oSelectedItem.getKey();
             var oCtx = oEvent.getSource().getBindingContext("dailyLogModel");
+            var sPath = oCtx.getPath();
+            var currentIndex = parseInt(sPath.split("/").pop(), 10);
             var oUIModel = this.getView().getModel("dailyLogModel");
+
+            var aList = oUIModel.getProperty("/resourceUseList") || [];
+            var mergedIndex = -1;
+
+            // Tìm xem tài nguyên này ĐÃ CÓ ở các dòng khác hay chưa
+            for (var i = 0; i < aList.length; i++) {
+                if (i !== currentIndex && aList[i].ResourceId === sResourceId) {
+                    mergedIndex = i;
+                    break;
+                }
+            }
+
+            if (mergedIndex !== -1) {
+                // Tự động cộng dồn
+                var currentQty = parseFloat(aList[currentIndex].Quantity) || 1;
+                var existingQty = parseFloat(aList[mergedIndex].Quantity) || 0;
+                aList[mergedIndex].Quantity = existingQty + currentQty;
+
+                // Xóa dòng bị dư thừa đi
+                aList.splice(currentIndex, 1);
+                oUIModel.setProperty("/resourceUseList", aList);
+
+                sap.m.MessageToast.show("Phát hiện tài nguyên đã tồn tại. Đã tự động gộp số lượng!");
+                return;
+            }
 
             var oODataModel = this.getOwnerComponent().getModel();
             oODataModel.read("/ResourceSet('" + sResourceId + "')", {
                 success: function (oRes) {
-                    oUIModel.setProperty(oCtx.getPath() + "/ResourceId", oRes.ResourceId);
-                    oUIModel.setProperty(oCtx.getPath() + "/ResourceName", oRes.ResourceName || "");
-                    oUIModel.setProperty(oCtx.getPath() + "/ResourceType", oRes.ResourceType || "");
-                    oUIModel.setProperty(oCtx.getPath() + "/UnitCode", oRes.UnitCode || "");
+                    oUIModel.setProperty(sPath + "/ResourceId", oRes.ResourceId);
+                    oUIModel.setProperty(sPath + "/ResourceName", oRes.ResourceName || "");
+                    oUIModel.setProperty(sPath + "/ResourceType", oRes.ResourceType || "");
+                    oUIModel.setProperty(sPath + "/UnitCode", oRes.UnitCode || "");
                 }
             });
         },
@@ -1238,6 +1266,7 @@ sap.ui.define([
                 WeatherAm: oLog.WeatherAm || "SUNNY",
                 WeatherPm: oLog.WeatherPm || "SUNNY",
                 QuantityDone: String(parseFloat(oLog.QuantityDone) || 0),
+                UnitCode: oLog.UnitCode || "",
                 SafeNote: oLog.SafeNote || "",
                 GeneralNote: oLog.GeneralNote || "",
                 ContractorNote: oLog.ContractorNote || ""
@@ -1381,41 +1410,44 @@ sap.ui.define([
         },
 
         _updateWbsActualDates: function (sWbsId) {
+            // StartActual được cập nhật ở backend (khi Run WBS / Update Status).
+            // EndActual lấy max(LogDate) của tất cả DailyLog thuộc WBS này.
             var oModel = this.getOwnerComponent().getModel();
             var oView = this.getView();
+            var oBinding = oView.getElementBinding();
 
             oModel.read("/DailyLogSet", {
-                filters: sWbsId ? [new Filter("WbsId", FilterOperator.EQ, sWbsId)] : [],
+                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
                 success: function (oData) {
                     var aLogs = oData.results || [];
-                    var oUpdate = {};
-
-                    if (aLogs.length > 0) {
-                        var aDates = aLogs.map(function (l) {
-                            return l.LogDate instanceof Date ? l.LogDate : new Date(l.LogDate);
-                        });
-                        var dMin = aDates.reduce(function (a, b) { return a < b ? a : b; });
-                        var dMax = aDates.reduce(function (a, b) { return a > b ? a : b; });
-                        oUpdate.StartActual = dMin;
-                        oUpdate.EndActual = dMax;
-                    } else {
-                        oUpdate.StartActual = null;
-                        oUpdate.EndActual = null;
+                    if (aLogs.length === 0) {
+                        if (oBinding) { oBinding.refresh(true); }
+                        return;
                     }
 
-                    oModel.update("/WBSSet(guid'" + sWbsId + "')", oUpdate, {
+                    // Tìm ngày mới nhất (max)
+                    var maxDate = aLogs.reduce(function (max, log) {
+                        var dLog = new Date(log.LogDate);
+                        var dMax = new Date(max);
+                        return (dLog > dMax) ? log.LogDate : max;
+                    }, aLogs[0].LogDate);
+                    
+                    // Giữ phần time offset cho OData V2
+                    maxDate = new Date(maxDate);
+                    maxDate.setMinutes(maxDate.getMinutes() - maxDate.getTimezoneOffset());
+                    
+                    // Chỉ cập nhật EndActual
+                    oModel.update("/WBSSet(guid'" + sWbsId + "')", { EndActual: maxDate }, {
                         success: function () {
-                            console.log("WBS actual dates updated: ", oUpdate.StartActual, "→", oUpdate.EndActual);
-                            var oBinding = oView.getElementBinding();
-                            if (oBinding) { oBinding.refresh(); }
+                            if (oBinding) { oBinding.refresh(true); }
                         },
-                        error: function (oErr) {
-                            console.error("Failed to update WBS actual dates:", oErr);
+                        error: function () {
+                            if (oBinding) { oBinding.refresh(true); }
                         }
                     });
                 },
-                error: function (oErr) {
-                    console.error("Failed to read DailyLogs for actual date calc:", oErr);
+                error: function () {
+                    if (oBinding) { oBinding.refresh(true); }
                 }
             });
         },
