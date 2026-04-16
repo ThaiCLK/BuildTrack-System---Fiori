@@ -146,12 +146,9 @@ sap.ui.define([
          * Waits for the SecurityDelegate promise to ensure we have a valid user ID.
          */
         _bindApprovalLogList: function (sWbsId, bSilent) {
-            var that = this;
             var oView = this.getView();
             var oComponent = this.getOwnerComponent();
-            var oModel = oView.getModel();
             var oLogListModel = oView.getModel("logListModel");
-            var oUserModel = oComponent.getModel("userModel");
 
             this._sCurrentWbsId = sWbsId;
 
@@ -160,12 +157,12 @@ sap.ui.define([
 
             // ── SYNC: Wait for identity resolution before fetching/filtering ──
             if (oComponent.SecurityDelegate && oComponent.SecurityDelegate.whenUserIdentified) {
-                oComponent.SecurityDelegate.whenUserIdentified().then(function (sUserId) {
+                return oComponent.SecurityDelegate.whenUserIdentified().then(function (sUserId) {
                     if (!bSilent) console.log("ApprovalLog: Session confirmed for " + sUserId + ", binding logs...");
-                    this._doLoadAndFilter(sWbsId, bSilent);
+                    return this._doLoadAndFilter(sWbsId, bSilent);
                 }.bind(this));
             } else {
-                this._doLoadAndFilter(sWbsId, bSilent);
+                return this._doLoadAndFilter(sWbsId, bSilent);
             }
         },
 
@@ -176,96 +173,103 @@ sap.ui.define([
             var oView = this.getView();
             var oModel = oView.getModel();
             var oLogListModel = oView.getModel("logListModel");
-            var oUserModel = this.getOwnerComponent().getModel("userModel");
+            var bGlobalRefreshing = oView.getController()._bIsGlobalRefreshing;
+            var bShouldSetBusy = !bSilent && !bGlobalRefreshing;
 
-            if (!bSilent) {
+            if (bShouldSetBusy) {
                 oView.setBusy(true);
             }
 
-            oModel.read("/ApprovalLogSet", {
-                filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
-                sorters: [new sap.ui.model.Sorter("CreatedTimestamp", true)], // Newest first
-                urlParameters: {
-                    "cb": new Date().getTime() // Cache buster
-                },
-                success: function (oData) {
-                    if (!bSilent) {
-                        oView.setBusy(false);
-                    }
-                    var aLogs = oData.results || [];
+            return new Promise(function(resolve, reject) {
+                oModel.read("/ApprovalLogSet", {
+                    filters: [new Filter("WbsId", FilterOperator.EQ, sWbsId)],
+                    sorters: [new sap.ui.model.Sorter("CreatedTimestamp", true)], // Newest first
+                    urlParameters: {
+                        "cb": new Date().getTime() // Cache buster
+                    },
+                    success: function (oData) {
+                        if (bShouldSetBusy) {
+                            oView.setBusy(false);
+                        }
+                        var aLogs = oData.results || [];
 
-                    // Force WbsId filter natively because backend ignores the API filter
-                    var aGlobalLogs = aLogs.filter(function (log) {
-                        return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
-                    });
-
-                    // Store globally for WBSDetail dataReceived fallback
-                    oView.getController()._aGlobalLogs = aGlobalLogs;
-
-                    // Generate ProcessFlow data BEFORE filtering out other users' logs
-                    if (typeof oView.getController().updateProcessFlow === "function") {
-                        oView.getController().updateProcessFlow(aGlobalLogs);
-                    }
-
-                    // Show ALL logs regardless of User ID
-                    aLogs = aGlobalLogs;
-                    
-                    // Sort: Logs with notes first, then newest timestamp
-                    aLogs.sort(function(a, b) {
-                        var hasNoteA = !!a.ApprovalNote && String(a.ApprovalNote).trim() !== "";
-                        var hasNoteB = !!b.ApprovalNote && String(b.ApprovalNote).trim() !== "";
-                        
-                        if (hasNoteA && !hasNoteB) return -1;
-                        if (!hasNoteA && hasNoteB) return 1;
-                        
-                        // If same note status, sort by date
-                        var dateA = a.CreatedTimestamp;
-                        var dateB = b.CreatedTimestamp;
-                        
-                        // Safely get numeric timestamp
-                        var tA = (dateA instanceof Date) ? dateA.getTime() : 0;
-                        var tB = (dateB instanceof Date) ? dateB.getTime() : 0;
-                        
-                        // If one was not a Date, try constructor
-                        if (tA === 0 && dateA) tA = new Date(dateA).getTime() || 0;
-                        if (tB === 0 && dateB) tB = new Date(dateB).getTime() || 0;
-                        
-                        return tB - tA; // Newest first
-                    });
-
-                    if (oLogListModel) oLogListModel.setData(aLogs);
-
-                    // Async fetch user names to replace user IDs in the list
-                    if (oLogListModel) {
-                        aLogs.forEach(function (oLog) {
-                            var sUserId = oLog.ActionBy || oLog.CreatedBy;
-                            if (!sUserId) return;
-
-                            var sPath = "/UserRoleSet('" + sUserId + "')";
-                            var sUserName = oModel.getProperty(sPath + "/UserName");
-
-                            if (sUserName) {
-                                oLog.ActionBy = sUserName;
-                                oLogListModel.refresh(true);
-                            } else {
-                                oModel.read(sPath, {
-                                    success: function (oUserData) {
-                                        oLog.ActionBy = oUserData.UserName;
-                                        oLogListModel.refresh(true);
-                                    }
-                                });
-                            }
+                        // Force WbsId filter natively because backend ignores the API filter
+                        var aGlobalLogs = aLogs.filter(function (log) {
+                            return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
                         });
-                    }
 
-                    // Re-init canvas after load
-                    setTimeout(function () { this._initInvestorCanvas(); }.bind(this), 200);
-                }.bind(this),
-                error: function () {
-                    oView.setBusy(false);
-                    if (oLogListModel) oLogListModel.setData([]);
-                }
-            });
+                        // Store globally for WBSDetail dataReceived fallback
+                        oView.getController()._aGlobalLogs = aGlobalLogs;
+
+                        // Generate ProcessFlow data BEFORE filtering out other users' logs
+                        if (typeof oView.getController().updateProcessFlow === "function") {
+                            oView.getController().updateProcessFlow(aGlobalLogs);
+                        }
+
+                        // Show ALL logs regardless of User ID
+                        aLogs = aGlobalLogs;
+                        
+                        // Sort: Logs with notes first, then newest timestamp
+                        aLogs.sort(function(a, b) {
+                            var hasNoteA = !!a.ApprovalNote && String(a.ApprovalNote).trim() !== "";
+                            var hasNoteB = !!b.ApprovalNote && String(b.ApprovalNote).trim() !== "";
+                            
+                            if (hasNoteA && !hasNoteB) return -1;
+                            if (!hasNoteA && hasNoteB) return 1;
+                            
+                            // If same note status, sort by date
+                            var dateA = a.CreatedTimestamp;
+                            var dateB = b.CreatedTimestamp;
+                            
+                            // Safely get numeric timestamp
+                            var tA = (dateA instanceof Date) ? dateA.getTime() : 0;
+                            var tB = (dateB instanceof Date) ? dateB.getTime() : 0;
+                            
+                            // If one was not a Date, try constructor
+                            if (tA === 0 && dateA) tA = new Date(dateA).getTime() || 0;
+                            if (tB === 0 && dateB) tB = new Date(dateB).getTime() || 0;
+                            
+                            return tB - tA; // Newest first
+                        });
+
+                        if (oLogListModel) oLogListModel.setData(aLogs);
+
+                        // Async fetch user names to replace user IDs in the list
+                        if (oLogListModel) {
+                            aLogs.forEach(function (oLog) {
+                                var sUserId = oLog.ActionBy || oLog.CreatedBy;
+                                if (!sUserId) return;
+
+                                var sPath = "/UserRoleSet('" + sUserId + "')";
+                                var sUserName = oModel.getProperty(sPath + "/UserName");
+
+                                if (sUserName) {
+                                    oLog.ActionBy = sUserName;
+                                    oLogListModel.refresh(true);
+                                } else {
+                                    oModel.read(sPath, {
+                                        success: function (oUserData) {
+                                            oLog.ActionBy = oUserData.UserName;
+                                            oLogListModel.refresh(true);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+                        // Re-init canvas after load
+                        setTimeout(function () { this._initInvestorCanvas(); }.bind(this), 200);
+                        resolve(aLogs);
+                    }.bind(this),
+                    error: function () {
+                        if (bShouldSetBusy) {
+                            oView.setBusy(false);
+                        }
+                        if (oLogListModel) oLogListModel.setData([]);
+                        resolve([]);
+                    }
+                });
+            }.bind(this));
         },
 
         /* =========================================================== */

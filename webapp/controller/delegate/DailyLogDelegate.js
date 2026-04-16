@@ -70,77 +70,77 @@ sap.ui.define([
         /* =========================================================== */
         /* DAILY LOG — LIST BINDING                                    */
         /* =========================================================== */
-
         _bindDailyLogList: function (sWbsId) {
             var that = this;
             var oTable = this.byId("idDailyLogList");
-            if (!oTable) { return; }
+            if (!oTable) { return Promise.resolve(); }
 
             var oUIModel = this.getView().getModel("dailyLogModel");
             var oModel = this.getOwnerComponent().getModel();
+            var bBusyNeeded = !this._bIsGlobalRefreshing;
 
             oTable.unbindAggregation("items");
 
-            if (!sWbsId) { return; }
+            if (!sWbsId) { return Promise.resolve(); }
             var oFilter = new Filter("WbsId", FilterOperator.EQ, sWbsId);
-            oTable.setBusy(true);
+            
+            if (bBusyNeeded) { oTable.setBusy(true); }
 
-            oModel.read("/DailyLogSet", {
-                filters: [oFilter],
-                success: function (oData) {
-                    oTable.setBusy(false);
-                    var aLogs = oData.results || [];
+            return new Promise(function(resolve, reject) {
+                oModel.read("/DailyLogSet", {
+                    filters: [oFilter],
+                    success: function (oData) {
+                        if (bBusyNeeded) { oTable.setBusy(false); }
+                        var aLogs = oData.results || [];
 
-                    // FALLBACK: Force client-side filtering because 
-                    // the backend ignores the $filter=WbsId eq '...'
-                    // FALLBACK: Force client-side filtering because 
-                    // the backend ignores the $filter=WbsId eq '...'
-                    var aFilteredLogs = aLogs.filter(function (log) {
-                        // Round to integer while we are at it
-                        if (log.QuantityDone !== undefined && log.QuantityDone !== null) {
-                            log.QuantityDone = Math.round(parseFloat(log.QuantityDone) || 0).toString();
-                        }
-                        return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
-                    });
+                        // FALLBACK: Force client-side filtering
+                        var aFilteredLogs = aLogs.filter(function (log) {
+                            if (log.QuantityDone !== undefined && log.QuantityDone !== null) {
+                                log.QuantityDone = Math.round(parseFloat(log.QuantityDone) || 0).toString();
+                            }
+                            return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                        });
 
-                    // Sort descending by LogDate manually
-                    aFilteredLogs.sort(function (a, b) {
-                        var d1 = new Date(a.LogDate).getTime();
-                        var d2 = new Date(b.LogDate).getTime();
-                        return d2 - d1;
-                    });
+                        aFilteredLogs.sort(function (a, b) {
+                            var d1 = new Date(a.LogDate).getTime();
+                            var d2 = new Date(b.LogDate).getTime();
+                            return d2 - d1;
+                        });
 
-                    oUIModel.setProperty("/list", aFilteredLogs);
+                        oUIModel.setProperty("/list", aFilteredLogs);
 
-                    var oTemplate = new sap.m.ColumnListItem({
-                        type: "Active",
-                        cells: [
-                            new sap.m.Text({
-                                text: {
-                                    path: "dailyLogModel>LogDate",
-                                    type: "sap.ui.model.type.Date",
-                                    formatOptions: { pattern: "dd/MM/yyyy" }
-                                }
-                            }),
-                            new sap.m.ObjectNumber({
-                                number: "{dailyLogModel>QuantityDone}",
-                                unit: "{dailyLogModel>UnitCode}",
-                                state: "None"
-                            })
-                        ],
-                        press: that.onLogRowPress.bind(that)
-                    });
+                        var oTemplate = new sap.m.ColumnListItem({
+                            type: "Active",
+                            cells: [
+                                new sap.m.Text({
+                                    text: {
+                                        path: "dailyLogModel>LogDate",
+                                        type: "sap.ui.model.type.Date",
+                                        formatOptions: { pattern: "dd/MM/yyyy" }
+                                    }
+                                }),
+                                new sap.m.ObjectNumber({
+                                    number: "{dailyLogModel>QuantityDone}",
+                                    unit: "{dailyLogModel>UnitCode}",
+                                    state: "None"
+                                })
+                            ],
+                            press: that.onLogRowPress.bind(that)
+                        });
 
-                    oTable.bindItems({
-                        path: "dailyLogModel>/list",
-                        template: oTemplate,
-                        templateShareable: false
-                    });
-                },
-                error: function () {
-                    oTable.setBusy(false);
-                    oUIModel.setProperty("/list", []);
-                }
+                        oTable.bindItems({
+                            path: "dailyLogModel>/list",
+                            template: oTemplate,
+                            templateShareable: false
+                        });
+                        resolve(aFilteredLogs);
+                    },
+                    error: function () {
+                        if (bBusyNeeded) { oTable.setBusy(false); }
+                        oUIModel.setProperty("/list", []);
+                        resolve([]);
+                    }
+                });
             });
         },
 
