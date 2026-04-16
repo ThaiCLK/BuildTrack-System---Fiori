@@ -348,6 +348,7 @@
                                     growingMaxLines="10"
                                     rows="2"
                                     width="100%"
+                                    maxLength="255"
                                     editable="{dailyLogModel>/ui/editMode}"
                                     placeholder="{i18n>generalNotePlaceholder}"/>
 
@@ -358,6 +359,7 @@
                                     growingMaxLines="6"
                                     rows="2"
                                     width="100%"
+                                    maxLength="255"
                                     editable="{dailyLogModel>/ui/editMode}"
                                     placeholder="{i18n>safetyNotePlaceholder}"/>
 
@@ -368,6 +370,7 @@
                                     growingMaxLines="6"
                                     rows="2"
                                     width="100%"
+                                    maxLength="255"
                                     editable="{dailyLogModel>/ui/editMode}"
                                     placeholder="{i18n>contractorNotePlaceholder}"/>
                             </f:content>

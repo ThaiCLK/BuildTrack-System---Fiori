@@ -13,7 +13,7 @@ sap.ui.define([
         init: function (oController) {
             // Local UI-state model — no mock data
             var oUIModel = new JSONModel({
-                selectedLog: null,  
+                selectedLog: null,
                 resourceUseList: [],
                 ui: {
                     isSelected: false,
@@ -36,7 +36,7 @@ sap.ui.define([
             var oDatePicker = oController.byId("inLogDate");
             if (oDatePicker) {
                 oDatePicker.addEventDelegate({
-                    onAfterRendering: function() {
+                    onAfterRendering: function () {
                         oDatePicker.$().find("input").attr("readonly", "readonly");
                     }
                 });
@@ -69,7 +69,7 @@ sap.ui.define([
 
             var oUIModel = this.getView().getModel("dailyLogModel");
             var oModel = this.getOwnerComponent().getModel();
-            
+
             oTable.unbindAggregation("items");
 
             if (!sWbsId) { return; }
@@ -81,28 +81,28 @@ sap.ui.define([
                 success: function (oData) {
                     oTable.setBusy(false);
                     var aLogs = oData.results || [];
-                    
+
                     // FALLBACK: Force client-side filtering because 
                     // the backend ignores the $filter=WbsId eq '...'
                     // FALLBACK: Force client-side filtering because 
                     // the backend ignores the $filter=WbsId eq '...'
-                    var aFilteredLogs = aLogs.filter(function(log) {
+                    var aFilteredLogs = aLogs.filter(function (log) {
                         // Round to integer while we are at it
                         if (log.QuantityDone !== undefined && log.QuantityDone !== null) {
                             log.QuantityDone = Math.round(parseFloat(log.QuantityDone) || 0).toString();
                         }
                         return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
                     });
-                    
+
                     // Sort descending by LogDate manually
-                    aFilteredLogs.sort(function(a, b) {
+                    aFilteredLogs.sort(function (a, b) {
                         var d1 = new Date(a.LogDate).getTime();
                         var d2 = new Date(b.LogDate).getTime();
                         return d2 - d1;
                     });
-                    
+
                     oUIModel.setProperty("/list", aFilteredLogs);
-                    
+
                     var oTemplate = new sap.m.ColumnListItem({
                         type: "Active",
                         cells: [
@@ -166,7 +166,7 @@ sap.ui.define([
             var oODataLog = oCtx.getObject();
             var oUIModel = this.getView().getModel("dailyLogModel");
 
-            var parseDate = function(vDate) {
+            var parseDate = function (vDate) {
                 if (vDate instanceof Date) return vDate;
                 if (!vDate) return null;
                 if (typeof vDate === "string" && vDate.indexOf("/Date(") !== -1) {
@@ -245,18 +245,11 @@ sap.ui.define([
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var sStatus = oCtx.getProperty("Status");
             var aAllowed = ["IN_PROGRESS", "CLOSE_REJECTED"];
-            
-            // Allow deletion in PENDING_OPEN for cleanup
-            if (bIsDelete) {
-                aAllowed.push("PENDING_OPEN");
-                aAllowed.push("PLANNING");
-                aAllowed.push("OPEN_REJECTED");
-            }
 
             if (aAllowed.indexOf(sStatus) === -1) {
                 var sStatusText = this.formatWbsStatusText(sStatus);
                 var sActionText = bIsDelete ? oBundle.getText("verifyStatusActionDelete") : oBundle.getText("verifyStatusActionWrite");
-                var sAllowedText = bIsDelete ? "'In Progress', 'Close Rejected', 'Pending Open', 'Open Rejected' hoặc 'Planning'" : "'In Progress' hoặc 'Close Rejected'";
+                var sAllowedText = "'In Progress' hoặc 'Close Rejected'";
 
                 MessageBox.warning(
                     oBundle.getText("verifyStatusError", [sActionText, sStatusText, sAllowedText])
@@ -502,7 +495,7 @@ sap.ui.define([
                 return;
             }
 
-            var dWbsStart = oWbsCtx ? oWbsCtx.getProperty("StartDate") : null;
+            var dWbsStart = oWbsCtx ? oWbsCtx.getProperty("StartActual") : null;
             var dWbsEnd = oWbsCtx ? oWbsCtx.getProperty("EndDate") : null;
             var dProjStart = oProjectModel ? oProjectModel.getProperty("/StartDate") : null;
             var dProjEnd = oProjectModel ? oProjectModel.getProperty("/EndDate") : null;
@@ -687,7 +680,7 @@ sap.ui.define([
                 d.getFullYear());
         },
 
-        formatWeather: function(sWeather) {
+        formatWeather: function (sWeather) {
             if (!sWeather) return "";
             var sCode = sWeather.toUpperCase();
             var sKey = "sunny";
@@ -699,7 +692,7 @@ sap.ui.define([
             return oBndl.getText(sKey);
         },
 
-        formatImportPreviewLogCount: function(sText, iLength) {
+        formatImportPreviewLogCount: function (sText, iLength) {
             if (!sText) return "";
             return sText.replace("{0}", iLength || 0);
         },
@@ -782,7 +775,7 @@ sap.ui.define([
                 var dExisting = l.LogDate instanceof Date ? l.LogDate : new Date(l.LogDate);
                 var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
                 var sNormCheckId = this._sWbsId ? this._sWbsId.toLowerCase().replace(/-/g, "") : "";
-                
+
                 if ((!sLogWbsId || sLogWbsId === sNormCheckId) &&
                     dExisting.getFullYear() === dLogDate.getFullYear() &&
                     dExisting.getMonth() === dLogDate.getMonth() &&
@@ -998,11 +991,11 @@ sap.ui.define([
             var sValue = oEvent.getParameter("newValue");
             // Only allow digits (integers)
             var sNumeric = sValue.replace(/[^\d]/g, "");
-            
+
             if (sValue !== sNumeric) {
                 oInput.setValue(sNumeric);
             }
-            
+
             oInput.setValueState("None");
             oInput.setValueStateText("");
         },
@@ -1052,7 +1045,7 @@ sap.ui.define([
             var oSelect = oEvent.getSource();
             oSelect.setValueState("None");
             oSelect.setValueStateText("");
-            
+
             if (!oSelectedItem) { return; }
             var sResourceId = oSelectedItem.getKey();
             var oCtx = oEvent.getSource().getBindingContext("dailyLogModel");
@@ -1145,7 +1138,7 @@ sap.ui.define([
 
             // WBS date validation bounds
             if (oWbsCtx) {
-                var dWbsStart = oWbsCtx.getProperty("StartDate");
+                var dWbsStart = oWbsCtx.getProperty("StartActual");
                 var dWbsEnd = oWbsCtx.getProperty("EndDate");
 
                 if (dWbsStart) {
@@ -1189,7 +1182,7 @@ sap.ui.define([
             var aResources = oUIModel.getProperty("/resourceUseList") || [];
             var oTable = this.byId("idResourceUseTable");
             var aItems = oTable ? oTable.getItems() : [];
-            
+
             var bMissingResourceInfo = false;
             var bInvalidResourceQty = false;
 
@@ -1201,7 +1194,7 @@ sap.ui.define([
             aItems.forEach(function (oItem) {
                 var aCells = oItem.getCells();
                 // CELL 2 contains a VBox -> Select (index 0)
-                var oSelectBox = aCells[1].getItems()[0]; 
+                var oSelectBox = aCells[1].getItems()[0];
                 // CELL 4 contains StepInput
                 var oStepInput = aCells[3];
 
@@ -1262,12 +1255,12 @@ sap.ui.define([
                         that._bindDailyLogList(that._sWbsId);
                         that._updateWbsActualDates(that._sWbsId);
                         that._loadWorkSummary(that._sWbsId);
-                        
+
                         // If we implicitly merged into an existing log, refresh the resource list to show all
                         if (bIsMerging) {
                             that._loadResourceUse(sLogId);
                         }
-                        
+
                         MessageToast.show(sToast);
                     }, bIsMerging);
                 };
@@ -1328,7 +1321,7 @@ sap.ui.define([
                         oLog.LogId = sExistingLogIdToUpdate;
                         bIsMerging = true;
                     }
-                    
+
                     fnContinueSave(bIsMerging);
                 },
                 error: function (oError) {
@@ -1341,9 +1334,9 @@ sap.ui.define([
         _saveResourceUse: function (sLogId, aResUse, fnSuccess, bAppendOnly) {
             var oModel = this.getOwnerComponent().getModel();
 
-            var fnSequentialProcess = function(aOld, aNew) {
+            var fnSequentialProcess = function (aOld, aNew) {
                 var iOldIdx = 0;
-                var fnProcessOld = function() {
+                var fnProcessOld = function () {
                     if (bAppendOnly || iOldIdx >= aOld.length) {
                         fnProcessNew();
                         return;
@@ -1356,7 +1349,7 @@ sap.ui.define([
                 };
 
                 var iNewIdx = 0;
-                var fnProcessNew = function() {
+                var fnProcessNew = function () {
                     if (iNewIdx >= aNew.length) {
                         fnSuccess();
                         return;
