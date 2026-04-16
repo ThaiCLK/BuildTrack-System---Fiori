@@ -58,20 +58,6 @@
                                 </HBox>
                             </Panel>
                         </HBox>
-
-                        <HBox class="dashboardCardRow" visible="{= ${userModel>/authLevel} === 99 }">
-                            <Panel id="cardUserMgmt" class="dashboardCard dashboardCardClickable"
-                                   headerText="" expandable="false">
-                                <layoutData><FlexItemData growFactor="0" baseSize="30rem"/></layoutData>
-                                <HBox alignItems="Center" class="dashboardCardHeader">
-                                    <core:Icon src="sap-icon://user-settings" class="dashboardCardIcon iconTeal"/>
-                                    <VBox class="sapUiTinyMarginBegin">
-                                        <Title text="{i18n>userMgmtTitle}" level="H5"/>
-                                        <Text text="{i18n>userMgmtDesc}" class="dashboardSubLabel"/>
-                                    </VBox>
-                                </HBox>
-                            </Panel>
-                        </HBox>
                     </VBox>
 
                     <!-- RIGHT COLUMN — Daily Operations -->
@@ -110,6 +96,51 @@
 
                 </HBox>
 
+                <!-- ════════════════════════════════════════════════════════
+                     SECTION 2 · SYSTEM ADMINISTRATION (Level 99 Only)
+                ════════════════════════════════════════════════════════ -->
+                <VBox width="100%" class="dashboardTopRow sapUiLargeMarginBottom" visible="{= ${userModel>/authLevel} === 99 }">
+                    <Title id="secSystemAdmin" text="{i18n>sysAdminSection}" level="H4"
+                        class="dashboardSectionTitle"/>
+
+                    <HBox class="dashboardCardRow">
+                        <Panel id="cardUserMgmt" class="dashboardCard dashboardCardClickable"
+                               headerText="" expandable="false">
+                            <layoutData><FlexItemData growFactor="0" baseSize="14rem"/></layoutData>
+                            <HBox alignItems="Center" class="dashboardCardHeader">
+                                <core:Icon src="sap-icon://user-settings" class="dashboardCardIcon iconTeal"/>
+                                <VBox class="sapUiTinyMarginBegin">
+                                    <Title text="{i18n>userMgmtTitle}" level="H5"/>
+                                    <Text text="{i18n>userMgmtDesc}" class="dashboardSubLabel"/>
+                                </VBox>
+                            </HBox>
+                        </Panel>
+
+                        <Panel id="cardResMgmt" class="dashboardCard dashboardCardClickable"
+                               headerText="" expandable="false">
+                            <layoutData><FlexItemData growFactor="0" baseSize="14rem"/></layoutData>
+                            <HBox alignItems="Center" class="dashboardCardHeader">
+                                <core:Icon src="sap-icon://product" class="dashboardCardIcon iconOrange"/>
+                                <VBox class="sapUiTinyMarginBegin">
+                                    <Title text="{i18n>resMgmtCardTitle}" level="H5"/>
+                                    <Text text="{i18n>resMgmtCardDesc}" class="dashboardSubLabel"/>
+                                </VBox>
+                            </HBox>
+                        </Panel>
+
+                        <Panel id="cardSysConfig" class="dashboardCard dashboardCardClickable"
+                               headerText="" expandable="false">
+                            <layoutData><FlexItemData growFactor="0" baseSize="14rem"/></layoutData>
+                            <HBox alignItems="Center" class="dashboardCardHeader">
+                                <core:Icon src="sap-icon://action-settings" class="dashboardCardIcon iconPurple"/>
+                                <VBox class="sapUiTinyMarginBegin">
+                                    <Title text="{i18n>sysConfigCardTitle}" level="H5"/>
+                                    <Text text="{i18n>sysConfigCardDesc}" class="dashboardSubLabel"/>
+                                </VBox>
+                            </HBox>
+                        </Panel>
+                    </HBox>
+                </VBox>
 
 
                 <!-- ════════════════════════════════════════════════════════

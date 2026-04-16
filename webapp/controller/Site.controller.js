@@ -673,7 +673,10 @@ sap.ui.define([
                     forceSelection: false,
                     items: {
                         path: "users>/items",
-                        filters: [new sap.ui.model.Filter("AuthLevel", sap.ui.model.FilterOperator.EQ, iAuthLevel)],
+                        filters: [
+                            new sap.ui.model.Filter("AuthLevel", sap.ui.model.FilterOperator.EQ, iAuthLevel),
+                            new sap.ui.model.Filter("Status", sap.ui.model.FilterOperator.EQ, "ACTIVE")
+                        ],
                         template: new Item({
                             key: "{users>UserId}",
                             text: "{users>UserName} ({users>UserId})"
@@ -688,35 +691,40 @@ sap.ui.define([
             var oSelect3 = fnCreateSelect(oApproverData.Approver3Id, 3);
 
             var oDialog = new Dialog({
-                title: oBundle.getText("editApprovers"),
+                title: oBundle.getText("editApprovers") || "Cập nhật người phê duyệt",
                 contentWidth: "450px",
                 content: [
                     new SimpleForm({
                         editable: true,
                         layout: "ResponsiveGridLayout",
                         content: [
-                            new Label({ text: oBundle.getText("approver1"), required: true }), oSelect1,
-                            new Label({ text: oBundle.getText("approver2"), required: true }), oSelect2,
-                            new Label({ text: oBundle.getText("approver3"), required: true }), oSelect3
+                            new Label({ text: oBundle.getText("approver1") || "Kỹ sư phụ trách", required: true }), oSelect1,
+                            new Label({ text: oBundle.getText("approver2") || "Tư vấn giám sát", required: true }), oSelect2,
+                            new Label({ text: oBundle.getText("approver3") || "Đại diện CĐT", required: true }), oSelect3
                         ]
                     })
                 ],
                 beginButton: new Button({
-                    text: oBundle.getText("saveApprovers"),
+                    text: oBundle.getText("saveApprovers") || "Lưu thay đổi",
                     type: "Emphasized",
                     press: function () {
                         var sId1 = oSelect1.getSelectedKey();
                         var sId2 = oSelect2.getSelectedKey();
                         var sId3 = oSelect3.getSelectedKey();
 
+                        if (!sProjectId) {
+                            MessageBox.error("Lỗi mất đồng bộ: Mã dự án không được để trống.");
+                            return;
+                        }
+
                         // 2. Validation
                         var bValid = true;
-                        if (!sId1) { oSelect1.setValueState("Error"); bValid = false; }
-                        if (!sId2) { oSelect2.setValueState("Error"); bValid = false; }
-                        if (!sId3) { oSelect3.setValueState("Error"); bValid = false; }
+                        if (!sId1) { oSelect1.setValueState("Error"); bValid = false; } else { oSelect1.setValueState("None"); }
+                        if (!sId2) { oSelect2.setValueState("Error"); bValid = false; } else { oSelect2.setValueState("None"); }
+                        if (!sId3) { oSelect3.setValueState("Error"); bValid = false; } else { oSelect3.setValueState("None"); }
 
                         if (!bValid) {
-                            MessageToast.show(oBundle.getText("approverFieldsRequired"));
+                            MessageBox.error(oBundle.getText("approverFieldsRequired") || "Vui lòng chọn đầy đủ người phê duyệt cho cả 3 cấp.");
                             return;
                         }
 

@@ -1,0 +1,59 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form">
+
+    <Dialog id="dlgUnit"
+            title="{= ${resMgmt>/unitEditMode} ? ${i18n>unitEditTitle} : ${i18n>unitCreateTitle} }"
+            contentWidth="440px"
+            draggable="true">
+        <content>
+            <f:SimpleForm id="frmUnit"
+                          editable="true"
+                          layout="ResponsiveGridLayout"
+                          labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
+                          emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
+                          columnsXL="1" columnsL="1" columnsM="1">
+                <f:content>
+
+                    <!-- Unit Code -->
+                    <Label text="{i18n>unitColCode}" required="true"/>
+                    <Input id="inUnitCode"
+                           value="{resMgmt>/UnitCode}"
+                           placeholder="{i18n>unitCodePlaceholder}"
+                           maxLength="3"
+                           editable="{= !${resMgmt>/unitEditMode} }"
+                           valueLiveUpdate="true"/>
+
+                    <!-- Unit Name -->
+                    <Label text="{i18n>unitColName}" required="true"/>
+                    <Input id="inUnitName"
+                           value="{resMgmt>/UnitName}"
+                           placeholder="{i18n>unitNamePlaceholder}"
+                           maxLength="30"
+                           valueLiveUpdate="true"/>
+
+                    <!-- Status — only in Edit mode -->
+                    <Label text="{i18n>status}"
+                           visible="{= ${resMgmt>/unitEditMode} }"/>
+                    <Select id="selUnitStatus"
+                            selectedKey="{resMgmt>/UnitStatus}"
+                            visible="{= ${resMgmt>/unitEditMode} }">
+                        <core:Item key="ACTIVE"   text="{i18n>statusActive}"/>
+                        <core:Item key="INACTIVE" text="{i18n>statusInactive}"/>
+                    </Select>
+
+                </f:content>
+            </f:SimpleForm>
+        </content>
+        <buttons>
+            <Button id="btnSaveUnit"
+                    text="{= ${resMgmt>/unitEditMode} ? ${i18n>save} : ${i18n>create} }"
+                    type="Emphasized"
+                    press=".onSaveUnit"/>
+            <Button id="btnCancelUnit"
+                    text="{i18n>cancel}"
+                    press=".onCancelUnit"/>
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>

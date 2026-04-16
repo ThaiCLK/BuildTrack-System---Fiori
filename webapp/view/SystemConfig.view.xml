@@ -1,0 +1,66 @@
+<mvc:View controllerName="z.bts.buildtrack551.controller.SystemConfig"
+    xmlns:mvc="sap.ui.core.mvc"
+    displayBlock="true"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+
+    <Page id="pageSysConfig"
+          title="Cấu hình hệ thống"
+          showNavButton="true"
+          navButtonPress=".onNavBack"
+          class="sapUiContentPadding">
+        <content>
+            <Table id="configTable"
+                   items="{ path: '/ConfigSet', sorter: { path: 'ConfigName' } }"
+                   mode="SingleSelectLeft"
+                   selectionChange=".onSelectionChange"
+                   class="sapUiLargeMarginBottom"
+                   alternateRowColors="true"
+                   growing="true" growingThreshold="20">
+                <headerToolbar>
+                    <OverflowToolbar style="Clear">
+                        <Title text="Danh sách thông số" level="H2"/>
+                        <ToolbarSpacer/>
+                        <Button
+                            id="btnEditConfig"
+                            text="{i18n>edit}"
+                            icon="sap-icon://edit"
+                            type="Emphasized"
+                            enabled="false"
+                            press=".onOpenEditDialog"/>
+                    </OverflowToolbar>
+                </headerToolbar>
+                <columns>
+                    <Column minScreenWidth="Tablet" demandPopin="true">
+                        <Text text="Tên Cấu hình (Key)"/>
+                    </Column>
+                    <Column>
+                        <Text text="Giá trị hiện tại"/>
+                    </Column>
+                    <Column minScreenWidth="Desktop" demandPopin="true">
+                        <Text text="Người cập nhật"/>
+                    </Column>
+                    <Column minScreenWidth="Desktop" demandPopin="true">
+                        <Text text="Thời gian cập nhật (Local)"/>
+                    </Column>
+                </columns>
+                <items>
+                    <ColumnListItem type="Navigation" press=".onItemPress">
+                        <cells>
+                            <ObjectIdentifier title="{ConfigName}"/>
+                            <ObjectStatus text="{ConfigValue}" state="Information"/>
+                            <Text text="{UpdatedBy}"/>
+                            <Text text="{
+                                parts: [
+                                    {path: 'UpdatedOn'},
+                                    {path: 'UpdatedAt'}
+                                ],
+                                formatter: '.formatDateTime'
+                            }"/>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </content>
+    </Page>
+</mvc:View>

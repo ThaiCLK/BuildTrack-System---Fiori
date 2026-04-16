@@ -1,0 +1,61 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form">
+
+    <Dialog id="dlgResource"
+            title="{= ${resMgmt>/editMode} ? ${i18n>resEditTitle} : ${i18n>resCreateTitle} }"
+            contentWidth="480px"
+            draggable="true">
+        <content>
+            <f:SimpleForm id="frmResource"
+                          editable="true"
+                          layout="ResponsiveGridLayout"
+                          labelSpanXL="4" labelSpanL="4" labelSpanM="4" labelSpanS="12"
+                          emptySpanXL="0" emptySpanL="0" emptySpanM="0" emptySpanS="0"
+                          columnsXL="1" columnsL="1" columnsM="1">
+                <f:content>
+
+                    <!-- Resource Name -->
+                    <Label text="{i18n>resColName}" required="true"/>
+                    <Input id="inResName"
+                           value="{resMgmt>/ResourceName}"
+                           placeholder="{i18n>resNamePlaceholder}"
+                           maxLength="100"
+                           valueLiveUpdate="true"/>
+
+                    <!-- Resource Type -->
+                    <Label text="{i18n>resColType}" required="true"/>
+                    <Select id="selResType" selectedKey="{resMgmt>/ResourceType}">
+                        <core:Item key="" text="--- {i18n>resTypePlaceholder} ---"/>
+                        <core:Item key="MATERIAL"  text="{i18n>resTypeMaterial}"/>
+                        <core:Item key="EQUIPMENT" text="{i18n>resTypeEquipment}"/>
+                        <core:Item key="LABOR"     text="{i18n>resTypeLabor}"/>
+                    </Select>
+
+                    <!-- Unit Code — ComboBox loaded from active units -->
+                    <Label text="{i18n>resColUnit}" required="true"/>
+                    <ComboBox id="cbUnitCode"
+                              selectedKey="{resMgmt>/UnitCode}"
+                              placeholder="{i18n>resUnitPlaceholder}"
+                              filterSecondaryValues="true"
+                              items="{resMgmt>/availableUnits}">
+                        <core:ListItem key="{resMgmt>UnitCode}"
+                                       text="{resMgmt>UnitCode}"
+                                       additionalText="{resMgmt>DisplayTextForCombo}"/>
+                    </ComboBox>
+
+                </f:content>
+            </f:SimpleForm>
+        </content>
+        <buttons>
+            <Button id="btnSaveRes"
+                    text="{= ${resMgmt>/editMode} ? ${i18n>save} : ${i18n>create} }"
+                    type="Emphasized"
+                    press=".onSaveResource"/>
+            <Button id="btnCancelRes"
+                    text="{i18n>cancel}"
+                    press=".onCancelResource"/>
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>

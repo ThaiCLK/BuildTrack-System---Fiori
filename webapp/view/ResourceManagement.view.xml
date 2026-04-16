@@ -1,0 +1,220 @@
+<mvc:View
+    controllerName="z.bts.buildtrack551.controller.ResourceManagement"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+
+    <Page id="pageResourceMgmt"
+          title="{i18n>resMgmtTitle}"
+          showNavButton="true"
+          navButtonPress=".onNavBack"
+          class="sapUiContentPadding">
+        <content>
+            <IconTabBar id="resourceTabBar"
+                        headerBackgroundDesign="Transparent"
+                        class="sapUiNoContentPadding">
+                <items>
+
+                    <!-- ═══════════════════ TAB 1: RESOURCE ═══════════════════ -->
+                    <IconTabFilter id="tabResource"
+                                   text="{i18n>resTabResource}"
+                                   icon="sap-icon://product">
+                        <content>
+                            <Table id="resourceTable"
+                                   class="sapUiLargeMarginBottom"
+                                   items="{ path: 'resMgmt>/paginatedResources' }"
+                                   mode="{= ${userModel>/authLevel} === 99 ? 'MultiSelect' : 'None' }"
+                                   selectionChange=".onResSelectionChange"
+                                   busyIndicatorDelay="0"
+                                   noDataText="{i18n>resNoData}">
+
+                                <headerToolbar>
+                                    <OverflowToolbar>
+                                        <Title text="{i18n>resListTitle}" level="H2"/>
+                                        <ToolbarSpacer/>
+                                        <SearchField id="sfResource"
+                                                     width="200px"
+                                                     placeholder="{i18n>resSearchPlaceholder}"
+                                                     search=".onSearchResource"
+                                                     liveChange=".onSearchResource"/>
+                                        <Button id="btnAddResource"
+                                                text="{i18n>resCreate}"
+                                                icon="sap-icon://add"
+                                                type="Emphasized"
+                                                press=".onOpenCreateResDialog"
+                                                visible="{= ${userModel>/authLevel} === 99 }"/>
+                                        <Button id="btnEditResource"
+                                                text="{i18n>edit}"
+                                                icon="sap-icon://edit"
+                                                type="Transparent"
+                                                enabled="{= ${resMgmt>/selectedResCount} === 1 }"
+                                                visible="{= ${userModel>/authLevel} === 99 }"
+                                                press=".onOpenEditResDialog"/>
+                                        <Button id="btnDeleteResource"
+                                                text="{i18n>delete}"
+                                                icon="sap-icon://delete"
+                                                type="Transparent"
+                                                enabled="{= ${resMgmt>/selectedResCount} > 0 }"
+                                                visible="{= ${userModel>/authLevel} === 99 }"
+                                                press=".onDeleteResource"/>
+                                    </OverflowToolbar>
+                                </headerToolbar>
+
+                                <infoToolbar>
+                                    <OverflowToolbar style="Clear">
+                                        <ToolbarSpacer/>
+                                        <Button icon="sap-icon://navigation-left-arrow" type="Transparent" press=".onPrevResPage" enabled="{resMgmt>/resCanPrev}" />
+                                        <Text text="{resMgmt>/resCurrentPage} / {resMgmt>/resTotalPages}" />
+                                        <Button icon="sap-icon://navigation-right-arrow" type="Transparent" press=".onNextResPage" enabled="{resMgmt>/resCanNext}" />
+                                        <ToolbarSpacer/>
+                                    </OverflowToolbar>
+                                </infoToolbar>
+
+                                <columns>
+                                    <Column width="7rem">
+                                        <Text text="{i18n>resColId}"/>
+                                    </Column>
+                                    <Column>
+                                        <Text text="{i18n>resColName}"/>
+                                    </Column>
+                                    <Column width="10rem" minScreenWidth="Tablet" demandPopin="true">
+                                        <Text text="{i18n>resColType}"/>
+                                    </Column>
+                                    <Column width="7rem" hAlign="Center">
+                                        <Text text="{i18n>resColUnit}"/>
+                                    </Column>
+                                    <Column width="10rem" minScreenWidth="Tablet" demandPopin="true" hAlign="End">
+                                        <Text text="{i18n>resColCreated}"/>
+                                    </Column>
+                                </columns>
+
+                                <items>
+                                    <ColumnListItem type="Inactive">
+                                        <cells>
+                                            <ObjectIdentifier title="{resMgmt>ResourceId}" titleActive="false"/>
+                                            <Text text="{resMgmt>ResourceName}"/>
+                                            <Text text="{
+                                                path: 'resMgmt>ResourceType',
+                                                formatter: '.formatResType'
+                                            }"/>
+                                            <Text text="{resMgmt>UnitCode}" textAlign="Center"/>
+                                            <Text text="{
+                                                path: 'resMgmt>CreatedOn',
+                                                type: 'sap.ui.model.type.Date',
+                                                formatOptions: { style: 'medium', UTC: true }
+                                            }"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </content>
+                    </IconTabFilter>
+
+                    <!-- ═══════════════════ TAB 2: UNIT ═══════════════════ -->
+                    <IconTabFilter id="tabUnit"
+                                   text="{i18n>resTabUnit}"
+                                   icon="sap-icon://measurement-document">
+                        <content>
+                            <Table id="unitTable"
+                                   class="sapUiLargeMarginBottom"
+                                   items="{ path: 'resMgmt>/paginatedUnits' }"
+                                   mode="{= ${userModel>/authLevel} === 99 ? 'MultiSelect' : 'None' }"
+                                   selectionChange=".onUnitSelectionChange"
+                                   busyIndicatorDelay="0"
+                                   noDataText="{i18n>unitNoData}">
+
+                                <headerToolbar>
+                                    <OverflowToolbar>
+                                        <Title text="{i18n>unitListTitle}" level="H2"/>
+                                        <ToolbarSpacer/>
+                                        <SearchField id="sfUnit"
+                                                     width="200px"
+                                                     placeholder="{i18n>unitSearchPlaceholder}"
+                                                     search=".onSearchUnit"
+                                                     liveChange=".onSearchUnit"/>
+                                        <Button id="btnAddUnit"
+                                                text="{i18n>unitCreate}"
+                                                icon="sap-icon://add"
+                                                type="Emphasized"
+                                                press=".onOpenCreateUnitDialog"
+                                                visible="{= ${userModel>/authLevel} === 99 }"/>
+                                        <Button id="btnEditUnit"
+                                                text="{i18n>edit}"
+                                                icon="sap-icon://edit"
+                                                type="Transparent"
+                                                enabled="{= ${resMgmt>/selectedUnitCount} === 1 }"
+                                                visible="{= ${userModel>/authLevel} === 99 }"
+                                                press=".onOpenEditUnitDialog"/>
+                                        <Button id="btnDeleteUnit"
+                                                text="{i18n>delete}"
+                                                icon="sap-icon://delete"
+                                                type="Transparent"
+                                                enabled="{= ${resMgmt>/selectedUnitCount} > 0 }"
+                                                visible="{= ${userModel>/authLevel} === 99 }"
+                                                press=".onDeleteUnit"/>
+                                    </OverflowToolbar>
+                                </headerToolbar>
+
+                                <infoToolbar>
+                                    <OverflowToolbar style="Clear">
+                                        <ToolbarSpacer/>
+                                        <Button icon="sap-icon://navigation-left-arrow" type="Transparent" press=".onPrevUnitPage" enabled="{resMgmt>/unitCanPrev}" />
+                                        <Text text="{resMgmt>/unitCurrentPage} / {resMgmt>/unitTotalPages}" />
+                                        <Button icon="sap-icon://navigation-right-arrow" type="Transparent" press=".onNextUnitPage" enabled="{resMgmt>/unitCanNext}" />
+                                        <ToolbarSpacer/>
+                                    </OverflowToolbar>
+                                </infoToolbar>
+
+                                <columns>
+                                    <Column width="7rem">
+                                        <Text text="{i18n>unitColCode}"/>
+                                    </Column>
+                                    <Column>
+                                        <Text text="{i18n>unitColName}"/>
+                                    </Column>
+                                    <Column width="8rem" hAlign="Center">
+                                        <Text text="{i18n>unitColType}"/>
+                                    </Column>
+                                    <Column width="9rem" hAlign="Center">
+                                        <Text text="{i18n>status}"/>
+                                    </Column>
+                                    <Column width="10rem" minScreenWidth="Tablet" demandPopin="true" hAlign="End">
+                                        <Text text="{i18n>resColCreated}"/>
+                                    </Column>
+                                </columns>
+
+                                <items>
+                                    <ColumnListItem type="Inactive">
+                                        <cells>
+                                            <ObjectIdentifier title="{resMgmt>UnitCode}" titleActive="false"/>
+                                            <Text text="{resMgmt>UnitName}"/>
+                                            <Text text="{
+                                                path: 'resMgmt>UnitType',
+                                                formatter: '.formatUnitType'
+                                            }" textAlign="Center"/>
+                                            <ObjectStatus
+                                                text="{
+                                                    path: 'resMgmt>Status',
+                                                    formatter: '.formatStatusText'
+                                                }"
+                                                state="{
+                                                    path: 'resMgmt>Status',
+                                                    formatter: '.formatStatusState'
+                                                }"/>
+                                            <Text text="{
+                                                path: 'resMgmt>CreatedOn',
+                                                type: 'sap.ui.model.type.Date',
+                                                formatOptions: { style: 'medium', UTC: true }
+                                            }"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </content>
+                    </IconTabFilter>
+
+                </items>
+            </IconTabBar>
+        </content>
+    </Page>
+</mvc:View>

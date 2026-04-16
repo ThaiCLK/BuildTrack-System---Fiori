@@ -63,7 +63,9 @@ sap.ui.define([
             var aCardActions = [
                 { id: "cardMyProjects", fn: "onGoToProjects" },
                 { id: "cardProjectSites", fn: "onGoToProjects" },
-                { id: "cardUserMgmt", fn: "onPressUserManagement" }
+                { id: "cardUserMgmt", fn: "onPressUserManagement" },
+                { id: "cardResMgmt", fn: "onPressResourceManagement" },
+                { id: "cardSysConfig", fn: "onPressSystemConfig" }
             ];
             var that = this;
             aCardActions.forEach(function (cfg) {
@@ -601,6 +603,14 @@ sap.ui.define([
 
         onPressUserManagement: function () {
             this.getOwnerComponent().getRouter().navTo("UserManagement");
+        },
+
+        onPressResourceManagement: function () {
+            this.getOwnerComponent().getRouter().navTo("ResourceManagement");
+        },
+
+        onPressSystemConfig: function () {
+            this.getOwnerComponent().getRouter().navTo("SystemConfig");
         },
 
         onFeatureUnderdevelopment: function () {

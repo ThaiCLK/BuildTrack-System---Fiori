@@ -1,0 +1,41 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:l="sap.ui.layout"
+    xmlns:core="sap.ui.core">
+    <Dialog title="Cập nhật cấu hình hệ thống" contentWidth="450px">
+        <content>
+            <l:VerticalLayout class="sapUiContentPadding" width="100%">
+                <Label text="Lưu ý: Thay đổi cấu hình sai có thể làm ảnh hưởng nghiêm trọng đến hệ thống." />
+                
+                <Label text="Thời gian chót:" class="sapUiSmallMarginTop" visible="false"/>
+                
+                <Label text="Tên cấu hình thi hành:" design="Bold" class="sapUiSmallMarginTop"/>
+                <Input value="{editConfig>/ConfigName}" editable="false" class="sapUiSmallMarginBottom" />
+                
+                <Label text="Giá trị thiết lập mới:" required="true" design="Bold"/>
+                
+                <!-- Hiển thị ComboBox khi biến thuộc danh sách cố định -->
+                <Select
+                    visible="{editConfig>/isSelect}"
+                    selectedKey="{editConfig>/ConfigValue}"
+                    items="{editConfig>/AvailableOptions}"
+                    width="100%"
+                    class="sapUiSmallMarginBottom">
+                    <core:Item key="{editConfig>key}" text="{editConfig>text} {editConfig>desc}"/>
+                </Select>
+
+                <!-- Hiển thị Input text tự do khi khai báo biến kiểu tự do -->
+                <Input
+                    visible="{= !${editConfig>/isSelect} }"
+                    value="{editConfig>/ConfigValue}"
+                    width="100%"
+                    class="sapUiSmallMarginBottom"
+                    required="true"/>
+            </l:VerticalLayout>
+        </content>
+        <buttons>
+            <Button text="Lưu cấu hình" type="Emphasized" press=".onSaveConfig" />
+            <Button text="{i18n>cancel}" type="Transparent" press=".onCancelConfig" />
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>

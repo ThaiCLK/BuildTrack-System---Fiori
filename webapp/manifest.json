@@ -136,6 +136,20 @@
           "target": [
             "TargetUserManagement"
           ]
+        },
+        {
+          "name": "ResourceManagement",
+          "pattern": "resources",
+          "target": [
+            "TargetResourceManagement"
+          ]
+        },
+        {
+          "name": "SystemConfig",
+          "pattern": "system-config",
+          "target": [
+            "TargetSystemConfig"
+          ]
         }
       ],
       "targets": {
@@ -180,6 +194,20 @@
           "clearControlAggregation": false,
           "viewId": "UserManagement",
           "viewName": "UserManagement"
+        },
+        "TargetResourceManagement": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "ResourceManagement",
+          "viewName": "ResourceManagement"
+        },
+        "TargetSystemConfig": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "SystemConfig",
+          "viewName": "SystemConfig"
         }
       }
     },

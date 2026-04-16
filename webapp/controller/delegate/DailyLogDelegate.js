@@ -495,6 +495,13 @@ sap.ui.define([
             var oWbsCtx = this.getView().getBindingContext();
             var oProjectModel = this.getView().getModel("projectModel");
 
+            var sWbsUnit = oWbsCtx ? (oWbsCtx.getProperty("UnitCode") || "") : "";
+            if (!sWbsUnit) {
+                var sErrMsg = oBundle.getText("wbsMissingUnitError") || "Không thể import nhật ký thi công khi Hạng mục chưa có Đơn vị tính hợp lệ.";
+                MessageBox.error(sErrMsg);
+                return;
+            }
+
             var dWbsStart = oWbsCtx ? oWbsCtx.getProperty("StartDate") : null;
             var dWbsEnd = oWbsCtx ? oWbsCtx.getProperty("EndDate") : null;
             var dProjStart = oProjectModel ? oProjectModel.getProperty("/StartDate") : null;
@@ -760,6 +767,7 @@ sap.ui.define([
                 WbsId: this._sWbsId,
                 LogDate: dUtcMidnight,
                 QuantityDone: oLog.qty_done ? String(parseFloat(oLog.qty_done) || 0) : "0",
+                UnitCode: sWbsUnit, // Lấy UnitCode từ WBS gán cho Nhật ký thi công
                 WeatherAm: oLog.weather_am || "SUNNY",
                 WeatherPm: oLog.weather_pm || "SUNNY",
                 GeneralNote: oLog.general_note || "",

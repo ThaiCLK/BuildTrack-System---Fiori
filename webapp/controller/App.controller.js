@@ -369,27 +369,66 @@ sap.ui.define([
             var oData = oNewUserModel.getData();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
-            // Frontend validation
-            if (!oData.UserId || !oData.UserName || !oData.Email || !oData.AuthLevel) {
-                sap.m.MessageBox.error(oBundle.getText("errorFillRequiredFields"));
+            // Frontend validation & trimming
+            var sUserId = (oData.UserId || "").trim();
+            var sUserName = (oData.UserName || "").trim();
+            var sEmail = (oData.Email || "").trim();
+            var sAvatarUrl = (oData.AvatarUrl || "").trim();
+            var sSignatureUrl = (oData.SignatureUrl || "").trim();
+
+            if (!sUserId || !oData.AuthLevel) {
+                sap.m.MessageBox.error(oBundle.getText("errorFillRequiredFields") || "Mã người dùng và vai trò không được để trống.");
                 return;
             }
-            if (oData.isSignatureRequired && !oData.SignatureUrl) {
-                sap.m.MessageBox.error(oBundle.getText("errorFillSignatureUrl"));
+
+            if (!sUserName) {
+                sap.m.MessageBox.error("Tên người dùng không được để trống.");
                 return;
             }
+            if (sUserName.length > 100) {
+                sap.m.MessageBox.error("Tên người dùng không được vượt quá 100 ký tự.");
+                return;
+            }
+
+            if (!sEmail) {
+                sap.m.MessageBox.error("Email không được để trống.");
+                return;
+            }
+            if (sEmail.length > 50) {
+                sap.m.MessageBox.error("Email không được vượt quá 50 ký tự.");
+                return;
+            }
+
+            if (!sAvatarUrl) {
+                sap.m.MessageBox.error("Đường dẫn ảnh đại diện không được để trống.");
+                return;
+            }
+            if (sAvatarUrl.length > 100) {
+                sap.m.MessageBox.error("Đường dẫn ảnh đại diện không được vượt quá 100 ký tự.");
+                return;
+            }
+
+            if (sSignatureUrl.length > 100) {
+                sap.m.MessageBox.error("Đường dẫn chữ ký không được vượt quá 100 ký tự.");
+                return;
+            }
+            if (oData.isSignatureRequired && !sSignatureUrl) {
+                sap.m.MessageBox.error(oBundle.getText("errorFillSignatureUrl") || "Vai trò này bắt buộc phải cung cấp đường dẫn chữ ký.");
+                return;
+            }
+
             if (oData.isLeadIdRequired && !oData.LeadId) {
-                sap.m.MessageBox.error(oBundle.getText("errorFillLeadId"));
+                sap.m.MessageBox.error(oBundle.getText("errorFillLeadId") || "Kỹ sư hiện trường bắt buộc phải khai báo người phụ trách.");
                 return;
             }
 
             var oPayload = {
-                UserId: oData.UserId,
-                UserName: oData.UserName,
-                Email: oData.Email,
+                UserId: sUserId,
+                UserName: sUserName,
+                Email: sEmail,
                 AuthLevel: parseInt(oData.AuthLevel, 10),
-                AvatarUrl: oData.AvatarUrl,
-                SignatureUrl: oData.SignatureUrl,
+                AvatarUrl: sAvatarUrl,
+                SignatureUrl: sSignatureUrl,
                 LeadId: oData.LeadId,
                 Status: oData.Status
             };
