@@ -16,12 +16,23 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/ui/layout/form/SimpleForm",
+    "sap/ui/comp/valuehelpdialog/ValueHelpDialog",
+    "sap/ui/comp/filterbar/FilterBar",
+    "sap/ui/comp/filterbar/FilterGroupItem",
+    "sap/m/Token",
+    "sap/m/Column",
+    "sap/m/ColumnListItem",
+    "sap/m/Text",
+    "sap/ui/table/Column",
+    "sap/m/HBox",
     "z/bts/buildtrack551/controller/delegate/WorkSummaryDelegate",
     "sap/ui/core/Fragment",
     "z/bts/buildtrack551/controller/delegate/ApprovalLogDelegate"
 ], function (Controller, WBSDelegate, JSONModel, DateFormat,
     MessageToast, MessageBox, Dialog, Button, Label, Input,
-    Select, Item, DatePicker, TextArea, Filter, FilterOperator, SimpleForm, WorkSummaryDelegate, Fragment, ApprovalLogDelegate) {
+    Select, Item, DatePicker, TextArea, Filter, FilterOperator, SimpleForm,
+    ValueHelpDialog, FilterBar, FilterGroupItem, Token, MColumn, MColumnListItem, MText, UITableColumn, HBox,
+    WorkSummaryDelegate, Fragment, ApprovalLogDelegate) {
     "use strict";
 
     var SiteDetailController = Controller.extend("z.bts.buildtrack551.controller.SiteDetail", {
@@ -96,6 +107,332 @@ sap.ui.define([
 
         onExit: function () {
             sap.ui.getCore().getEventBus().unsubscribe("Global", "RefreshData", this._onGlobalRefresh, this);
+        },
+
+        _getUnitValueHelpApiModel: function () {
+            if (!this._oUnitValueHelpApiModel) {
+                this._oUnitValueHelpApiModel = new sap.ui.model.odata.v2.ODataModel(
+                    "/sap/opu/odata/sap/ZC_BT_UNIT_CDS/",
+                    {
+                        useBatch: false,
+                        defaultCountMode: "None"
+                    }
+                );
+            }
+
+            return this._oUnitValueHelpApiModel;
+        },
+
+        _normalizeUnitValueHelpEntry: function (oRaw, oProfile) {
+            if (!oRaw) {
+                return null;
+            }
+
+            var fnPick = function (aCandidates) {
+                for (var i = 0; i < aCandidates.length; i++) {
+                    var v = aCandidates[i];
+                    if (v !== undefined && v !== null && String(v).trim() !== "") {
+                        return String(v).trim();
+                    }
+                }
+
+                return "";
+            };
+
+            var sUnitCode = fnPick([
+                oRaw[oProfile.code],
+                oRaw.UnitCode,
+                oRaw.unit_code,
+                oRaw.UNIT_CODE,
+                oRaw.unitCode
+            ]).toUpperCase();
+
+            if (!sUnitCode) {
+                return null;
+            }
+
+            return {
+                UnitCode: sUnitCode,
+                UnitName: fnPick([
+                    oRaw[oProfile.name],
+                    oRaw.UnitName,
+                    oRaw.unit_name,
+                    oRaw.UNIT_NAME,
+                    oRaw.unitName
+                ]),
+                Status: fnPick([
+                    oRaw[oProfile.status],
+                    oRaw.Status,
+                    oRaw.status,
+                    oRaw.STATUS
+                ]).toUpperCase()
+            };
+        },
+
+        _readUnitValueHelpPage: function (mQuery, fnSuccess, fnError) {
+            var that = this;
+            var oUnitModel = this._getUnitValueHelpApiModel();
+            var aProfiles = [
+                { code: "unit_code", name: "unit_name", status: "status" },
+                { code: "UnitCode", name: "UnitName", status: "Status" },
+                { code: "UNIT_CODE", name: "UNIT_NAME", status: "STATUS" }
+            ];
+
+            var iStartProfile = (typeof this._iUnitFieldProfileIndex === "number") ? this._iUnitFieldProfileIndex : 0;
+            var iPageSize = mQuery.pageSize || 30;
+            var iTargetSkip = mQuery.skip || 0;
+            var sCodeNeedle = (mQuery.code || "").trim().toLowerCase();
+            var sNameNeedle = (mQuery.name || "").trim().toLowerCase();
+
+            var fnBuildFilters = function (oProfile) {
+                var aFilters = [];
+
+                // Always keep value help constrained to active units only.
+                aFilters.push(new Filter(oProfile.status, FilterOperator.EQ, "ACTIVE"));
+
+                return aFilters;
+            };
+
+            var fnMatchesContainsIgnoreCase = function (oItem) {
+                if (!oItem || oItem.Status !== "ACTIVE") {
+                    return false;
+                }
+
+                var sCode = (oItem.UnitCode || "").toLowerCase();
+                var sName = (oItem.UnitName || "").toLowerCase();
+
+                if (sCodeNeedle && sCode.indexOf(sCodeNeedle) === -1) {
+                    return false;
+                }
+                if (sNameNeedle && sName.indexOf(sNameNeedle) === -1) {
+                    return false;
+                }
+
+                return true;
+            };
+
+            var fnTryReadByProfile = function (iProfile) {
+                if (iProfile >= aProfiles.length) {
+                    if (fnError) {
+                        fnError();
+                    }
+                    return;
+                }
+
+                var oProfile = aProfiles[iProfile];
+                var iServerSkip = 0;
+                var iChunkSize = 200;
+                var iRemainSkip = iTargetSkip;
+                var aPageRows = [];
+
+                var fnReadChunk = function () {
+                    oUnitModel.read("/ZC_BT_UNIT", {
+                        filters: fnBuildFilters(oProfile),
+                        urlParameters: {
+                            "$top": String(iChunkSize),
+                            "$skip": String(iServerSkip)
+                        },
+                        success: function (oData) {
+                            that._iUnitFieldProfileIndex = iProfile;
+
+                            var aRaw = oData.results || [];
+                            if (aRaw.length === 0) {
+                                fnSuccess(aPageRows, false);
+                                return;
+                            }
+
+                            for (var i = 0; i < aRaw.length; i++) {
+                                var oNormalized = that._normalizeUnitValueHelpEntry(aRaw[i], oProfile);
+                                if (!fnMatchesContainsIgnoreCase(oNormalized)) {
+                                    continue;
+                                }
+
+                                if (iRemainSkip > 0) {
+                                    iRemainSkip -= 1;
+                                    continue;
+                                }
+
+                                aPageRows.push(oNormalized);
+                                if (aPageRows.length > iPageSize) {
+                                    fnSuccess(aPageRows.slice(0, iPageSize), true);
+                                    return;
+                                }
+                            }
+
+                            iServerSkip += aRaw.length;
+                            if (aRaw.length < iChunkSize) {
+                                fnSuccess(aPageRows, false);
+                                return;
+                            }
+
+                            fnReadChunk();
+                        },
+                        error: function () {
+                            fnTryReadByProfile(iProfile + 1);
+                        }
+                    });
+                };
+
+                fnReadChunk();
+            };
+
+            fnTryReadByProfile(iStartProfile);
+        },
+
+        _openUnitValueHelpDialog: function (oTargetInput) {
+            var that = this;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            var oCodeInput = new Input({ placeholder: oBundle.getText("enterKeyword") });
+            var oNameInput = new Input({ placeholder: oBundle.getText("enterKeyword") });
+            var oPrevButton = new Button({ text: oBundle.getText("unitVhPrev") });
+            var oNextButton = new Button({ text: oBundle.getText("unitVhNext") });
+            var oPageInfoText = new MText({});
+            var oPagerBox = new HBox({
+                alignItems: "Center",
+                items: [oPrevButton, oPageInfoText, oNextButton]
+            });
+
+            var oTableModel = new JSONModel([]);
+            var mState = {
+                page: 1,
+                pageSize: 30,
+                hasMore: false
+            };
+
+            var oDialog = new ValueHelpDialog({
+                title: oBundle.getText("unitVhTitle"),
+                key: "UnitCode",
+                descriptionKey: "UnitName",
+                supportMultiselect: false,
+                supportRanges: false,
+                ok: function (oEvent) {
+                    var aTokens = oEvent.getParameter("tokens") || [];
+                    var sPicked = aTokens.length > 0 ? (aTokens[0].getKey() || "") : "";
+
+                    oTargetInput.setValue((sPicked || "").toUpperCase());
+                    oTargetInput.setValueState("None");
+                    oTargetInput.setValueStateText("");
+
+                    oDialog.close();
+                },
+                cancel: function () {
+                    oDialog.close();
+                },
+                afterClose: function () {
+                    oDialog.destroy();
+                }
+            });
+
+            var fnUpdatePager = function () {
+                oPrevButton.setEnabled(mState.page > 1);
+                oNextButton.setEnabled(!!mState.hasMore);
+                oPageInfoText.setText(oBundle.getText("unitVhPageInfo", [mState.page]));
+            };
+
+            var fnLoadPage = function () {
+                oDialog.setBusy(true);
+
+                that._readUnitValueHelpPage({
+                    code: (oCodeInput.getValue() || "").trim(),
+                    name: (oNameInput.getValue() || "").trim(),
+                    pageSize: mState.pageSize,
+                    skip: (mState.page - 1) * mState.pageSize
+                }, function (aRows, bHasMore) {
+                    mState.hasMore = bHasMore;
+                    oTableModel.setData(aRows || []);
+                    fnUpdatePager();
+                    oDialog.update();
+                    oDialog.setBusy(false);
+                }, function () {
+                    oTableModel.setData([]);
+                    mState.hasMore = false;
+                    fnUpdatePager();
+                    oDialog.update();
+                    oDialog.setBusy(false);
+                    MessageBox.error(oBundle.getText("unitVhLoadError"));
+                });
+            };
+
+            oPrevButton.attachPress(function () {
+                if (mState.page <= 1) {
+                    return;
+                }
+
+                mState.page -= 1;
+                fnLoadPage();
+            });
+
+            oNextButton.attachPress(function () {
+                if (!mState.hasMore) {
+                    return;
+                }
+
+                mState.page += 1;
+                fnLoadPage();
+            });
+
+            var oFilterBar = new FilterBar({
+                useToolbar: true,
+                showGoOnFB: true,
+                search: function () {
+                    mState.page = 1;
+                    fnLoadPage();
+                }
+            });
+
+            oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                groupName: "Basic",
+                name: "UnitCode",
+                label: oBundle.getText("unitColCode"),
+                visibleInFilterBar: true,
+                control: oCodeInput
+            }));
+            oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                groupName: "Basic",
+                name: "UnitName",
+                label: oBundle.getText("unitColName"),
+                visibleInFilterBar: true,
+                control: oNameInput
+            }));
+            oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                groupName: "Basic",
+                name: "Paging",
+                label: "",
+                visibleInFilterBar: true,
+                control: oPagerBox
+            }));
+
+            oDialog.setFilterBar(oFilterBar);
+
+            var sCurrentValue = (oTargetInput.getValue() || "").trim().toUpperCase();
+            if (sCurrentValue) {
+                oDialog.setTokens([new Token({ key: sCurrentValue, text: sCurrentValue })]);
+            }
+
+            oDialog.getTableAsync().then(function (oTable) {
+                oTable.setModel(oTableModel);
+
+                if (oTable.bindRows) {
+                    oTable.addColumn(new UITableColumn({ label: new Label({ text: oBundle.getText("unitColCode") }), template: new MText({ text: "{UnitCode}" }) }));
+                    oTable.addColumn(new UITableColumn({ label: new Label({ text: oBundle.getText("unitColName") }), template: new MText({ text: "{UnitName}" }) }));
+                    oTable.bindRows("/");
+                } else {
+                    oTable.addColumn(new MColumn({ header: new Label({ text: oBundle.getText("unitColCode") }) }));
+                    oTable.addColumn(new MColumn({ header: new Label({ text: oBundle.getText("unitColName") }) }));
+                    oTable.bindItems("/", new MColumnListItem({
+                        cells: [
+                            new MText({ text: "{UnitCode}" }),
+                            new MText({ text: "{UnitName}" })
+                        ]
+                    }));
+                }
+
+                fnLoadPage();
+                oDialog.open();
+            }).catch(function () {
+                MessageBox.error(oBundle.getText("unitVhLoadError"));
+            });
         },
 
         onTabSelect: function (oEvent) {
@@ -1305,31 +1642,24 @@ sap.ui.define([
                 }
             });
 
-            var oSelectUnit = new Select({
+            var oInputUnit = new Input({
                 width: "100%",
-                visible: bIsChild
-            });
-            oSelectUnit.setModel(oModel);
-            oSelectUnit.bindItems({
-                path: "/UnitSet",
-                templateShareable: false,
-                template: new Item({
-                    key: "{UnitCode}",
-                    text: {
-                        parts: [
-                            {path: "UnitCode"},
-                            {path: "UnitName"},
-                            {path: "InternalChar"}
-                        ],
-                        formatter: function(sCode, sName, sChar) {
-                            if (!sCode) return "";
-                            var sDisplay = sCode;
-                            if (sName) sDisplay += " - " + sName;
-                            if (sChar) sDisplay += " (" + sChar + ")";
-                            return sDisplay;
-                        }
-                    }
-                })
+                visible: bIsChild,
+                placeholder: oBundle.getText("resUnitPlaceholder"),
+                showValueHelp: true,
+                valueHelpRequest: function () {
+                    that._openUnitValueHelpDialog(oInputUnit);
+                },
+                liveChange: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    oSource.setValueState("None");
+                    oSource.setValueStateText("");
+                },
+                change: function (oEvent) {
+                    var oSource = oEvent.getSource();
+                    var sNormalized = (oSource.getValue() || "").trim().toUpperCase();
+                    oSource.setValue(sNormalized);
+                }
             });
             var oSelectStatus = new Select({
                 width: "100%",
@@ -1373,7 +1703,7 @@ sap.ui.define([
 
                 var sQty = oContext.getProperty("Quantity");
                 if (sQty) oInputQty.setValue(parseFloat(sQty));
-                oSelectUnit.setSelectedKey(oContext.getProperty("UnitCode"));
+                oInputUnit.setValue((oContext.getProperty("UnitCode") || "").toUpperCase());
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
             } else {
                 sDialogTitle = sParentId
@@ -1395,7 +1725,7 @@ sap.ui.define([
                     new Label({ text: oBundle.getText("startDate"), required: true }), oPickerStart,
                     new Label({ text: oBundle.getText("endDate"), required: true }), oPickerEnd,
                     new Label({ text: oBundle.getText("quantity"), required: bIsChild, visible: bIsChild }), oInputQty,
-                    new Label({ text: oBundle.getText("unit"), visible: bIsChild }), oSelectUnit,
+                    new Label({ text: oBundle.getText("unit"), required: bIsChild, visible: bIsChild }), oInputUnit,
                     oStatusLabel, oSelectStatus
                 ]
             });
@@ -1482,6 +1812,7 @@ sap.ui.define([
                         var dEnd = oPickerEnd.getDateValue();
 
                         var sQty = oInputQty.getValue();
+                        var sUnitCode = (oInputUnit.getValue() || "").trim().toUpperCase();
 
                         // Reset states
                         if (bEdit) {
@@ -1491,6 +1822,8 @@ sap.ui.define([
                         oPickerStart.setValueState("None");
                         oPickerEnd.setValueState("None");
                         oInputQty.setValueState("None");
+                        oInputUnit.setValueState("None");
+                        oInputUnit.setValueStateText("");
 
                         var bHasError = false;
 
@@ -1553,6 +1886,13 @@ sap.ui.define([
                             } else if (isNaN(fQty) || fQty <= 0) {
                                 oInputQty.setValueState("Error");
                                 oInputQty.setValueStateText(oBundle.getText("wbsQuantityZeroError"));
+                                bHasError = true;
+                                bHasWbsDetailError = true;
+                            }
+
+                            if (!sUnitCode) {
+                                oInputUnit.setValueState("Error");
+                                oInputUnit.setValueStateText(oBundle.getText("unitValCode"));
                                 bHasError = true;
                                 bHasWbsDetailError = true;
                             }
@@ -1742,7 +2082,7 @@ sap.ui.define([
                                     StartDate: toUTC(dStart),
                                     EndDate: toUTC(dEnd),
                                     Quantity: oInputQty.getValue() || "0",
-                                    UnitCode: oSelectUnit.getSelectedKey(),
+                                    UnitCode: bIsChild ? sUnitCode : "",
                                     Status: bEdit ? (oSelectStatus.getSelectedKey() || oContext.getProperty("Status")) : "PLANNING"
                                 };
 

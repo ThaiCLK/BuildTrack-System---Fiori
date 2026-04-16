@@ -282,31 +282,26 @@
                             <items>
                                 <ColumnListItem>
                                     <cells>
-                                        <!-- CELL 1: Resource Code (ResourceId) -->
-                                        <Text text="{dailyLogModel>ResourceId}" wrapping="false"/>
-
-                                        <!-- CELL 2: Resource name select / display -->
+                                        <!-- CELL 1: Resource Code (ResourceId) with Value Help -->
                                         <VBox>
-                                            <Select
-                                                selectedKey="{dailyLogModel>ResourceId}"
-                                                forceSelection="false"
-                                                enabled="{dailyLogModel>/ui/editMode}"
+                                            <Input
+                                                value="{dailyLogModel>ResourceId}"
+                                                editable="{dailyLogModel>/ui/editMode}"
                                                 visible="{dailyLogModel>/ui/editMode}"
                                                 width="100%"
-                                                items="{
-                                                    path: '/ResourceSet',
-                                                    templateShareable: false
-                                                }"
-                                                change=".onResourceIdChange">
-                                                <core:ListItem
-                                                    key="{ResourceId}"
-                                                    text="{ResourceName}"/>
-                                            </Select>
+                                                showValueHelp="true"
+                                                valueHelpRequest=".onResourceIdValueHelpRequest"
+                                                change=".onResourceIdChange"/>
                                             <Text
-                                                text="{dailyLogModel>ResourceName}"
+                                                text="{dailyLogModel>ResourceId}"
                                                 visible="{= !${dailyLogModel>/ui/editMode} }"
                                                 wrapping="false"/>
                                         </VBox>
+
+                                        <!-- CELL 2: Resource Name -->
+                                        <Text
+                                            text="{dailyLogModel>ResourceName}"
+                                            wrapping="false"/>
 
                                         <!-- CELL 3: Resource type (localized with status) -->
                                         <ObjectStatus

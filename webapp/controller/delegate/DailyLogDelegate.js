@@ -5,8 +5,17 @@ sap.ui.define([
     "sap/ui/model/Sorter",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
+    "sap/ui/comp/valuehelpdialog/ValueHelpDialog",
+    "sap/ui/comp/filterbar/FilterBar",
+    "sap/ui/comp/filterbar/FilterGroupItem",
+    "sap/m/Token",
+    "sap/m/Column",
+    "sap/m/ColumnListItem",
+    "sap/m/Label",
+    "sap/m/Text",
+    "sap/m/Input",
     "z/bts/buildtrack551/utils/DailyLogExcelHandler"
-], function (JSONModel, Filter, FilterOperator, Sorter, MessageBox, MessageToast, DailyLogExcelHandler) {
+], function (JSONModel, Filter, FilterOperator, Sorter, MessageBox, MessageToast, ValueHelpDialog, FilterBar, FilterGroupItem, Token, Column, ColumnListItem, Label, Text, Input, DailyLogExcelHandler) {
     "use strict";
 
     return {
@@ -211,21 +220,34 @@ sap.ui.define([
                     oModel.read("/ResourceUseSet", {
                         filters: sLogId ? [new Filter("LogId", FilterOperator.EQ, sLogId)] : [],
                         success: function (oData) {
-                            oUIModel.setProperty("/resourceUseList",
-                                (oData.results || []).map(function (u) {
-                                    var oRes = mResource[u.ResourceId] || {};
-                                    return {
+                            var mRawItems = oData.results || [];
+                            var mGrouped = {};
+
+                            mRawItems.forEach(function (u) {
+                                var sResId = (u.ResourceId || "").trim().toUpperCase();
+                                if (!sResId) return;
+
+                                var oRes = mResource[sResId] || mResource[u.ResourceId] || {};
+                                var flQty = parseFloat(u.Quantity) || 0;
+
+                                if (mGrouped[sResId]) {
+                                    mGrouped[sResId].Quantity += flQty;
+                                } else {
+                                    mGrouped[sResId] = {
                                         ResourceUseId: u.ResourceUseId,
                                         ResourceId: u.ResourceId,
                                         LogId: u.LogId,
                                         WbsId: u.WbsId,
-                                        Quantity: parseFloat(u.Quantity) || 0,
+                                        Quantity: flQty,
                                         ResourceName: oRes.ResourceName || u.ResourceId,
                                         ResourceType: oRes.ResourceType || "",
                                         UnitCode: oRes.UnitCode || ""
                                     };
-                                })
-                            );
+                                }
+                            });
+
+                            var aCleanList = Object.keys(mGrouped).map(function (k) { return mGrouped[k]; });
+                            oUIModel.setProperty("/resourceUseList", aCleanList);
                         },
                         error: function () {
                             oUIModel.setProperty("/resourceUseList", []);
@@ -787,7 +809,28 @@ sap.ui.define([
             }
 
             var fnAfterLog = function (sLogId) {
-                var aResources = oLog.resources || [];
+                var aRawResources = oLog.resources || [];
+
+                // Group duplicates from Excel by ResourceId
+                var mGrouped = {};
+                aRawResources.forEach(function (res) {
+                    var sResId = (res.resource_id || "").toUpperCase().trim();
+                    if (!sResId) return;
+                    var flQty = parseFloat(res.quantity) || 0;
+                    if (mGrouped[sResId]) {
+                        mGrouped[sResId] += flQty;
+                    } else {
+                        mGrouped[sResId] = flQty;
+                    }
+                });
+
+                var aResources = Object.keys(mGrouped).map(function (sResId) {
+                    return {
+                        resource_id: sResId,
+                        quantity: mGrouped[sResId]
+                    };
+                });
+
                 if (aResources.length === 0) {
                     that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
                     return;
@@ -798,8 +841,8 @@ sap.ui.define([
                 aResources.forEach(function (res) {
                     var oResPayload = {
                         LogId: sLogId,
-                        ResourceId: res.resource_id || "",
-                        Quantity: String(parseFloat(res.quantity) || 0)
+                        ResourceId: res.resource_id,
+                        Quantity: String(res.quantity)
                     };
                     oModel.create("/ResourceUseSet", oResPayload, {
                         success: function () {
@@ -1041,52 +1084,371 @@ sap.ui.define([
             oUIModel.setProperty("/resourceUseList", aList);
         },
 
-        onResourceIdChange: function (oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            var oSelect = oEvent.getSource();
-            oSelect.setValueState("None");
-            oSelect.setValueStateText("");
+        _getResourceApiModel: function () {
+            if (!this._oResourceApiModel) {
+                this._oResourceApiModel = new sap.ui.model.odata.v2.ODataModel(
+                    "/sap/opu/odata/sap/ZC_BT_RESOURCE_CDS/",
+                    {
+                        useBatch: false,
+                        defaultCountMode: "None"
+                    }
+                );
+            }
+            return this._oResourceApiModel;
+        },
 
-            if (!oSelectedItem) { return; }
-            var sResourceId = oSelectedItem.getKey();
-            var oCtx = oEvent.getSource().getBindingContext("dailyLogModel");
-            var sPath = oCtx.getPath();
-            var currentIndex = parseInt(sPath.split("/").pop(), 10);
+        _normalizeResourceMaster: function (oRaw) {
+            if (!oRaw) { return null; }
+
+            var fnPick = function (aCandidates) {
+                for (var i = 0; i < aCandidates.length; i++) {
+                    var v = aCandidates[i];
+                    if (v !== undefined && v !== null && String(v).trim() !== "") {
+                        return String(v).trim();
+                    }
+                }
+                return "";
+            };
+
+            var sResourceId = fnPick([oRaw.ResourceId, oRaw.resource_id, oRaw.RESOURCE_ID, oRaw.resourceId]);
+            if (!sResourceId) { return null; }
+
+            return {
+                ResourceId: sResourceId,
+                ResourceName: fnPick([oRaw.ResourceName, oRaw.resource_name, oRaw.RESOURCE_NAME, oRaw.resourceName]),
+                ResourceType: fnPick([oRaw.ResourceType, oRaw.resource_type, oRaw.RESOURCE_TYPE, oRaw.resourceType]).toUpperCase(),
+                UnitCode: fnPick([oRaw.UnitCode, oRaw.unit_code, oRaw.UNIT_CODE, oRaw.unitCode])
+            };
+        },
+
+        _readResourceMasterList: function (fnSuccess, fnError) {
+            var that = this;
+
+            var fnNormalizeList = function (aRaw) {
+                var mSeen = {};
+                var aOut = [];
+
+                (aRaw || []).forEach(function (oItem) {
+                    var oNormalized = that._normalizeResourceMaster(oItem);
+                    if (!oNormalized || !oNormalized.ResourceId) { return; }
+
+                    var sDedupKey = oNormalized.ResourceId.toUpperCase();
+                    if (mSeen[sDedupKey]) { return; }
+
+                    mSeen[sDedupKey] = true;
+                    aOut.push(oNormalized);
+                });
+
+                aOut.sort(function (a, b) {
+                    return a.ResourceId.localeCompare(b.ResourceId);
+                });
+
+                return aOut;
+            };
+
+            var fnReadFallback = function () {
+                that.getOwnerComponent().getModel().read("/ResourceSet", {
+                    success: function (oData) {
+                        fnSuccess(fnNormalizeList(oData.results || []));
+                    },
+                    error: function (oError) {
+                        if (fnError) {
+                            fnError(oError);
+                        }
+                    }
+                });
+            };
+
+            this._getResourceApiModel().read("/ZC_BT_RESOURCE", {
+                success: function (oData) {
+                    var aItems = fnNormalizeList(oData.results || []);
+                    if (aItems.length > 0) {
+                        fnSuccess(aItems);
+                        return;
+                    }
+
+                    fnReadFallback();
+                },
+                error: function () {
+                    fnReadFallback();
+                }
+            });
+        },
+
+        _filterResourceValueHelpItems: function (aItems, mFilter) {
+            var sId = (mFilter.id || "").toLowerCase().trim();
+            var sName = (mFilter.name || "").toLowerCase().trim();
+            var sType = (mFilter.type || "").toLowerCase().trim();
+            var sUnit = (mFilter.unit || "").toLowerCase().trim();
+
+            return (aItems || []).filter(function (oItem) {
+                var bIdOk = !sId || (oItem.ResourceId || "").toLowerCase().indexOf(sId) !== -1;
+                var bNameOk = !sName || (oItem.ResourceName || "").toLowerCase().indexOf(sName) !== -1;
+                var bTypeOk = !sType || (oItem.ResourceType || "").toLowerCase().indexOf(sType) !== -1;
+                var bUnitOk = !sUnit || (oItem.UnitCode || "").toLowerCase().indexOf(sUnit) !== -1;
+
+                return bIdOk && bNameOk && bTypeOk && bUnitOk;
+            });
+        },
+
+        _applyResourceInfoToRow: function (sRowPath, oResource) {
             var oUIModel = this.getView().getModel("dailyLogModel");
+            oUIModel.setProperty(sRowPath + "/ResourceId", oResource.ResourceId || "");
+            oUIModel.setProperty(sRowPath + "/ResourceName", oResource.ResourceName || "");
+            oUIModel.setProperty(sRowPath + "/ResourceType", oResource.ResourceType || "");
+            oUIModel.setProperty(sRowPath + "/UnitCode", oResource.UnitCode || "");
+        },
 
+        _applyAndMergeResourceInfo: function (sRowPath, oPicked, oInputControl) {
+            if (!oPicked) return;
+
+            var currentIndex = parseInt(sRowPath.split("/").pop(), 10);
+            var oUIModel = this.getView().getModel("dailyLogModel");
             var aList = oUIModel.getProperty("/resourceUseList") || [];
             var mergedIndex = -1;
 
-            // Tìm xem tài nguyên này ĐÃ CÓ ở các dòng khác hay chưa
-            for (var i = 0; i < aList.length; i++) {
-                if (i !== currentIndex && aList[i].ResourceId === sResourceId) {
-                    mergedIndex = i;
+            // Check if resource already exists in other rows
+            for (var j = 0; j < aList.length; j++) {
+                if (j !== currentIndex && (aList[j].ResourceId || "").toUpperCase() === oPicked.ResourceId.toUpperCase()) {
+                    mergedIndex = j;
                     break;
                 }
             }
 
             if (mergedIndex !== -1) {
-                // Tự động cộng dồn
+                // Merge quantities automatically
                 var currentQty = parseFloat(aList[currentIndex].Quantity) || 1;
                 var existingQty = parseFloat(aList[mergedIndex].Quantity) || 0;
                 aList[mergedIndex].Quantity = existingQty + currentQty;
 
-                // Xóa dòng bị dư thừa đi
+                // Remove duplicate row
                 aList.splice(currentIndex, 1);
-                oUIModel.setProperty("/resourceUseList", aList);
+
+                // Force fresh array reference to guarantee UI5 update
+                oUIModel.setProperty("/resourceUseList", aList.slice());
+                oUIModel.refresh(true);
 
                 sap.m.MessageToast.show("Phát hiện tài nguyên đã tồn tại. Đã tự động gộp số lượng!");
                 return;
             }
 
-            var oODataModel = this.getOwnerComponent().getModel();
-            oODataModel.read("/ResourceSet('" + sResourceId + "')", {
-                success: function (oRes) {
-                    oUIModel.setProperty(sPath + "/ResourceId", oRes.ResourceId);
-                    oUIModel.setProperty(sPath + "/ResourceName", oRes.ResourceName || "");
-                    oUIModel.setProperty(sPath + "/ResourceType", oRes.ResourceType || "");
-                    oUIModel.setProperty(sPath + "/UnitCode", oRes.UnitCode || "");
+            this._applyResourceInfoToRow(sRowPath, oPicked);
+            if (oInputControl) {
+                oInputControl.setValue(oPicked.ResourceId);
+                oInputControl.setValueState("None");
+                oInputControl.setValueStateText("");
+            }
+        },
+
+        _openResourceIdValueHelp: function (sRowPath, oInputControl) {
+            var that = this;
+            var oView = this.getView();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (oView) {
+                oView.setBusyIndicatorDelay(0);
+                oView.setBusy(true);
+            }
+
+            var fnReleaseBusy = function () {
+                if (oView) {
+                    oView.setBusy(false);
                 }
+            };
+
+            this._readResourceMasterList(function (aItems) {
+                var aAllItems = aItems || [];
+                var oTableModel = new JSONModel(aAllItems.slice());
+
+                var oResourceIdFilter = new Input({ placeholder: oBundle.getText("enterKeyword") });
+                var oResourceNameFilter = new Input({ placeholder: oBundle.getText("enterKeyword") });
+                var oResourceTypeFilter = new Input({ placeholder: oBundle.getText("enterKeyword") });
+                var oUnitFilter = new Input({ placeholder: oBundle.getText("enterKeyword") });
+
+                var oDialog = new ValueHelpDialog({
+                    title: oBundle.getText("resourceCode"),
+                    key: "ResourceId",
+                    descriptionKey: "ResourceName",
+                    supportMultiselect: false,
+                    supportRanges: false,
+                    ok: function (oEvent) {
+                        var aTokens = oEvent.getParameter("tokens") || [];
+                        if (aTokens.length > 0) {
+                            var sPickedId = aTokens[0].getKey();
+                            var oPicked = null;
+
+                            for (var i = 0; i < aAllItems.length; i++) {
+                                if (aAllItems[i].ResourceId === sPickedId) {
+                                    oPicked = aAllItems[i];
+                                    break;
+                                }
+                            }
+
+                            if (oPicked) {
+                                that._applyAndMergeResourceInfo(sRowPath, oPicked, oInputControl);
+                            }
+                        }
+
+                        oDialog.close();
+                    },
+                    cancel: function () {
+                        oDialog.close();
+                    },
+                    afterClose: function () {
+                        oDialog.destroy();
+                    }
+                });
+
+                var fnApplyFilters = function () {
+                    oTableModel.setData(that._filterResourceValueHelpItems(aAllItems, {
+                        id: oResourceIdFilter.getValue(),
+                        name: oResourceNameFilter.getValue(),
+                        type: oResourceTypeFilter.getValue(),
+                        unit: oUnitFilter.getValue()
+                    }));
+                    oDialog.update();
+                };
+
+                var oFilterBar = new FilterBar({
+                    useToolbar: true,
+                    showGoOnFB: true,
+                    search: fnApplyFilters
+                });
+
+                oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                    groupName: "Basic",
+                    name: "ResourceId",
+                    label: oBundle.getText("resourceCode"),
+                    visibleInFilterBar: true,
+                    control: oResourceIdFilter
+                }));
+                oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                    groupName: "Basic",
+                    name: "ResourceName",
+                    label: oBundle.getText("resourceName"),
+                    visibleInFilterBar: true,
+                    control: oResourceNameFilter
+                }));
+                oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                    groupName: "Basic",
+                    name: "ResourceType",
+                    label: oBundle.getText("resourceType"),
+                    visibleInFilterBar: true,
+                    control: oResourceTypeFilter
+                }));
+                oFilterBar.addFilterGroupItem(new FilterGroupItem({
+                    groupName: "Basic",
+                    name: "UnitCode",
+                    label: oBundle.getText("resourceUnit"),
+                    visibleInFilterBar: true,
+                    control: oUnitFilter
+                }));
+
+                oDialog.setFilterBar(oFilterBar);
+
+                var sCurrentId = oInputControl ? (oInputControl.getValue() || "").trim() : "";
+                if (sCurrentId) {
+                    oDialog.setTokens([
+                        new Token({ key: sCurrentId, text: sCurrentId })
+                    ]);
+                }
+
+                oDialog.getTableAsync().then(function (oTable) {
+                    oTable.setModel(oTableModel);
+
+                    if (oTable.bindRows) {
+                        oTable.addColumn(new sap.ui.table.Column({ label: new Label({ text: oBundle.getText("resourceCode") }), template: new Text({ text: "{ResourceId}" }) }));
+                        oTable.addColumn(new sap.ui.table.Column({ label: new Label({ text: oBundle.getText("resourceName") }), template: new Text({ text: "{ResourceName}" }) }));
+                        oTable.addColumn(new sap.ui.table.Column({ label: new Label({ text: oBundle.getText("resourceType") }), template: new Text({ text: "{ResourceType}" }) }));
+                        oTable.addColumn(new sap.ui.table.Column({ label: new Label({ text: oBundle.getText("resourceUnit") }), template: new Text({ text: "{UnitCode}" }) }));
+                        oTable.bindRows("/");
+                    } else {
+                        oTable.addColumn(new Column({ header: new Label({ text: oBundle.getText("resourceCode") }) }));
+                        oTable.addColumn(new Column({ header: new Label({ text: oBundle.getText("resourceName") }) }));
+                        oTable.addColumn(new Column({ header: new Label({ text: oBundle.getText("resourceType") }) }));
+                        oTable.addColumn(new Column({ header: new Label({ text: oBundle.getText("resourceUnit") }) }));
+
+                        oTable.bindItems("/", new ColumnListItem({
+                            cells: [
+                                new Text({ text: "{ResourceId}" }),
+                                new Text({ text: "{ResourceName}" }),
+                                new Text({ text: "{ResourceType}" }),
+                                new Text({ text: "{UnitCode}" })
+                            ]
+                        }));
+                    }
+
+                    oDialog.update();
+                    fnReleaseBusy();
+                }).catch(function () {
+                    fnReleaseBusy();
+                });
+
+                oDialog.open();
+            }, function () {
+                fnReleaseBusy();
+                MessageBox.error(oBundle.getText("selectResourceError"));
+            });
+        },
+
+        onResourceIdValueHelpRequest: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var oCtx = oInput.getBindingContext("dailyLogModel");
+            if (!oCtx) { return; }
+
+            this._openResourceIdValueHelp(oCtx.getPath(), oInput);
+        },
+
+        onResourceIdChange: function (oEvent) {
+            var that = this;
+            var oInput = oEvent.getSource();
+            var oCtx = oInput.getBindingContext("dailyLogModel");
+            if (!oCtx) { return; }
+
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var sRawResourceId = (oInput.getValue() || "").trim();
+
+            oInput.setValueState("None");
+            oInput.setValueStateText("");
+
+            if (!sRawResourceId) {
+                this._applyResourceInfoToRow(oCtx.getPath(), {
+                    ResourceId: "",
+                    ResourceName: "",
+                    ResourceType: "",
+                    UnitCode: ""
+                });
+                return;
+            }
+
+            this._readResourceMasterList(function (aItems) {
+                var sNeedle = sRawResourceId.toUpperCase();
+                var oPicked = null;
+
+                for (var i = 0; i < aItems.length; i++) {
+                    if ((aItems[i].ResourceId || "").toUpperCase() === sNeedle) {
+                        oPicked = aItems[i];
+                        break;
+                    }
+                }
+
+                if (oPicked) {
+                    that._applyAndMergeResourceInfo(oCtx.getPath(), oPicked, oInput);
+                    return;
+                }
+
+                that._applyResourceInfoToRow(oCtx.getPath(), {
+                    ResourceId: sRawResourceId,
+                    ResourceName: "",
+                    ResourceType: "",
+                    UnitCode: ""
+                });
+
+                oInput.setValueState("Error");
+                oInput.setValueStateText(oBundle.getText("selectResourceError"));
+            }, function () {
+                oInput.setValueState("Error");
+                oInput.setValueStateText(oBundle.getText("selectResourceError"));
             });
         },
 
@@ -1221,16 +1583,21 @@ sap.ui.define([
 
             aItems.forEach(function (oItem) {
                 var aCells = oItem.getCells();
-                // CELL 2 contains a VBox -> Select (index 0)
-                var oSelectBox = aCells[1].getItems()[0];
+                // CELL 1 contains a VBox -> Input (index 0)
+                var oCodeInput = aCells[0].getItems()[0];
                 // CELL 4 contains StepInput
                 var oStepInput = aCells[3];
 
-                var sResourceId = oSelectBox.getSelectedKey();
+                var oRowCtx = oItem.getBindingContext("dailyLogModel");
+                var oRowData = oRowCtx ? (oRowCtx.getObject() || {}) : {};
+
+                var sResourceId = String(oRowData.ResourceId || "").trim();
                 if (!sResourceId) {
                     bMissingResourceInfo = true;
-                    oSelectBox.setValueState("Error");
-                    oSelectBox.setValueStateText(oBundle.getText("selectResourceError"));
+                    if (oCodeInput) {
+                        oCodeInput.setValueState("Error");
+                        oCodeInput.setValueStateText(oBundle.getText("selectResourceError"));
+                    }
                 }
 
                 var fResQty = parseFloat(oStepInput.getValue());
@@ -1276,7 +1643,24 @@ sap.ui.define([
             var fnContinueSave = function (bIsMerging) {
                 oUIModel.setProperty("/ui/busy", true);
                 var fnAfterLog = function (sLogId) {
-                    that._saveResourceUse(sLogId, aResourceUse, function () {
+                    // LAST DEFENSE: Group duplicates before saving to OData
+                    var mGrouped = {};
+                    aResourceUse.forEach(function (res) {
+                        var sResId = (res.ResourceId || "").trim().toUpperCase();
+                        if (!sResId) return;
+                        var flQty = parseFloat(res.Quantity) || 0;
+                        if (mGrouped[sResId]) {
+                            mGrouped[sResId].Quantity += flQty;
+                        } else {
+                            mGrouped[sResId] = {
+                                ResourceId: sResId,
+                                Quantity: flQty
+                            };
+                        }
+                    });
+                    var aCleanResourceUse = Object.keys(mGrouped).map(function (k) { return mGrouped[k]; });
+
+                    that._saveResourceUse(sLogId, aCleanResourceUse, function () {
                         oUIModel.setProperty("/ui/busy", false);
                         oUIModel.setProperty("/ui/editMode", false);
                         oUIModel.setProperty("/ui/isNewRecord", false);
@@ -1414,6 +1798,7 @@ sap.ui.define([
             // EndActual lấy max(LogDate) của tất cả DailyLog thuộc WBS này.
             var oModel = this.getOwnerComponent().getModel();
             var oView = this.getView();
+            var oBundle = oView.getModel("i18n").getResourceBundle();
             var oBinding = oView.getElementBinding();
 
             oModel.read("/DailyLogSet", {
@@ -1431,17 +1816,22 @@ sap.ui.define([
                         var dMax = new Date(max);
                         return (dLog > dMax) ? log.LogDate : max;
                     }, aLogs[0].LogDate);
-                    
+
                     // Giữ phần time offset cho OData V2
                     maxDate = new Date(maxDate);
                     maxDate.setMinutes(maxDate.getMinutes() - maxDate.getTimezoneOffset());
-                    
-                    // Chỉ cập nhật EndActual
+
+                    // Chỉ cập nhật EndActual - Xử lý lỗi Silent Fail nếu thiếu quyền (SY/530)
                     oModel.update("/WBSSet(guid'" + sWbsId + "')", { EndActual: maxDate }, {
                         success: function () {
                             if (oBinding) { oBinding.refresh(true); }
                         },
-                        error: function () {
+                        error: function (oError) {
+                            // Nếu lỗi là do phân quyền (400 - SY/530), thầm lặng bỏ qua
+                            if (oError && (oError.statusCode === "400" || oError.statusCode === 400)) {
+                                console.warn("WBS Update failed (likely permission issue). Skipping silently.");
+                                MessageToast.show(oBundle.getText("wbsUpdateStatusWait"), { duration: 2000 });
+                            }
                             if (oBinding) { oBinding.refresh(true); }
                         }
                     });
