@@ -491,9 +491,14 @@ sap.ui.define([
             var sWbsId = oArgs.wbsId || "";
             var sSiteId = oArgs.site_id || "";
 
-            // PRE-CHECK: Case-insensitive comparison is critical for GUIDs in SAP
-            var sCurrentId = (this._sWbsId || "").toLowerCase();
-            var sNewId = sWbsId.toLowerCase();
+            // Helper to normalize GUIDs (strip guid'...' and lowercase)
+            var fnNormalize = function(s) {
+                if (!s) return "";
+                return s.replace(/^guid'/i, "").replace(/'$/, "").toLowerCase();
+            };
+
+            var sCurrentId = fnNormalize(this._sWbsId);
+            var sNewId = fnNormalize(sWbsId);
             var bIsNewContext = (sCurrentId !== sNewId);
             
             this._sWbsId = sWbsId;
@@ -501,7 +506,7 @@ sap.ui.define([
 
             // Reset models if it's a new context
             if (bIsNewContext) {
-                this.onCancelWbs(); // This might reset state, only do if truly new
+                this.onCancelWbs(); 
                 var oWSModel = this.getView().getModel("workSummaryModel");
                 if (oWSModel) {
                     oWSModel.setData({ TotalQtyDone: "0", Children: [], WbsId: sWbsId });

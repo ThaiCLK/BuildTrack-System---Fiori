@@ -1749,43 +1749,43 @@ sap.ui.define([
             var that = this;
             
             var fnActualSubmit = function(aOldItems) {
-                var iTotal = aResUse.length + (bAppendOnly ? 0 : aOldItems.length);
-                var iDone = 0;
+                var aQueue = [];
+                
+                // 1. Queue Deletions (if not append-only)
+                if (!bAppendOnly && aOldItems && aOldItems.length > 0) {
+                    aOldItems.forEach(function(u) {
+                        aQueue.push({ type: "DELETE", path: "/ResourceUseSet(guid'" + u.ResourceUseId + "')" });
+                    });
+                }
 
-                var fnCheckDone = function() {
-                    iDone++;
-                    if (iDone >= iTotal) {
+                // 2. Queue Creations
+                aResUse.forEach(function(u) {
+                    aQueue.push({ 
+                        type: "CREATE", 
+                        path: "/ResourceUseSet", 
+                        payload: {
+                            ResourceId: u.ResourceId,
+                            LogId: sLogId,
+                            Quantity: String(parseFloat(u.Quantity) || 0)
+                        }
+                    });
+                });
+
+                // 3. Recursive Process - MUST wait for previous to avoid 500 error
+                var processQueue = function() {
+                    if (aQueue.length === 0) {
                         fnSuccess();
+                        return;
+                    }
+                    var oTask = aQueue.shift();
+                    if (oTask.type === "DELETE") {
+                        oModel.remove(oTask.path, { success: processQueue, error: processQueue });
+                    } else {
+                        oModel.create(oTask.path, oTask.payload, { success: processQueue, error: processQueue });
                     }
                 };
 
-                if (iTotal === 0) {
-                    fnSuccess();
-                    return;
-                }
-
-                // 1. Deletions (if not append-only)
-                if (!bAppendOnly && aOldItems && aOldItems.length > 0) {
-                    aOldItems.forEach(function(u) {
-                        oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
-                            success: fnCheckDone,
-                            error: fnCheckDone
-                        });
-                    });
-                }
-
-                // 2. Creations
-                aResUse.forEach(function(u) {
-                    var oPayload = {
-                        ResourceId: u.ResourceId,
-                        LogId: sLogId,
-                        Quantity: String(parseFloat(u.Quantity) || 0)
-                    };
-                    oModel.create("/ResourceUseSet", oPayload, {
-                        success: fnCheckDone,
-                        error: fnCheckDone
-                    });
-                });
+                processQueue();
             };
 
             // Fetch existing if not append-only
