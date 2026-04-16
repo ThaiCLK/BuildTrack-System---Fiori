@@ -472,9 +472,12 @@ sap.ui.define([
                 });
             }
 
-            // Reset Tab Selection to Info tab
+            // Only Reset Tab Selection if navigating to a DIFFERENT WBS
+            var bIsNewContext = (this._sWbsId !== sWbsId);
+            this._sWbsId = sWbsId; // update ID tracker
+
             var oIconTabBar = this.byId("idIconTabBarWBS");
-            if (oIconTabBar) {
+            if (oIconTabBar && bIsNewContext) {
                 oIconTabBar.setSelectedKey("infoTab");
             }
 

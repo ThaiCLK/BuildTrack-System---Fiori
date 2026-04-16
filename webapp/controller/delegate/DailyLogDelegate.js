@@ -1746,51 +1746,61 @@ sap.ui.define([
 
         _saveResourceUse: function (sLogId, aResUse, fnSuccess, bAppendOnly) {
             var oModel = this.getOwnerComponent().getModel();
+            var sGroupId = "resourceBatch_" + new Date().getTime();
+            
+            // Add group to deferred groups to prevent immediate individual requests
+            var aGroups = oModel.getDeferredGroups();
+            if (aGroups.indexOf(sGroupId) === -1) {
+                aGroups.push(sGroupId);
+                oModel.setDeferredGroups(aGroups);
+            }
 
-            var fnSequentialProcess = function (aOld, aNew) {
-                var iOldIdx = 0;
-                var fnProcessOld = function () {
-                    if (bAppendOnly || iOldIdx >= aOld.length) {
-                        fnProcessNew();
-                        return;
-                    }
-                    var u = aOld[iOldIdx++];
-                    oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
-                        success: fnProcessOld,
-                        error: fnProcessOld
+            var that = this;
+            var fnActualBatchSubmit = function(aOldItems) {
+                // 1. Queue Deletions (unless appending)
+                if (!bAppendOnly && aOldItems && aOldItems.length > 0) {
+                    aOldItems.forEach(function(u) {
+                        oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", { groupId: sGroupId });
                     });
-                };
+                }
 
-                var iNewIdx = 0;
-                var fnProcessNew = function () {
-                    if (iNewIdx >= aNew.length) {
-                        fnSuccess();
-                        return;
-                    }
-                    var u = aNew[iNewIdx++];
+                // 2. Queue Creations
+                aResUse.forEach(function(u) {
                     var oPayload = {
                         ResourceId: u.ResourceId,
                         LogId: sLogId,
                         Quantity: String(parseFloat(u.Quantity) || 0)
                     };
-                    oModel.create("/ResourceUseSet", oPayload, {
-                        success: fnProcessNew,
-                        error: fnProcessNew
-                    });
-                };
+                    oModel.create("/ResourceUseSet", oPayload, { groupId: sGroupId });
+                });
 
-                fnProcessOld();
+                // 3. Submit all changes in ONE request
+                oModel.submitChanges({
+                    groupId: sGroupId,
+                    success: function() {
+                        fnSuccess();
+                    },
+                    error: function(oError) {
+                        console.error("Batch save failed:", oError);
+                        fnSuccess(); // Continue anyway but log error
+                    }
+                });
             };
 
-            oModel.read("/ResourceUseSet", {
-                filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
-                success: function (oData) {
-                    fnSequentialProcess(oData.results || [], aResUse);
-                },
-                error: function () {
-                    fnSequentialProcess([], aResUse);
-                }
-            });
+            // Fetch existing if not append-only
+            if (bAppendOnly) {
+                fnActualBatchSubmit([]);
+            } else {
+                oModel.read("/ResourceUseSet", {
+                    filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
+                    success: function (oData) {
+                        fnActualBatchSubmit(oData.results || []);
+                    },
+                    error: function () {
+                        fnActualBatchSubmit([]);
+                    }
+                });
+            }
         },
 
         _updateWbsActualDates: function (sWbsId) {
