@@ -438,6 +438,12 @@ sap.ui.define([
         onTabSelect: function (oEvent) {
             var sKey = oEvent.getParameter("key");
             this.onCancelSite(); // Resets editMode and any pending OData model changes
+
+            // Clear selections when switching tabs
+            var oWbsTable = this.byId("wbsTreeTable");
+            if (oWbsTable) { oWbsTable.clearSelection(); }
+            var oPendingTable = this.byId("pendingApprovalTable");
+            if (oPendingTable) { oPendingTable.removeSelections(true); }
         },
 
         onNavToDashboard: function () {
@@ -547,6 +553,13 @@ sap.ui.define([
             });
 
             this.onCancelSite();
+
+            // Clear selections on navigation
+            var oWbsTable = this.byId("wbsTreeTable");
+            if (oWbsTable) { oWbsTable.clearSelection(); }
+            var oPendingTable = this.byId("pendingApprovalTable");
+            if (oPendingTable) { oPendingTable.removeSelections(true); }
+
             this._loadWbsData();
         },
 
@@ -562,6 +575,10 @@ sap.ui.define([
         _loadWbsData: function () {
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
+            var oView = this.getView();
+            
+            oView.setBusy(true);
+
             oModel.read("/SiteSet(guid'" + this._sCurrentSiteId + "')/ToWbs", {
                 urlParameters: {
                     "$expand": "ToSubWbs,ToSubWbs/ToApprovalLog,ToApprovalLog",
@@ -574,10 +591,9 @@ sap.ui.define([
                 },
                 success: function (oData) {
                     var aRawResults = oData.results || [];
-
-                    // Flatten hierarchical results from $expand=ToSubWbs if they aren't already part of the flat results set
                     var aResults = [];
                     var mSeen = {};
+                    
                     var fnFlatten = function (aItems) {
                         if (!aItems) return;
                         aItems.forEach(function (oItem) {
@@ -592,7 +608,7 @@ sap.ui.define([
                     };
                     fnFlatten(aRawResults);
 
-                    // Sort aResults by StartDate before transforming to tree to ensure proper ordering at all levels
+                    // Sort results
                     aResults.sort(function (a, b) {
                         var parseDate = function (val) {
                             if (!val) return 0;
@@ -601,187 +617,206 @@ sap.ui.define([
                             }
                             return new Date(val).getTime() || 0;
                         };
-
                         var tA = parseDate(a.StartDate);
                         var tB = parseDate(b.StartDate);
-
-                        if (tA !== tB) {
-                            return tA - tB;
-                        }
-
-                        var sNameA = a.WbsName || "";
-                        var sNameB = b.WbsName || "";
-                        return sNameA.localeCompare(sNameB);
+                        if (tA !== tB) return tA - tB;
+                        return (a.WbsName || "").localeCompare(b.WbsName || "");
                     });
 
-                    // Sync actual dates from DailyLog before building Gantt
-                    oModel.read("/DailyLogSet", {
-                        success: function (oLogData) {
-                            var aLogs = oLogData.results || [];
+                    // 1. FAST RENDERING: Render Base WBS Tree initially without DailyLogs to unblock UI immediately
+                    that._finalizeWbsLoad(aResults);
 
-                            // First pass: patch leaf WBS with min/max log dates
-                            aResults.forEach(function (item) {
-                                var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
-                                var dMin = null, dMax = null;
-                                aLogs.forEach(function (l) {
-                                    if ((l.WbsId || "").toLowerCase().replace(/-/g, "") === sId) {
-                                        var d = (l.LogDate instanceof Date) ? l.LogDate : new Date(l.LogDate);
-                                        if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
-                                            if (!dMin || d < dMin) dMin = d;
-                                            if (!dMax || d > dMax) dMax = d;
-                                        }
-                                    }
-                                });
-                                // Always overwrite: use log dates if found, null if not
-                                item.StartActual = dMin;
-                                item.EndActual = dMax;
-                            });
-
-                            // Second pass: aggregate parent dates from children
-                            aResults.forEach(function (item) {
-                                var vPid = item.ParentId;
-                                if (!vPid || String(vPid).replace(/-/g, "").replace(/0/g, "") === "") {
-                                    var sId = (item.WbsId || "").toLowerCase().replace(/-/g, "");
-                                    var pMin = item.StartActual || null;
-                                    var pMax = item.EndActual || null;
-                                    aResults.forEach(function (c) {
-                                        if ((c.ParentId || "").toLowerCase().replace(/-/g, "") === sId) {
-                                            if (c.StartActual && (!pMin || c.StartActual < pMin)) pMin = c.StartActual;
-                                            if (c.EndActual && (!pMax || c.EndActual > pMax)) pMax = c.EndActual;
-                                        }
-                                    });
-                                    if (pMin) item.StartActual = pMin;
-                                    if (pMax) item.EndActual = pMax;
-                                }
-                            });
-
-                            var aTreeData = that._transformToTree(aResults);
-                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
-                            that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
-                            that.getView().getModel("viewConfig").setData(oGanttConfig);
-                        },
-                        error: function () {
-                            // Fallback: build Gantt without log sync
-                            var aTreeData = that._transformToTree(aResults);
-                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
-                            that.getView().getModel("viewData").setProperty("/WBS", aTreeData);
-                            that.getView().getModel("viewConfig").setData(oGanttConfig);
-                        }
-                    });
-
-
-                    // 1. Filter items that are globally in a PENDING status
-                    var aAllPending = aResults.filter(function (item) {
-                        return item.Status === "PENDING_OPEN" || item.Status === "PENDING_CLOSE";
-                    });
-
-                    // Build a set of pending WbsIds for quick lookup
-                    var oPendingIds = {};
-                    aAllPending.forEach(function (w) { oPendingIds[w.WbsId] = true; });
-
-                    var aGlobalPending = aAllPending.filter(function (item) {
-                        if (!item.ParentId) return true;
-                        var sPId = String(item.ParentId);
-                        var sParent = sPId.replace(/-/g, "").toLowerCase();
-                        if (/^0+$/.test(sParent) || sParent === "null" || sParent === "undefined") return true; // zero GUID or null = no real parent
-                        // Check if this WBS has its own ApprovalLog entry (owns a workflow)
-                        var aItemLogs = (item.ToApprovalLog && item.ToApprovalLog.results) ? item.ToApprovalLog.results : [];
-                        var bHasOwnLog = aItemLogs.some(function (l) {
-                            var sAct = (l.Action || "").toUpperCase();
-                            // A "GỬI YÊU CẦU" log indicates this WBS was independently submitted
-                            return sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1;
-                        });
-                        if (bHasOwnLog) return true;
-                        // If parent is also pending, exclude this child
-                        var sNormParent = item.ParentId.toLowerCase().replace(/-/g, "");
-                        var bParentPending = aAllPending.some(function (p) {
-                            return p.WbsId.toLowerCase().replace(/-/g, "") === sNormParent;
-                        });
-                        return !bParentPending;
-                    });
-
-                    if (aGlobalPending.length === 0) {
-                        that.getView().getModel("viewData").setProperty("/pendingOpenWBS", []);
-                        that.getView().getModel("viewData").setProperty("/pendingCloseWBS", []);
-                        that.getView().getModel("viewData").setProperty("/pendingWBS", []);
-                        return;
+                    // 2. Fetch all Daily Logs for these WBS items in the background
+                    var aWbsIds = aResults.map(function (w) { return w.WbsId; });
+                    if (aWbsIds.length === 0) {
+                        return; // Nothing to fetch
                     }
 
-                    // Asynchronously filter items by checking if the current user has actionability (WorkItemId)
-                    var aActionablePending = [];
-                    var iChecked = 0;
-                    var iPendingCount = aGlobalPending.length;
-
-                    var oViewData = that.getView().getModel("viewData");
-
-                    var fnCheckDone = function () {
-                        iChecked++;
-                        if (iChecked === iPendingCount) {
-                            var aOpen = aActionablePending.filter(function (w) { return w.Status.indexOf("OPEN") !== -1; });
-                            var aClose = aActionablePending.filter(function (w) { return w.Status.indexOf("CLOSE") !== -1; });
-
-                            oViewData.setProperty("/pendingOpenWBS", aOpen);
-                            oViewData.setProperty("/pendingCloseWBS", aClose);
-                            oViewData.setProperty("/pendingWBS", aActionablePending);
-                        }
-                    };
-
-                    aGlobalPending.forEach(function (wbs) {
-                        // Extract SenderName and SendTime
-                        var aLogs = (wbs.ToApprovalLog && wbs.ToApprovalLog.results) ? wbs.ToApprovalLog.results : [];
-                        if (aLogs.length > 0) {
-                            var aSortedLogs = aLogs.slice().sort(function (a, b) {
-                                var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
-                                var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
-                                return tB - tA;
-                            });
-
-                            var oSenderLog = aSortedLogs.find(function (l) {
-                                var sAct = (l.Action || "").toUpperCase();
-                                return sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "0000" || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
-                            });
-
-                            if (!oSenderLog) oSenderLog = aSortedLogs[aSortedLogs.length - 1]; // Fallback to oldest log
-
-                            if (oSenderLog) {
-                                wbs.SenderName = oSenderLog.ActionBy || "";
-                                var sTime = oSenderLog.CreatedTimestamp;
-                                if (sTime) {
-                                    if (typeof sTime === 'string' && sTime.indexOf('/Date(') === 0) {
-                                        wbs.SendTime = new Date(parseInt(sTime.substr(6)));
-                                    } else {
-                                        wbs.SendTime = new Date(sTime);
-                                    }
-                                } else {
-                                    wbs.SendTime = null;
-                                }
-                            }
-                        }
-
-                        var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
-                        var sChangeSetId = "CheckDecision_" + wbs.WbsId.replace(/-/g, ""); // Force split into standalone changesets to satisfy SAP Gateway restrictions
-                        oModel.callFunction("/CheckDecision", {
-                            method: "POST",
-                            changeSetId: sChangeSetId,
-                            urlParameters: { WBS_IDS: wbs.WbsId, ApprovalType: sType },
-                            success: function (oResponse) {
-                                var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision) || oResponse;
-                                var sWiId = (oResult && oResult.WORKITEM_ID) ? oResult.WORKITEM_ID : "";
-                                // If BE returns a WorkItemId, the user has the right to approve it right now
-                                if (sWiId && sWiId !== "" && sWiId !== "000000000000") {
-                                    aActionablePending.push(wbs);
-                                }
-                                fnCheckDone();
-                            },
-                            error: function () {
-                                fnCheckDone(); // On error, assume non-actionable and skip
-                            }
-                        });
+                    // Tối ưu Fiori: Nhóm thành mảng Filter OR
+                    var aFilters = aWbsIds.map(function (sId) {
+                        return new Filter("WbsId", FilterOperator.EQ, sId);
                     });
 
+                    oModel.read("/DailyLogSet", {
+                        filters: [new Filter({ filters: aFilters, and: false })],
+                        success: function (oLogData) {
+                            var aLogs = oLogData.results || [];
+                            var mLogStats = {};
+                            aLogs.forEach(function (oLog) {
+                                var sId = oLog.WbsId;
+                                if (!mLogStats[sId]) mLogStats[sId] = { min: null, max: null };
+                                var dLog = (oLog.LogDate instanceof Date) ? oLog.LogDate : new Date(oLog.LogDate);
+                                if (!isNaN(dLog.getTime()) && dLog.getFullYear() > 1970) {
+                                    if (!mLogStats[sId].min || dLog < mLogStats[sId].min) mLogStats[sId].min = dLog;
+                                    if (!mLogStats[sId].max || dLog > mLogStats[sId].max) mLogStats[sId].max = dLog;
+                                }
+                            });
 
+                            // Apply log dates to WBS (Only EndActual, StartActual is strictly from DB)
+                            aResults.forEach(function (item) {
+                                var stats = mLogStats[item.WbsId];
+                                if (stats) {
+                                    if (stats.max) item.EndActual = stats.max;
+                                }
+                            });
+
+                            // Aggregate Actual Dates bottom-up
+                            var mAllWbs = {};
+                            aResults.forEach(function (w) { mAllWbs[w.WbsId] = w; });
+                            var fnUpdateParentRecursive = function (item) {
+                                var sPid = item.ParentId;
+                                if (!sPid || String(sPid).replace(/-/g, "").replace(/0/g, "") === "") return;
+                                var parent = mAllWbs[sPid];
+                                if (!parent) return;
+                                var bChanged = false;
+                                if (item.StartActual && (!parent.StartActual || item.StartActual < parent.StartActual)) {
+                                    parent.StartActual = item.StartActual;
+                                    bChanged = true;
+                                }
+                                if (item.EndActual && (!parent.EndActual || item.EndActual > parent.EndActual)) {
+                                    parent.EndActual = item.EndActual;
+                                    bChanged = true;
+                                }
+                                if (bChanged) fnUpdateParentRecursive(parent);
+                            };
+                            aResults.forEach(function (item) { fnUpdateParentRecursive(item); });
+
+                            // UPDATE UI NON-BLOCKINGLY: Update the specific models for the Gantt Gantt
+                            var oViewData = that.getView().getModel("viewData");
+                            var aTreeData = that._transformToTree(aResults);
+                            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
+                            oViewData.setProperty("/WBS", aTreeData);
+                            that.getView().getModel("viewConfig").setData(oGanttConfig);
+                        },
+                        error: function (oError) {
+                            console.error("Error silently reading DailyLogSet for Gantt:", oError);
+                        }
+                    });
                 },
-                error: function (oError) { console.error("Error reading WBSSet:", oError); }
+                error: function (oError) {
+                    oView.setBusy(false);
+                    console.error("Error reading WBSSet:", oError);
+                }
+            });
+        },
+
+        _finalizeWbsLoad: function (aResults) {
+            var that = this;
+            var oView = this.getView();
+            var oViewData = oView.getModel("viewData");
+            var oModel = this.getOwnerComponent().getModel();
+
+            // 1. Prepare Gantt Tree
+            var aTreeData = that._transformToTree(aResults);
+            var oGanttConfig = that._oWBSDelegate.prepareGanttData(aTreeData);
+            oViewData.setProperty("/WBS", aTreeData);
+            this.getView().getModel("viewConfig").setData(oGanttConfig);
+
+            // 2. Filter Pending items for approval logic
+            var aAllPending = aResults.filter(function (item) {
+                return item.Status === "PENDING_OPEN" || item.Status === "PENDING_CLOSE";
+            });
+
+            var aGlobalPending = aAllPending.filter(function (item) {
+                if (!item.ParentId) return true;
+                var sPId = String(item.ParentId);
+                var sParent = sPId.replace(/-/g, "").toLowerCase();
+                if (/^0+$/.test(sParent) || sParent === "null" || sParent === "undefined") return true; 
+
+                var aItemLogs = (item.ToApprovalLog && item.ToApprovalLog.results) ? item.ToApprovalLog.results : [];
+                var bHasOwnLog = aItemLogs.some(function (l) {
+                    var sAct = (l.Action || "").toUpperCase();
+                    return sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1;
+                });
+                if (bHasOwnLog) return true;
+
+                var sNormParent = item.ParentId.toLowerCase().replace(/-/g, "");
+                var bParentPending = aAllPending.some(function (p) {
+                    return p.WbsId.toLowerCase().replace(/-/g, "") === sNormParent;
+                });
+                return !bParentPending;
+            });
+
+            if (aGlobalPending.length === 0) {
+                oViewData.setProperty("/pendingOpenWBS", []);
+                oViewData.setProperty("/pendingCloseWBS", []);
+                oViewData.setProperty("/pendingWBS", []);
+                oView.setBusy(false);
+                return;
+            }
+
+            // Asynchronously check actionability via CheckDecision
+            var aActionablePending = [];
+            var iChecked = 0;
+            var iPendingCount = aGlobalPending.length;
+
+            var fnCheckDone = function () {
+                iChecked++;
+                if (iChecked === iPendingCount) {
+                    var aOpen = aActionablePending.filter(function (w) { return w.Status.indexOf("OPEN") !== -1; });
+                    var aClose = aActionablePending.filter(function (w) { return w.Status.indexOf("CLOSE") !== -1; });
+                    oViewData.setProperty("/pendingOpenWBS", aOpen);
+                    oViewData.setProperty("/pendingCloseWBS", aClose);
+                    oViewData.setProperty("/pendingWBS", aActionablePending);
+                    oView.setBusy(false);
+                }
+            };
+
+            aGlobalPending.forEach(function (wbs) {
+                var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
+
+                // Populate Sender info from logs
+                var aLogs = (wbs.ToApprovalLog && wbs.ToApprovalLog.results) ? wbs.ToApprovalLog.results : [];
+                if (aLogs.length > 0) {
+                    // Filter logs to match the current pending action type (OPEN or CLOSE)
+                    var aTypeLogs = aLogs.filter(function(l) { return l.ApprovalType === sType; });
+                    if (aTypeLogs.length > 0) {
+                        var aSortedLogs = aTypeLogs.slice().sort(function (a, b) {
+                            var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                            var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                            return tB - tA; // Newest first
+                        });
+
+                        // The Sender is whoever performed the LAST valid action before the system routed it to the current user
+                        var oSenderLog = aSortedLogs.find(function (l) {
+                            var sAct = (l.Action || "").toUpperCase();
+                            var sBy = (l.ActionBy || "").toUpperCase();
+                            
+                            // Skip automated routing and receipt logs
+                            var bIsReceiverLog = sAct === "0000" || 
+                                                 sBy === "WF-BATCH" || 
+                                                 sAct.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 || 
+                                                 sAct.indexOf("ĐÃ CHUYỂN LUỒNG") !== -1;
+                            
+                            return !bIsReceiverLog;
+                        });
+
+                        // Fallback: Use the oldest log (the original submitter) if no sender log found
+                        if (!oSenderLog) oSenderLog = aSortedLogs[aSortedLogs.length - 1];
+
+                        if (oSenderLog) {
+                            wbs.SenderName = oSenderLog.ActionBy || oSenderLog.CreatedBy || "";
+                            var sTime = oSenderLog.CreatedTimestamp;
+                            if (sTime) {
+                                if (typeof sTime === 'string' && sTime.indexOf('/Date(') === 0) wbs.SendTime = new Date(parseInt(sTime.substr(6)));
+                                else wbs.SendTime = new Date(sTime);
+                            }
+                        }
+                    }
+                }
+
+                oModel.callFunction("/CheckDecision", {
+                    method: "POST",
+                    changeSetId: "CheckDecision_" + wbs.WbsId.replace(/-/g, ""),
+                    urlParameters: { WBS_IDS: wbs.WbsId, ApprovalType: sType },
+                    success: function (oResponse) {
+                        var oResult = oResponse.CheckDecision || (oResponse.results && oResponse.results.CheckDecision) || oResponse;
+                        var sWiId = (oResult && oResult.WORKITEM_ID) ? oResult.WORKITEM_ID : "";
+                        if (sWiId && sWiId !== "" && sWiId !== "000000000000") aActionablePending.push(wbs);
+                        fnCheckDone();
+                    },
+                    error: function () { fnCheckDone(); }
+                });
             });
         },
 
@@ -833,6 +868,9 @@ sap.ui.define([
                 // No row selected → create as root WBS (null / GUID zero parent)
                 this._openWbsDialog(null, null, null);
             }
+
+            // Clear selections to ensure a fresh state after action
+            if (oTable) { oTable.clearSelection(); }
         },
 
         // ── WBS: EDIT ────────────────────────────────────────────────────────
@@ -864,6 +902,8 @@ sap.ui.define([
                 return;
             }
 
+            // Clear selection before opening dialog
+            if (oTable) { oTable.clearSelection(); }
             this._openWbsDialog(oCtx, null, null);
         },
 
@@ -1203,13 +1243,44 @@ sap.ui.define([
                         aValid.reduce(function (pChain, oWbs) {
                             return pChain.then(function () {
                                 return new Promise(function (resolve) {
-                                    oModel.update("/WBSSet(guid'" + oWbs.WbsId + "')", { Status: "IN_PROGRESS" }, {
-                                        success: function () {
-                                            aSuccess.push(oWbs.WbsName);
+                                    oModel.callFunction("/UpdateStatus", {
+                                        method: "POST",
+                                        urlParameters: {
+                                            ObjectType: "WBS",
+                                            ObjectId: oWbs.WbsId,
+                                            NewStatus: "IN_PROGRESS"
+                                        },
+                                        success: function (oData) {
+                                            // SAP UI5 OData V2: unwraps d{} but may keep function name as key
+                                            var oResult = (oData && oData.UpdateStatus) ? oData.UpdateStatus : oData;
+                                            var sSuccessVal = oResult ? String(oResult.Success).toLowerCase() : "false";
+                                            var sMsg = (oResult && oResult.Message) ? oResult.Message : "";
+                                            console.log("[RunWbs] Response for", oWbs.WbsName, ":", JSON.stringify(oResult));
+                                            if (sSuccessVal === "true" || sSuccessVal === "1") {
+                                                aSuccess.push(oWbs.WbsName);
+                                            } else {
+                                                // If backend message is empty, show a generic reason
+                                                if (!sMsg) {
+                                                    sMsg = oBundle.getText("runWbsFailedDefault") || "Không thể bắt đầu. Có thể do điều kiện tiên quyết chưa hoàn thành hoặc trạng thái chưa phù hợp.";
+                                                }
+                                                aFailed.push(oWbs.WbsName + ": " + sMsg);
+                                            }
                                             resolve();
                                         },
-                                        error: function () {
-                                            aFailed.push(oWbs.WbsName);
+                                        error: function (oError) {
+                                            var sErrMsg = "";
+                                            try {
+                                                var oResp = JSON.parse(oError.responseText);
+                                                if (oResp.error && oResp.error.message) {
+                                                    sErrMsg = oResp.error.message.value || oResp.error.message || "";
+                                                } else if (oResp.d && oResp.d.UpdateStatus) {
+                                                    sErrMsg = oResp.d.UpdateStatus.Message || "";
+                                                }
+                                            } catch (e) {
+                                                sErrMsg = oError.message || "";
+                                            }
+                                            console.log("[RunWbs] HTTP Error for", oWbs.WbsName, ":", sErrMsg, oError.statusCode);
+                                            aFailed.push(oWbs.WbsName + (sErrMsg ? ": " + sErrMsg : ""));
                                             resolve(); // Don't break chain on error
                                         }
                                     });
