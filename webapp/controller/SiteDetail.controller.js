@@ -780,7 +780,7 @@ sap.ui.define([
                         // Sender is the person who made the LAST valid action (submit or approve)
                         var oSenderLog = aSortedLogs.find(function (l) {
                             var sAct = (l.Action || "").toUpperCase();
-                            var bSubmit = sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "0000" || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
+                            var bSubmit = sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
                             var bApprove = sAct === "0001" || sAct === "APPROVED" || sAct === "SUCCESS" || sAct.indexOf("CHẤP THUẬN") !== -1 || sAct.indexOf("PHÊ DUYỆT") !== -1;
                             return bSubmit || bApprove;
                         });
