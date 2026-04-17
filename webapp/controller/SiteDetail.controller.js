@@ -777,15 +777,22 @@ sap.ui.define([
                             return tB - tA; // Newest first
                         });
 
-                        // Sender is the person who made the LAST valid action (submit or approve)
+                        // The Sender is whoever performed the LAST valid action before the system routed it to the current user
                         var oSenderLog = aSortedLogs.find(function (l) {
                             var sAct = (l.Action || "").toUpperCase();
-                            var bSubmit = sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
-                            var bApprove = sAct === "0001" || sAct === "APPROVED" || sAct === "SUCCESS" || sAct.indexOf("CHẤP THUẬN") !== -1 || sAct.indexOf("PHÊ DUYỆT") !== -1;
-                            return bSubmit || bApprove;
+                            var sBy = (l.ActionBy || "").toUpperCase();
+                            
+                            // Skip automated routing and receipt logs
+                            var bIsReceiverLog = sAct === "0000" || 
+                                                 sBy === "WF-BATCH" || 
+                                                 sAct.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 || 
+                                                 sAct.indexOf("ĐÃ CHUYỂN LUỒNG") !== -1;
+                            
+                            return !bIsReceiverLog;
                         });
 
-                        if (!oSenderLog) oSenderLog = aSortedLogs[0]; // fallback to newest log
+                        // Fallback: Use the oldest log (the original submitter) if no sender log found
+                        if (!oSenderLog) oSenderLog = aSortedLogs[aSortedLogs.length - 1];
 
                         if (oSenderLog) {
                             wbs.SenderName = oSenderLog.ActionBy || oSenderLog.CreatedBy || "";
