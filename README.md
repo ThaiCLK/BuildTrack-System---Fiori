@@ -85,13 +85,14 @@ Set it to `true` only if your quota is sufficient.
 npm run dev:local
 ```
 
-- Mock mode with mock OData + RAG:
+- Mock mode with mock OData:
 
 ```
 npm run dev:mock
-
-Python 3.13+ is required for the RAG service scripts used by these commands.
 ```
+
+`dev:local` and `dev:mock` do not run Python.
+Python 3.13+ is only required when you explicitly run `npm run rag:start` or `npm run rag:index`.
 
 ### Rebuild Knowledge Index
 

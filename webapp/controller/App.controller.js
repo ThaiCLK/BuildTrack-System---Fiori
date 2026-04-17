@@ -125,6 +125,14 @@ sap.ui.define([
         _formatAssistantText: function (sAnswer, aCitations) {
             return sAnswer;
         },
+        _getRagApiUrl: function (sPath) {
+            var sBaseUrl = "http://223.130.11.164:4001";
+            var sCleanPath = sPath || "";
+            if (sCleanPath.charAt(0) !== "/") {
+                sCleanPath = "/" + sCleanPath;
+            }
+            return sBaseUrl + sCleanPath;
+        },
         _sendAssistantQuestion: async function (sQuestion) {
             var oModel = this._getAssistantModel();
             var sText = (sQuestion || "").trim();
@@ -139,7 +147,7 @@ sap.ui.define([
             this._appendMessage("user", sText, []);
   
             try {
-                var response = await fetch("/rag/api/chat", {
+                var response = await fetch(this._getRagApiUrl("/rag/api/chat"), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -188,7 +196,7 @@ sap.ui.define([
   
             oModel.setProperty("/isBusy", true);
             try {
-                var response = await fetch("/rag/api/reindex", { method: "POST" });
+                var response = await fetch(this._getRagApiUrl("/rag/api/reindex"), { method: "POST" });
                 var data = await response.json();
   
                 if (!response.ok || !data.ok) {
