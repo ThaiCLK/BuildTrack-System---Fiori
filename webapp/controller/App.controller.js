@@ -126,7 +126,7 @@ sap.ui.define([
             return sAnswer;
         },
         _getRagApiUrl: function (sPath) {
-            var sBaseUrl = "http://223.130.11.164:4001";
+            var sBaseUrl = "https://vietsuky.com";
             var sCleanPath = sPath || "";
             if (sCleanPath.charAt(0) !== "/") {
                 sCleanPath = "/" + sCleanPath;
