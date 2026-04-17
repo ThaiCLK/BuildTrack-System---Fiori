@@ -763,30 +763,41 @@ sap.ui.define([
             };
 
             aGlobalPending.forEach(function (wbs) {
+                var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
+
                 // Populate Sender info from logs
                 var aLogs = (wbs.ToApprovalLog && wbs.ToApprovalLog.results) ? wbs.ToApprovalLog.results : [];
                 if (aLogs.length > 0) {
-                    var aSortedLogs = aLogs.slice().sort(function (a, b) {
-                        var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
-                        var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
-                        return tB - tA;
-                    });
-                    var oSenderLog = aSortedLogs.find(function (l) {
-                        var sAct = (l.Action || "").toUpperCase();
-                        return sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "0000" || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
-                    });
-                    if (!oSenderLog) oSenderLog = aSortedLogs[aSortedLogs.length - 1];
-                    if (oSenderLog) {
-                        wbs.SenderName = oSenderLog.ActionBy || "";
-                        var sTime = oSenderLog.CreatedTimestamp;
-                        if (sTime) {
-                            if (typeof sTime === 'string' && sTime.indexOf('/Date(') === 0) wbs.SendTime = new Date(parseInt(sTime.substr(6)));
-                            else wbs.SendTime = new Date(sTime);
+                    // Filter logs to match the current pending action type (OPEN or CLOSE)
+                    var aTypeLogs = aLogs.filter(function(l) { return l.ApprovalType === sType; });
+                    if (aTypeLogs.length > 0) {
+                        var aSortedLogs = aTypeLogs.slice().sort(function (a, b) {
+                            var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                            var tB = b.CreatedTimestamp ? parseInt((b.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
+                            return tB - tA; // Newest first
+                        });
+
+                        // Sender is the person who made the LAST valid action (submit or approve)
+                        var oSenderLog = aSortedLogs.find(function (l) {
+                            var sAct = (l.Action || "").toUpperCase();
+                            var bSubmit = sAct === "SUBMITTED" || sAct === "TẠO WBS" || (sAct.indexOf("GỬI") !== -1 && sAct.indexOf("YÊU CẦU") !== -1) || sAct === "0000" || sAct === "GỬI YÊU CẦU NGHIỆM THU" || sAct === "GỬI YÊU CẦU MỞ WBS";
+                            var bApprove = sAct === "0001" || sAct === "APPROVED" || sAct === "SUCCESS" || sAct.indexOf("CHẤP THUẬN") !== -1 || sAct.indexOf("PHÊ DUYỆT") !== -1;
+                            return bSubmit || bApprove;
+                        });
+
+                        if (!oSenderLog) oSenderLog = aSortedLogs[0]; // fallback to newest log
+
+                        if (oSenderLog) {
+                            wbs.SenderName = oSenderLog.ActionBy || oSenderLog.CreatedBy || "";
+                            var sTime = oSenderLog.CreatedTimestamp;
+                            if (sTime) {
+                                if (typeof sTime === 'string' && sTime.indexOf('/Date(') === 0) wbs.SendTime = new Date(parseInt(sTime.substr(6)));
+                                else wbs.SendTime = new Date(sTime);
+                            }
                         }
                     }
                 }
 
-                var sType = wbs.Status && wbs.Status.indexOf("CLOSE") !== -1 ? "CLOSE" : "OPEN";
                 oModel.callFunction("/CheckDecision", {
                     method: "POST",
                     changeSetId: "CheckDecision_" + wbs.WbsId.replace(/-/g, ""),
