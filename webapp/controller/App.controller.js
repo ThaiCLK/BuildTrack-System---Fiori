@@ -9,7 +9,6 @@ sap.ui.define([
 
     return BaseController.extend("z.bts.buildtrack551.controller.App", {
         onInit() {
-            /*
             this.getView().setModel(new JSONModel({
                 draft: "",
                 isBusy: false,
@@ -21,7 +20,6 @@ sap.ui.define([
                     )
                 ]
             }), "assistant");
-            */
 
             // Bật công tắc lắng nghe chảo thu sóng vệ tinh WebSocket
             this._initWebSocket();
@@ -74,7 +72,6 @@ sap.ui.define([
         onNavToDashboard: function () {
             this.getOwnerComponent().getRouter().navTo("Dashboard");
         },
-        /* --- OLD GEMINI ASSISTANT METHODS (COMMENTED OUT) ---
         _getAssistantModel: function () {
             return this.getView().getModel("assistant");
         },
@@ -205,7 +202,6 @@ sap.ui.define([
                 oModel.setProperty("/isBusy", false);
             }
         },
-        ------------------------------------------------------- */
         onPressProfile: function (oEvent) {
             var oButton = oEvent.getSource();
             if (this._oProfilePopover) {
@@ -478,20 +474,16 @@ sap.ui.define([
                 this._oUserRoleDialog.close();
             }
         },
-        /*
         onCloseAssistant: function () {
             if (this._oAssistantDialog) {
                 this._oAssistantDialog.close();
             }
         },
-        */
         onExit: function () {
-            /*
             if (this._oAssistantDialog) {
                 this._oAssistantDialog.destroy();
                 this._oAssistantDialog = null;
             }
-            */
             if (this._oProfilePopover) {
                 this._oProfilePopover.destroy();
                 this._oProfilePopover = null;

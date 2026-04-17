@@ -45,7 +45,7 @@ This project now includes a production-style RAG chatbot to guide users through 
 ### Architecture
 
 - SAPUI5 frontend dialog integrated in App header.
-- Node.js RAG service in `rag-server/`.
+- Python RAG service in `rag-server-py/`.
 - Knowledge indexing from BuildTrack docs + selected source files.
 - Retrieval by cosine similarity over Gemini embeddings.
 - Answer generation with Gemini chat model and citations.
@@ -61,7 +61,7 @@ npm install
 2. Create environment file from template:
 
 ```
-copy rag-server/.env.example .env
+copy rag-server-py/.env.example .env
 ```
 
 3. Open `.env` and set:
@@ -89,6 +89,8 @@ npm run dev:local
 
 ```
 npm run dev:mock
+
+Python 3.13+ is required for the RAG service scripts used by these commands.
 ```
 
 ### Rebuild Knowledge Index

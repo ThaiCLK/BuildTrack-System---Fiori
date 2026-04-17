@@ -8,12 +8,7 @@
     "sapui5"
   ],
   "main": "webapp/index.html",
-  "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^4.21.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@ui5/cli": "^4.0.33",
     "@sap/ux-ui5-tooling": "1",
@@ -36,8 +31,8 @@
     "unit-test": "fiori run --config ./ui5-mock.yaml --open \"test/unit/unitTests.qunit.html\"",
     "undeploy": "npm run build && fiori undeploy --config ui5-deploy.yaml",
     "deploy-test": "npm run build && fiori deploy --config ui5-deploy.yaml --testMode true",
-    "rag:start": "node rag-server/server.js",
-    "rag:index": "node rag-server/scripts/build-index.js",
+    "rag:start": ".\\.venv\\Scripts\\python.exe rag-server-py/app.py",
+    "rag:index": ".\\.venv\\Scripts\\python.exe rag-server-py/build_index.py",
     "dev:local": "npm run start-local",
     "dev:mock": "concurrently \"npm run rag:start\" \"npm run start-mock\""
   },
