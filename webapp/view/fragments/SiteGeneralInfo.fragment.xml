@@ -53,8 +53,9 @@
                 <Label text="{i18n>status}" />
                 <VBox width="100%">
                     <ObjectStatus 
-                        class="sapUiNoMargin"
+                        class="sapUiNoMargin statusBadgeNoWrap"
                         text="{path: 'Status', formatter: '.formatStatusText'}" 
+                        inverted="true"
                         state="{= ${Status} === 'READY' || ${Status} === 'COMPLETED' ? 'Success' : ${Status} === 'REJECTED' ? 'Error' : ${Status} === 'SUBMITTED' ? 'Information' : 'Warning' }" />
                 </VBox>
             </f:content>

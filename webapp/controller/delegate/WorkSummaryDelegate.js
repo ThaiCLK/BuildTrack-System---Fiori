@@ -35,12 +35,15 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oWSModel = this.getView().getModel("workSummaryModel");
 
-            // 1. Reset model immediately to clear stale data from previous navigation
-            oWSModel.setData({
-                TotalQtyDone: "0",
-                Children: [],
-                WbsId: sWbsId
-            });
+            // 1. Reset model only if navigating to a DIFFERENT WBS to clear stale data.
+            // If it's a refresh of the same WBS, keep the current data to avoid UI flicker (resetting to 0%).
+            if (oWSModel.getProperty("/WbsId") !== sWbsId) {
+                oWSModel.setData({
+                    TotalQtyDone: "0",
+                    Children: [],
+                    WbsId: sWbsId
+                });
+            }
 
             // Race-condition guard: stamp the current request token.
             // Callbacks will abort if this token has changed (i.e. user navigated away).

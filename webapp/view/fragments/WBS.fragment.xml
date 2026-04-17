@@ -78,7 +78,9 @@
                 <t:template>
                     <ObjectStatus
                         text="{path: 'viewData>Status', formatter: '.formatWbsStatusText'}"
-                        state="{path: 'viewData>Status', formatter: '.formatWbsStatusState'}"/>
+                        class="statusBadgeNoWrap"
+                        state="{path: 'viewData>Status', formatter: '.formatWbsStatusState'}"
+                        inverted="true" />
                 </t:template>
             </t:Column>
 

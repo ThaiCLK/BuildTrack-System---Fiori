@@ -61,8 +61,8 @@
                         
                         <ObjectStatus
                             text="{path: 'viewData>Status', formatter: '.formatWbsStatusText'}"
+                            class="statusBadgeNoWrap"
                             state="{path: 'viewData>Status', formatter: '.formatWbsStatusState'}"
-                            icon="{path: 'viewData>Status', formatter: '.formatWbsStatusIcon'}"
                             inverted="true" />
                             
                         <ObjectNumber

@@ -91,20 +91,20 @@ sap.ui.define([
             return mLabels[sKey] || sType;
         },
 
-        formatStatusIcon: function (sStatus) {
-            var m = {
-                "PLANNING": "sap-icon://status-in-process",
-                "IN_PROGRESS": "sap-icon://play",
-                "CLOSED": "sap-icon://status-negative"
-            };
-            return m[(sStatus || "").toUpperCase()] || "sap-icon://status-inactive";
-        },
+        // formatStatusIcon: function (sStatus) {
+        //     var m = {
+        //         "PLANNING": "sap-icon://status-in-process",
+        //         "IN_PROGRESS": "sap-icon://play",
+        //         "CLOSED": "sap-icon://status-negative"
+        //     };
+        //     return m[(sStatus || "").toUpperCase()] || "sap-icon://status-inactive";
+        // },
 
         formatStatusState: function (sStatus) {
             var m = {
-                "PLANNING": "Warning",
-                "IN_PROGRESS": "Success",
-                "CLOSED": "Error"
+                "PLANNING": "Information",
+                "IN_PROGRESS": "Warning",
+                "CLOSED": "Success"
             };
             return m[(sStatus || "").toUpperCase()] || "None";
         },
@@ -1058,6 +1058,53 @@ sap.ui.define([
 
             oDialog.addStyleClass("sapUiContentPadding");
             oDialog.open();
+        },
+
+        onCloseSite: function (oEvent) {
+            var oRow = oEvent.getSource().getParent(); // The HBox
+            if (oRow.getMetadata().getName() === "sap.m.HBox") {
+                oRow = oRow.getParent(); // The ColumnListItem
+            }
+
+            var oBindingCtx = oRow.getBindingContext();
+            if (!oBindingCtx) return;
+
+            var sSiteId = oBindingCtx.getProperty("SiteId");
+
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            var that = this;
+
+            MessageBox.confirm(oBundle.getText("closeConfirm"), {
+                title: oBundle.getText("closeSite"),
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        that.getView().setBusy(true);
+                        var oModel = that.getOwnerComponent().getModel();
+                        oModel.callFunction("/UpdateStatus", {
+                            method: "POST",
+                            urlParameters: {
+                                ObjectType: 'SITE',
+                                ObjectId: sSiteId,
+                                NewStatus: 'CLOSED'
+                            },
+                            success: function (oData) {
+                                that.getView().setBusy(false);
+                                var oResult = oData.UpdateStatus || oData;
+                                if (oResult && oResult.Success === false) {
+                                    MessageBox.error(oResult.Message || oBundle.getText("closeError"));
+                                } else {
+                                    MessageToast.show(oBundle.getText("closeSuccess"));
+                                    oModel.refresh(true, true);
+                                }
+                            },
+                            error: function (oError) {
+                                that.getView().setBusy(false);
+                                that._showError(oError, "closeError");
+                            }
+                        });
+                    }
+                }
+            });
         },
 
         _showError: function (oError, sDefaultI18nKey) {

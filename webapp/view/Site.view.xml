@@ -21,7 +21,7 @@
                                     <cards:Header title="{i18n>overviewInfo}" subtitle="{ProjectCode}" iconSrc="sap-icon://project-definition" />
                                 </f:header>
                                 <f:content>
-                                    <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="2" columnsM="2">
+                                    <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
                                         <form:content>
                                             <core:Title text="{i18n>identification}" />
                                             <Label text="{i18n>projectName}" />
@@ -31,7 +31,10 @@
                                                 state="{path: 'ProjectType', formatter: '.formatTypeState'}" 
                                                 inverted="true" />
                                             <Label text="{i18n>status}" />
-                                            <ObjectStatus text="{path: 'Status', formatter: '.formatStatusText'}" state="{path: 'Status', formatter: '.formatStatusState'}" inverted="true" />
+                                            <ObjectStatus text="{path: 'Status', formatter: '.formatStatusText'}" 
+                                                class="statusBadgeNoWrap"
+                                                state="{path: 'Status', formatter: '.formatStatusState'}" 
+                                                inverted="true" />
 
                                             <core:Title text="{i18n>schedulePlannedVsActual}" />
                                             <Label text="{i18n>startDate}" />
@@ -140,6 +143,7 @@
             <Table 
                 id="siteTable"
                 items="{path: 'ToSites', sorter: {path: 'SiteCode', descending: false}}"
+                fixedLayout="false"
                 noDataText="{i18n>noSitesFound}">
                 <headerToolbar>
                     <OverflowToolbar>
@@ -169,7 +173,7 @@
                             <Text text="{Address}" />
                             <ObjectStatus
                                 text="{path: 'Status', formatter: '.formatStatusText'}"
-                                icon="{ path: 'Status', formatter: '.formatStatusIcon' }"
+                                class="statusBadgeNoWrap"
                                 state="{ path: 'Status', formatter: '.formatStatusState' }"
                                 inverted="true"/>
                             <Text text="{
@@ -179,6 +183,7 @@
                             }" />
                             <HBox>
                                 <Button icon="sap-icon://edit"   type="Transparent" press=".onEditSite" tooltip="{i18n>editSite}" />
+                                <Button icon="sap-icon://decline" type="Transparent" press=".onCloseSite" tooltip="{i18n>closeSite}" enabled="{= ${Status} === 'IN_PROGRESS' }" />
                                 <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteSite" tooltip="{i18n>deleteSite}" />
                             </HBox>
                         </cells>

@@ -116,6 +116,13 @@ sap.ui.define([
                     MessageToast.show("Đã cập nhật hệ thống thành công!");
                     this._oDialog.close();
                     
+                    // Clear selection and disable edit button
+                    var oTable = this.byId("configTable");
+                    if (oTable) {
+                        oTable.removeSelections(true);
+                        this.byId("btnEditConfig").setEnabled(false);
+                    }
+
                     // Gửi tín hiệu Refresh toàn hệ thống
                     sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
 

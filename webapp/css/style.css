@@ -154,6 +154,11 @@
     transform: translateY(-1px);
 }
 
+/* Status Badge No Wrap */
+.statusBadgeNoWrap .sapMObjStatusText {
+    white-space: nowrap !important;
+}
+
 .dashboardHeaderBtn .sapMBtnContent,
 .dashboardHeaderBtn .sapMBtnIcon {
     color: #ffffff !important;

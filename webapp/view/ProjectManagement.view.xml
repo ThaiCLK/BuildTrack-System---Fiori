@@ -65,6 +65,7 @@
                     inset="false"
                     alternateRowColors="true"
                     mode="MultiSelect"
+                    fixedLayout="false"
                     selectionChange=".onProjectSelectionChange"
                     items="{ path: 'pm>/paginatedProjects' }">
 
@@ -95,6 +96,13 @@
                             type="Transparent"
                             enabled="{= ${viewState>/selectedProjectCount} > 0 }"
                             press=".onDeleteProject"/>
+                        <Button
+                            id="btnCloseProject"
+                            text="{i18n>closeProject}"
+                            icon="sap-icon://decline"
+                            type="Transparent"
+                            enabled="{viewState>/canCloseProject}"
+                            press=".onCloseProject"/>
                     </OverflowToolbar>
                 </headerToolbar>
 
@@ -127,7 +135,7 @@
                     <Column id="colEndDate" hAlign="End">
                         <Text id="txtColEndDate" text="{i18n>estEndDate}"/>
                     </Column>
-                    <Column id="colStatus" hAlign="Center">
+                    <Column id="colStatus" hAlign="Center" width="10rem">
                         <Text id="txtColStatus" text="{i18n>status}"/>
                     </Column>
                 </columns>
@@ -174,15 +182,12 @@
 
                             <!-- Status badge with semantic colours -->
                             <ObjectStatus id="objStatus"
+                                class="statusBadgeNoWrap"
                                 text="{path: 'pm>Status', formatter: '.formatStatusText'}"
-                                icon="{= ${pm>Status} === 'IN_PROGRESS' ? 'sap-icon://status-positive'  :
-                                    ${pm>Status} === 'PLANNING' ? 'sap-icon://status-in-process' :
-                                    ${pm>Status} === 'CLOSED'   ? 'sap-icon://status-negative'   :
-                                                                    'sap-icon://status-inactive' }"
-                                state="{= ${pm>Status} === 'IN_PROGRESS' ? 'Success'     :
-                                     ${pm>Status} === 'PLANNING' ? 'Warning'     :
-                                     ${pm>Status} === 'CLOSED'   ? 'None'        :
-                                                                    'None' }"
+                                state="{= ${pm>Status} === 'IN_PROGRESS' ? 'Warning' :
+                                         ${pm>Status} === 'PLANNING' ? 'Information' :
+                                         ${pm>Status} === 'CLOSED' ? 'Success' :
+                                         'None' }"
                                 inverted="true"/>
                         </cells>
                     </ColumnListItem>

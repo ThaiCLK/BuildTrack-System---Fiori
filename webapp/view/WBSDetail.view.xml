@@ -83,8 +83,9 @@
                                 <VBox width="100%">
                                     <ObjectStatus 
                                         text="{path: 'Status', formatter: '.formatWbsStatusText'}"
+                                        class="statusBadgeNoWrap"
                                         state="{path: 'Status', formatter: '.formatWbsStatusState'}"
-                                        icon="{path: 'Status', formatter: '.formatWbsStatusIcon'}" />
+                                        inverted="true" />
                                 </VBox>
 
                             </form:content>

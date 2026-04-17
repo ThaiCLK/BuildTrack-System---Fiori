@@ -20,9 +20,11 @@ sap.ui.define([
     "sap/m/ComboBox",
     "sap/ui/core/Item",
     "sap/m/DatePicker",
-    "sap/ui/layout/form/SimpleForm"
+    "sap/ui/layout/form/SimpleForm",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator"
 ], function (Controller, History, JSONModel, Sorter, ValueHelpDialog, FilterBar, FilterGroupItem, Token, Column, ColumnListItem, Text, MessageToast, MessageBox,
-    Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, SimpleForm) {
+    Dialog, Button, Label, Input, Select, ComboBox, Item, DatePicker, SimpleForm, Filter, FilterOperator) {
     "use strict";
 
     return Controller.extend("z.bts.buildtrack551.controller.ProjectManagement", {
@@ -64,7 +66,8 @@ sap.ui.define([
             }), "pm");
 
             this.getView().setModel(new JSONModel({
-                selectedProjectCount: 0
+                selectedProjectCount: 0,
+                canCloseProject: false
             }), "viewState");
 
             var oFilterBar = this.byId("projectFilterBar");
@@ -527,6 +530,12 @@ sap.ui.define([
                         return 0;
                     });
                     oPmModel.setProperty("/projects", aNormalized);
+                    // Clear selections on every data refresh
+                    var oTable = that.byId("projectTable");
+                    if (oTable) {
+                        oTable.removeSelections();
+                        that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                    }
                     this._updatePagination(1);
                 }.bind(this),
                 error: function () {
@@ -717,15 +726,16 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("permissionError"));
                 return;
             }
+            // Clear selections before opening dialog to prevent confusion
+            var oTable = this.byId("projectTable");
+            if (oTable) {
+                oTable.removeSelections();
+                this.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+            }
             this._openProjectDialog(null);
         },
 
-        // ── SELECTION CHANGE ─────────────────────────────────────────────────
-        onProjectSelectionChange: function () {
-            var oTable = this.byId("projectTable");
-            var iCount = oTable.getSelectedItems().length;
-            this.getView().getModel("viewState").setProperty("/selectedProjectCount", iCount);
-        },
+
 
         // ── EDIT ────────────────────────────────────────────────────────────
         onEditProject: function () {
@@ -750,6 +760,10 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("editOnlyPlanningError"));
                 return;
             }
+
+            // Clear selections before opening edit dialog
+            oTable.removeSelections();
+            this.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
 
             this._openProjectDialog(oContext);
         },
@@ -883,8 +897,7 @@ sap.ui.define([
                                 return;
                             }
 
-                            oModel.read("/SiteSet", {
-                                filters: [new sap.ui.model.Filter("ProjectId", sap.ui.model.FilterOperator.EQ, sProjectId)],
+                            oModel.read("/ProjectSet(guid'" + sProjectId + "')/ToSites", {
                                 success: function (oData) {
                                     var aSites = oData.results || [];
                                     if (aSites.length > 0 && !aSites.every(function (s) { return s.Status === "CLOSED"; })) {
@@ -892,7 +905,7 @@ sap.ui.define([
                                         aFailReasons.push(oBundle.getText("closeProjectSitesNotClosedError", [sName, aNotClosed.join(", ")]));
                                         resolve(null);
                                     } else {
-                                        resolve({ path: sPath, name: sName });
+                                        resolve({ path: sPath, name: sName, id: sProjectId });
                                     }
                                 },
                                 error: function () {
@@ -916,14 +929,30 @@ sap.ui.define([
 
                         var aUpdates = aToClose.map(function (item) {
                             return new Promise(function (resolve) {
-                                oModel.update(item.path, { Status: "CLOSED" }, {
-                                    success: function () {
-                                        iSuccessCount++;
+                                oModel.callFunction("/UpdateStatus", {
+                                    method: "POST",
+                                    urlParameters: {
+                                        ObjectType: "PROJECT",
+                                        ObjectId: item.id,
+                                        NewStatus: "CLOSED"
+                                    },
+                                    success: function (oData) {
+                                        var oResult = oData.UpdateStatus || oData;
+                                        if (oResult && oResult.Success === false) {
+                                            aFailReasons.push("❌ " + item.name + ": " + (oResult.Message || "Failed"));
+                                        } else {
+                                            iSuccessCount++;
+                                        }
                                         resolve();
                                     },
                                     error: function (oErr) {
                                         var sMsg = oBundle.getText("serverError");
-                                        try { sMsg = JSON.parse(oErr.responseText).error.message.value; } catch (e) { sMsg = oErr.message || sMsg; }
+                                        try {
+                                            var oResponse = JSON.parse(oErr.responseText);
+                                            sMsg = oResponse.error.message.value;
+                                        } catch (e) {
+                                            sMsg = oErr.message || sMsg;
+                                        }
                                         aFailReasons.push("❌ " + item.name + ": " + sMsg);
                                         resolve();
                                     }
@@ -1307,6 +1336,19 @@ sap.ui.define([
             oDialog.addStyleClass("sapUiContentPadding");
             oDialog.open();
         },
+
+        onProjectSelectionChange: function () {
+            var oTable = this.byId("projectTable");
+            var aSelected = oTable.getSelectedItems();
+            var iCount = aSelected.length;
+            this.getView().getModel("viewState").setProperty("/selectedProjectCount", iCount);
+
+            // Enable "Close Project" button if at least one project is selected.
+            // Further status checks are performed inside the onCloseProject handler.
+            this.getView().getModel("viewState").setProperty("/canCloseProject", iCount > 0);
+        },
+
+
 
         _showError: function (oError, sDefaultI18nKey) {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();

@@ -182,8 +182,9 @@
                                 
                                 <ObjectStatus 
                                     text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" 
+                                    class="statusBadgeNoWrap"
                                     state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}"
-                                    icon="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusIcon'}" />
+                                    inverted="true" />
 
                                 <HBox alignItems="Center" width="100%">
                                     <Text text="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatPercentage'}" 

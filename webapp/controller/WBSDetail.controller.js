@@ -61,6 +61,11 @@ sap.ui.define([
             if (this.resetLogDetailState) {
                 this.resetLogDetailState();
             }
+            // Clear selections when switching tabs
+            var oLogTable = this.byId("idDailyLogList");
+            if (oLogTable) {
+                oLogTable.removeSelections();
+            }
         },
 
         /* =========================================================== */
@@ -478,6 +483,12 @@ sap.ui.define([
                 oIconTabBar.setSelectedKey("infoTab");
             }
 
+            // Clear selections on navigation
+            var oLogTable = this.byId("idDailyLogList");
+            if (oLogTable) {
+                oLogTable.removeSelections();
+            }
+
             // Trigger Work Summary load immediately. 
             // The delegate now handles its own OData metadata fetch to avoid context race conditions.
             this._loadWorkSummary(sWbsId);
@@ -652,8 +663,10 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oLocationModel = this.getView().getModel("locationModel");
 
-            // Reset
-            oLocationModel.setData({});
+            // Clear data only if navigating to a DIFFERENT WBS context
+            if (oLocationModel.getProperty("/WbsId") !== sWbsId) {
+                oLocationModel.setData({});
+            }
 
             if (!sWbsId) {
                 return;
@@ -680,8 +693,10 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oProjectModel = this.getView().getModel("projectModel");
 
-            // Reset
-            oProjectModel.setData({});
+            // Clear data only if navigating to a DIFFERENT Site context
+            if (oProjectModel.getProperty("/SiteId") !== sSiteId) {
+                oProjectModel.setData({});
+            }
 
             if (!sSiteId) {
                 return;
@@ -755,14 +770,14 @@ sap.ui.define([
 
         formatWbsStatusState: function (sStatus) {
             switch (sStatus) {
-                case "PLANNING": return "None";
+                case "PLANNING": return "Information";
                 case "PENDING_OPEN": return "Information";
                 case "OPEN_REJECTED": return "Error";
                 case "OPENED": return "Success";
                 case "IN_PROGRESS": return "Warning";
                 case "PENDING_CLOSE": return "Information";
                 case "CLOSE_REJECTED": return "Error";
-                case "CLOSED": return "None";
+                case "CLOSED": return "Success";
                 // Legacy
                 case "NEW": return "None";
                 case "INP": return "Warning";
@@ -869,6 +884,7 @@ sap.ui.define([
         _showLogDetail: DailyLogDelegate._showLogDetail,
         _loadResourceUse: DailyLogDelegate._loadResourceUse,
         onAddLog: DailyLogDelegate.onAddLog,
+        _proceedToAddLog: DailyLogDelegate._proceedToAddLog,
         onExportExcel: DailyLogDelegate.onExportExcel,
         onDownloadTemplate: DailyLogDelegate.onDownloadTemplate,
         onImportExcel: DailyLogDelegate.onImportExcel,
@@ -1207,9 +1223,9 @@ sap.ui.define([
                         var aAllLogs = oLogData.results || [];
                         var sEvalRes = "";
 
-                        // Force WbsId filter natively because backend sometimes ignores the API filter
+                        // Force WbsId and ApprovalType filter natively because backend sometimes ignores the API filter
                         var aLogs = aAllLogs.filter(function (log) {
-                            return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase();
+                            return log.WbsId && log.WbsId.toLowerCase() === sWbsId.toLowerCase() && log.ApprovalType === "CLOSE";
                         });
 
                         var oSignStatus = {

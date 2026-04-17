@@ -438,6 +438,12 @@ sap.ui.define([
         onTabSelect: function (oEvent) {
             var sKey = oEvent.getParameter("key");
             this.onCancelSite(); // Resets editMode and any pending OData model changes
+
+            // Clear selections when switching tabs
+            var oWbsTable = this.byId("wbsTreeTable");
+            if (oWbsTable) { oWbsTable.clearSelection(); }
+            var oPendingTable = this.byId("pendingApprovalTable");
+            if (oPendingTable) { oPendingTable.removeSelections(true); }
         },
 
         onNavToDashboard: function () {
@@ -547,6 +553,13 @@ sap.ui.define([
             });
 
             this.onCancelSite();
+
+            // Clear selections on navigation
+            var oWbsTable = this.byId("wbsTreeTable");
+            if (oWbsTable) { oWbsTable.clearSelection(); }
+            var oPendingTable = this.byId("pendingApprovalTable");
+            if (oPendingTable) { oPendingTable.removeSelections(true); }
+
             this._loadWbsData();
         },
 
@@ -837,6 +850,9 @@ sap.ui.define([
                 // No row selected → create as root WBS (null / GUID zero parent)
                 this._openWbsDialog(null, null, null);
             }
+
+            // Clear selections to ensure a fresh state after action
+            if (oTable) { oTable.clearSelection(); }
         },
 
         // ── WBS: EDIT ────────────────────────────────────────────────────────
@@ -868,6 +884,8 @@ sap.ui.define([
                 return;
             }
 
+            // Clear selection before opening dialog
+            if (oTable) { oTable.clearSelection(); }
             this._openWbsDialog(oCtx, null, null);
         },
 

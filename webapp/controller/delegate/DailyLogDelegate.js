@@ -286,13 +286,45 @@ sap.ui.define([
             var oUserModel = this.getView().getModel("userModel");
             var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            
             if (iAuthLevel !== 0) {
-                sap.m.MessageBox.error(oBundle.getText("dailyLogPermissionError"));
+                MessageBox.error(oBundle.getText("dailyLogPermissionError"));
                 return;
             }
+
             if (!this._verifyStatusForDailyLog()) {
                 return;
             }
+
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var bEditMode = oUIModel.getProperty("/ui/editMode");
+            
+            // Check if there's unsaved data to warn user
+            if (bEditMode) {
+                var oLog = oUIModel.getProperty("/selectedLog") || {};
+                var aResources = oUIModel.getProperty("/resourceUseList") || [];
+                var bHasData = (parseFloat(oLog.QuantityDone) > 0) || 
+                               (oLog.GeneralNote && oLog.GeneralNote.trim() !== "") ||
+                               (oLog.SafeNote && oLog.SafeNote.trim() !== "") ||
+                               (oLog.ContractorNote && oLog.ContractorNote.trim() !== "") ||
+                               (aResources.length > 0);
+
+                if (bHasData) {
+                    MessageBox.confirm(oBundle.getText("dailyLogUnsavedDataConfirm"), {
+                        onClose: function (sAction) {
+                            if (sAction === MessageBox.Action.OK) {
+                                this._proceedToAddLog();
+                            }
+                        }.bind(this)
+                    });
+                    return;
+                }
+            }
+
+            this._proceedToAddLog();
+        },
+
+        _proceedToAddLog: function () {
             var oUIModel = this.getView().getModel("dailyLogModel");
             var oTable = this.byId("idDailyLogList");
             if (oTable) {
@@ -317,7 +349,7 @@ sap.ui.define([
             oUIModel.setProperty("/ui/isSelected", true);
             oUIModel.setProperty("/ui/editMode", true);
             oUIModel.setProperty("/ui/isNewRecord", true);
-            console.log("DailyLogDelegate: onAddLog");
+            console.log("DailyLogDelegate: onAddLog (Proceed)");
         },
 
         onExportExcel: function () {
@@ -826,8 +858,8 @@ sap.ui.define([
 
                 var aResources = Object.keys(mGrouped).map(function (sResId) {
                     return {
-                        resource_id: sResId,
-                        quantity: mGrouped[sResId]
+                        ResourceId: sResId,
+                        Quantity: mGrouped[sResId]
                     };
                 });
 
@@ -836,27 +868,11 @@ sap.ui.define([
                     return;
                 }
 
-                var iDone = 0;
-                var iTotal = aResources.length;
-                aResources.forEach(function (res) {
-                    var oResPayload = {
-                        LogId: sLogId,
-                        ResourceId: res.resource_id,
-                        Quantity: String(res.quantity)
-                    };
-                    oModel.create("/ResourceUseSet", oResPayload, {
-                        success: function () {
-                            if (++iDone >= iTotal) {
-                                that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
-                            }
-                        },
-                        error: function () {
-                            if (++iDone >= iTotal) {
-                                that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
-                            }
-                        }
-                    });
-                });
+                // Re-use _saveResourceUse which handles sequential processing (avoids batch changeset error)
+                // and correctly handles updates by replacing existing resources instead of appending.
+                that._saveResourceUse(sLogId, aResources, function () {
+                    that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
+                }, false);
             };
 
             if (sExistingLogId) {
@@ -925,6 +941,11 @@ sap.ui.define([
                             that._bindDailyLogList(that._sWbsId);
                             that._updateWbsActualDates(that._sWbsId);
                             that._loadWorkSummary(that._sWbsId);
+                            var oTable = that.byId("idDailyLogList");
+                            if (oTable) {
+                                oTable.removeSelections(true);
+                                oUIModel.setProperty("/ui/selectedLogsCount", 0);
+                            }
                             MessageToast.show(oBundle.getText("logDeletedSuccess"));
                         },
                         error: function (oError) {
