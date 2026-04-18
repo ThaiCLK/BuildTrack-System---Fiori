@@ -3,14 +3,14 @@
     ## 1. Muc tieu
     Chuc nang chatbot duoc thiet ke de huong dan nguoi dung su dung BuildTrack thong qua:
     - Giao dien chat trong SAPUI5.
-    - RAG backend (Node.js + Gemini).
+    - RAG backend (Python + Gemini).
     - Truy xuat tri thuc tu tai lieu va source du an.
 
     ## 2. Kien truc tong quan
     - Frontend: SAPUI5 (`App.controller.js` + fragment dialog).
-    - Backend: Express server (`rag-server/server.js`).
-    - Knowledge layer: Index va retrieval (`rag-server/src/indexBuilder.js`, `rag-server/src/knowledgeBase.js`).
-    - LLM layer: Gemini API client (`rag-server/src/geminiClient.js`).
+    - Backend: FastAPI server (`rag-server-py/app.py`).
+    - Knowledge layer: Index va retrieval (`rag-server-py/index_builder.py`, `rag-server-py/knowledge_base.py`).
+    - LLM layer: Gemini API client (`rag-server-py/gemini_client.py`).
 
     ## 3. Luong nghiep vu tu dau den cuoi
 
@@ -38,9 +38,9 @@
     - `history`: mot phan lich su gan nhat (de giu context hoi thoai).
 
     ### Buoc 4: Backend xu ly chat
-    1. Server nhan request tai `server.js`.
-    2. Goi `answerQuestion` trong `knowledgeBase.js`.
-    3. `answerQuestion` thuc hien:
+    1. Server nhan request tai `app.py`.
+    2. Goi `answer_question` trong `knowledge_base.py`.
+    3. `answer_question` thuc hien:
     - Dam bao knowledge index da co (`loadKnowledge`).
     - Lay context lien quan nhat (retrieval).
     - Tao prompt theo quy tac BuildTrack Assistant.
@@ -54,7 +54,7 @@
     4. Lay top-k context phu hop de dua vao prompt.
 
     ### Buoc 6: Sinh cau tra loi
-    1. `geminiClient.generateAnswer` thu cac model theo fallback list.
+    1. `gemini_client.generate_answer` thu cac model theo fallback list.
     2. Model hop le dau tien se duoc dung de generate.
     3. Neu mot model khong ho tro hoac loi quota, he thong thu model tiep theo.
 
@@ -75,7 +75,7 @@
 
     ### Tai tao index
     1. Co the rebuild bang script `npm run rag:index`.
-    2. File index luu tai `rag-server/storage/knowledge-index.json`.
+    2. File index luu tai `rag-server-py/storage/knowledge-index.json`.
 
     ## 5. Cac nhanh loi va cach xu ly
 
@@ -85,7 +85,7 @@
 
     ### Loi model khong ho tro (404)
     - Nguyen nhan: model name khong ton tai/khong ho tro cho account.
-    - Giai phap: fallback danh sach model hop le trong `geminiClient.js`.
+    - Giai phap: fallback danh sach model hop le trong `gemini_client.py`.
 
     ### Loi ket noi backend
     - Frontend hien thong bao loi trong khung chat va MessageToast.

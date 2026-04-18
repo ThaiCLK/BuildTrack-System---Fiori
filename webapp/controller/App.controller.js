@@ -9,7 +9,6 @@ sap.ui.define([
 
     return BaseController.extend("z.bts.buildtrack551.controller.App", {
         onInit() {
-            /*
             this.getView().setModel(new JSONModel({
                 draft: "",
                 isBusy: false,
@@ -21,7 +20,6 @@ sap.ui.define([
                     )
                 ]
             }), "assistant");
-            */
 
             // Bật công tắc lắng nghe chảo thu sóng vệ tinh WebSocket
             this._initWebSocket();
@@ -74,7 +72,6 @@ sap.ui.define([
         onNavToDashboard: function () {
             this.getOwnerComponent().getRouter().navTo("Dashboard");
         },
-        /* --- OLD GEMINI ASSISTANT METHODS (COMMENTED OUT) ---
         _getAssistantModel: function () {
             return this.getView().getModel("assistant");
         },
@@ -128,6 +125,14 @@ sap.ui.define([
         _formatAssistantText: function (sAnswer, aCitations) {
             return sAnswer;
         },
+        _getRagApiUrl: function (sPath) {
+            var sBaseUrl = "https://vietsuky.com";
+            var sCleanPath = sPath || "";
+            if (sCleanPath.charAt(0) !== "/") {
+                sCleanPath = "/" + sCleanPath;
+            }
+            return sBaseUrl + sCleanPath;
+        },
         _sendAssistantQuestion: async function (sQuestion) {
             var oModel = this._getAssistantModel();
             var sText = (sQuestion || "").trim();
@@ -142,7 +147,7 @@ sap.ui.define([
             this._appendMessage("user", sText, []);
   
             try {
-                var response = await fetch("/rag/api/chat", {
+                var response = await fetch(this._getRagApiUrl("/rag/api/chat"), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -191,7 +196,7 @@ sap.ui.define([
   
             oModel.setProperty("/isBusy", true);
             try {
-                var response = await fetch("/rag/api/reindex", { method: "POST" });
+                var response = await fetch(this._getRagApiUrl("/rag/api/reindex"), { method: "POST" });
                 var data = await response.json();
   
                 if (!response.ok || !data.ok) {
@@ -205,7 +210,6 @@ sap.ui.define([
                 oModel.setProperty("/isBusy", false);
             }
         },
-        ------------------------------------------------------- */
         onPressProfile: function (oEvent) {
             var oButton = oEvent.getSource();
             if (this._oProfilePopover) {
@@ -478,20 +482,16 @@ sap.ui.define([
                 this._oUserRoleDialog.close();
             }
         },
-        /*
         onCloseAssistant: function () {
             if (this._oAssistantDialog) {
                 this._oAssistantDialog.close();
             }
         },
-        */
         onExit: function () {
-            /*
             if (this._oAssistantDialog) {
                 this._oAssistantDialog.destroy();
                 this._oAssistantDialog = null;
             }
-            */
             if (this._oProfilePopover) {
                 this._oProfilePopover.destroy();
                 this._oProfilePopover = null;
