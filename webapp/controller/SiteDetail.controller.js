@@ -145,7 +145,7 @@ sap.ui.define([
                 oRaw.unit_code,
                 oRaw.UNIT_CODE,
                 oRaw.unitCode
-            ]).toUpperCase();
+            ]);
 
             if (!sUnitCode) {
                 return null;
@@ -165,7 +165,7 @@ sap.ui.define([
                     oRaw.Status,
                     oRaw.status,
                     oRaw.STATUS
-                ]).toUpperCase()
+                ])
             };
         },
 
@@ -194,7 +194,7 @@ sap.ui.define([
             };
 
             var fnMatchesContainsIgnoreCase = function (oItem) {
-                if (!oItem || oItem.Status !== "ACTIVE") {
+                if (!oItem || String(oItem.Status || "").toUpperCase() !== "ACTIVE") {
                     return false;
                 }
 
@@ -310,7 +310,7 @@ sap.ui.define([
                     var aTokens = oEvent.getParameter("tokens") || [];
                     var sPicked = aTokens.length > 0 ? (aTokens[0].getKey() || "") : "";
 
-                    oTargetInput.setValue((sPicked || "").toUpperCase());
+                    oTargetInput.setValue(sPicked || "");
                     oTargetInput.setValueState("None");
                     oTargetInput.setValueStateText("");
 
@@ -405,7 +405,7 @@ sap.ui.define([
 
             oDialog.setFilterBar(oFilterBar);
 
-            var sCurrentValue = (oTargetInput.getValue() || "").trim().toUpperCase();
+            var sCurrentValue = (oTargetInput.getValue() || "").trim();
             if (sCurrentValue) {
                 oDialog.setTokens([new Token({ key: sCurrentValue, text: sCurrentValue })]);
             }
@@ -1729,7 +1729,7 @@ sap.ui.define([
                 },
                 change: function (oEvent) {
                     var oSource = oEvent.getSource();
-                    var sNormalized = (oSource.getValue() || "").trim().toUpperCase();
+                    var sNormalized = (oSource.getValue() || "").trim();
                     oSource.setValue(sNormalized);
                 }
             });
@@ -1775,7 +1775,7 @@ sap.ui.define([
 
                 var sQty = oContext.getProperty("Quantity");
                 if (sQty) oInputQty.setValue(parseFloat(sQty));
-                oInputUnit.setValue((oContext.getProperty("UnitCode") || "").toUpperCase());
+                oInputUnit.setValue((oContext.getProperty("UnitCode") || ""));
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
             } else {
                 sDialogTitle = sParentId
@@ -1884,7 +1884,7 @@ sap.ui.define([
                         var dEnd = oPickerEnd.getDateValue();
 
                         var sQty = oInputQty.getValue();
-                        var sUnitCode = (oInputUnit.getValue() || "").trim().toUpperCase();
+                        var sUnitCode = (oInputUnit.getValue() || "").trim();
 
                         // Reset states
                         if (bEdit) {
