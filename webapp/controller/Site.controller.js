@@ -32,6 +32,11 @@ sap.ui.define([
 
         onInit: function () {
             this.getView().setModel(new JSONModel({
+                hasData: false,
+                chartData: []
+            }), "chartModel");
+
+            this.getView().setModel(new JSONModel({
                 siteCodeItems: [],
                 siteNameItems: [],
                 statusItems: [],
@@ -150,9 +155,228 @@ sap.ui.define([
                         this._fetchUserRoles(function () {
                             this._loadApproverData(sProjectId);
                         }.bind(this));
+
+                        // Load chart data
+                        var oCtx = oView.getBindingContext();
+                        var oProjectObj = oCtx && oCtx.getObject ? oCtx.getObject() : null;
+                        this._loadChartData(oProjectObj);
                     }.bind(this)
                 }
             });
+        },
+
+        _loadChartData: function (oProjectObj) {
+            var oChartModel = this.getView().getModel("chartModel");
+            if (!oProjectObj || !oProjectObj.StartDate || !oProjectObj.EndDate || !oProjectObj.ProjectId) {
+                oChartModel.setProperty("/hasData", false);
+                return;
+            }
+
+            var oModel = this.getOwnerComponent().getModel();
+            var that = this;
+            var sProjectId = oProjectObj.ProjectId;
+
+            // Step 1: Read sites via navigation path (backend only filters correctly this way)
+            oModel.read("/ProjectSet(guid'" + sProjectId + "')/ToSites", {
+                success: function (oSiteData) {
+                    var aSites = oSiteData.results || [];
+                    if (aSites.length === 0) {
+                        oChartModel.setProperty("/hasData", false);
+                        return;
+                    }
+
+                    var mSiteIds = {};
+                    aSites.forEach(function (s) { mSiteIds[s.SiteId] = true; });
+
+                    // Step 2: Read ALL WBS, filter client-side
+                    oModel.read("/WBSSet", {
+                        success: function (oWbsData) {
+                            var aAllWbs = oWbsData.results || [];
+
+                            // Keep only WBS belonging to this project's sites
+                            var aProjectWbs = aAllWbs.filter(function (w) {
+                                return mSiteIds[w.SiteId];
+                            });
+
+                            // Keep only leaf nodes (no children)
+                            var mParentIds = {};
+                            aProjectWbs.forEach(function (w) {
+                                if (w.ParentId) {
+                                    mParentIds[w.ParentId] = true;
+                                }
+                            });
+                            var aLeafWbs = aProjectWbs.filter(function (w) {
+                                return !mParentIds[w.WbsId];
+                            });
+
+                            console.log("[CHART] Sites:", aSites.length, "All WBS:", aAllWbs.length, "Project WBS:", aProjectWbs.length, "Leaf:", aLeafWbs.length);
+
+                            that._processBurnDownChartData(oProjectObj, aLeafWbs);
+                        },
+                        error: function () {
+                            oChartModel.setProperty("/hasData", false);
+                        }
+                    });
+                },
+                error: function () {
+                    oChartModel.setProperty("/hasData", false);
+                }
+            });
+        },
+
+        _processBurnDownChartData: function (oProjectObj, aWbs) {
+            var oChartModel = this.getView().getModel("chartModel");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            var iTotalWbs = aWbs.length;
+            if (iTotalWbs === 0) {
+                oChartModel.setProperty("/hasData", false);
+                return;
+            }
+
+            var oStartDate = new Date(oProjectObj.StartDate);
+            oStartDate.setHours(0, 0, 0, 0);
+            var oEndDate = new Date(oProjectObj.EndDate);
+            oEndDate.setHours(0, 0, 0, 0);
+
+            if (oEndDate < oStartDate) {
+                oChartModel.setProperty("/hasData", false);
+                return;
+            }
+
+            var iOneDay = 24 * 60 * 60 * 1000;
+            var iTotalDays = Math.round((oEndDate.getTime() - oStartDate.getTime()) / iOneDay);
+
+            function fmtDate(d) {
+                return String(d.getDate()).padStart(2, '0') + "/" +
+                       String(d.getMonth() + 1).padStart(2, '0');
+            }
+
+            var oToday = new Date();
+            oToday.setHours(23, 59, 59, 999);
+
+            // Create daily chart points for a smooth timeline
+            var aChartData = [];
+            
+            // To avoid too many points, dynamically adjust step based on total duration
+            var iStep = 1;
+            if (iTotalDays > 365) {
+                iStep = 30; // ~Monthly
+            } else if (iTotalDays > 180) {
+                iStep = 14; // Bi-weekly
+            } else if (iTotalDays > 90) {
+                iStep = 7; // Weekly
+            } else if (iTotalDays > 30) {
+                iStep = 5; // Every 5 days
+            } else if (iTotalDays > 14) {
+                iStep = 2; // Every 2 days
+            }
+
+            for (var i = 0; i <= iTotalDays; i += iStep) {
+                var oDate = new Date(oStartDate.getTime() + (i * iOneDay));
+                oDate.setHours(23, 59, 59, 999); // end of that day
+
+                // Planned: how many tasks are planned to finish AFTER this date
+                var iPlannedRemaining = 0;
+                aWbs.forEach(function (w) {
+                    var oEnd = w.EndDate ? new Date(w.EndDate) : null;
+                    if (!oEnd) {
+                        iPlannedRemaining++;
+                    } else {
+                        oEnd.setHours(23, 59, 59, 999);
+                        if (oEnd.getTime() >= oDate.getTime()) {
+                            iPlannedRemaining++;
+                        }
+                    }
+                });
+
+                // Actual: how many tasks were NOT YET closed by this date (only calc up to today)
+                var vActual = null;
+                if (oDate.getTime() <= oToday.getTime()) {
+                    var iClosed = 0;
+                    aWbs.forEach(function (w) {
+                        if ((w.Status || "").toUpperCase() === "CLOSED") {
+                            var oCloseDate = w.EndActual ? new Date(w.EndActual) : null;
+                            if (oCloseDate) {
+                                oCloseDate.setHours(23, 59, 59, 999);
+                                if (oCloseDate.getTime() <= oDate.getTime()) {
+                                    iClosed++;
+                                }
+                            }
+                        }
+                    });
+                    vActual = iTotalWbs - iClosed;
+                }
+
+                aChartData.push({
+                    Date: fmtDate(oDate),
+                    Planned: iPlannedRemaining,
+                    Actual: vActual
+                });
+            }
+
+            // Always ensure the exact end date is included if skipped by iStep
+            if (iTotalDays % iStep !== 0) {
+                var oDate = new Date(oEndDate.getTime());
+                oDate.setHours(23, 59, 59, 999);
+                var iPlannedRemaining = 0;
+                aWbs.forEach(function (w) {
+                    var oEnd = w.EndDate ? new Date(w.EndDate) : null;
+                    if (!oEnd) iPlannedRemaining++;
+                    else {
+                        oEnd.setHours(23, 59, 59, 999);
+                        if (oEnd.getTime() >= oDate.getTime()) iPlannedRemaining++;
+                    }
+                });
+                var vActual = null;
+                if (oDate.getTime() <= oToday.getTime()) {
+                    var iClosed = 0;
+                    aWbs.forEach(function (w) {
+                        if ((w.Status || "").toUpperCase() === "CLOSED") {
+                            var oCloseDate = w.EndActual ? new Date(w.EndActual) : null;
+                            if (oCloseDate) {
+                                oCloseDate.setHours(23, 59, 59, 999);
+                                if (oCloseDate.getTime() <= oDate.getTime()) iClosed++;
+                            }
+                        }
+                    });
+                    vActual = iTotalWbs - iClosed;
+                }
+                aChartData.push({
+                    Date: fmtDate(oDate),
+                    Planned: iPlannedRemaining,
+                    Actual: vActual
+                });
+            }
+
+            oChartModel.setProperty("/chartData", aChartData);
+            oChartModel.setProperty("/hasData", true);
+
+            // Apply vizProperties programmatically
+            var sPlanLabel = oBundle.getText("startDate") ? "Kế hoạch" : "Planned";
+            var sActualLabel = oBundle.getText("endDate") ? "Thực tế" : "Actual";
+            var oViz = this.byId("chartBurnDown");
+            if (oViz) {
+                oViz.setVizProperties({
+                    title: { visible: false },
+                    legend: { visible: true },
+                    plotArea: {
+                        dataLabel: { visible: false },
+                        colorPalette: ["#5899DA", "#E8743B"],
+                        line: { marker: { visible: true, size: 5 } }
+                    },
+                    categoryAxis: {
+                        title: { visible: false },
+                        label: { rotation: "auto" }
+                    },
+                    valueAxis: {
+                        title: { visible: false }
+                    },
+                    interaction: {
+                        selectability: { mode: "EXCLUSIVE" }
+                    }
+                });
+            }
         },
 
         _fetchUserRoles: function (fnSuccess) {

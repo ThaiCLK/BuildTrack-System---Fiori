@@ -6,7 +6,10 @@
     xmlns:form="sap.ui.layout.form"
     xmlns:core="sap.ui.core"
     xmlns:cards="sap.f.cards"
-    xmlns:fb="sap.ui.comp.filterbar">
+    xmlns:fb="sap.ui.comp.filterbar"
+    xmlns:viz="sap.viz.ui5.controls"
+    xmlns:vizdata="sap.viz.ui5.data"
+    xmlns:feeds="sap.viz.ui5.controls.common.feeds">
     <Page 
         title="{parts: [{path: 'ProjectName'}], formatter: '.formatSiteListTitle'}" 
         showNavButton="true" 
@@ -21,28 +24,59 @@
                                     <cards:Header title="{i18n>overviewInfo}" subtitle="{ProjectCode}" iconSrc="sap-icon://project-definition" />
                                 </f:header>
                                 <f:content>
-                                    <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
-                                        <form:content>
-                                            <core:Title text="{i18n>identification}" />
-                                            <Label text="{i18n>projectName}" />
-                                            <Text text="{ProjectName}" />
-                                            <Label text="{i18n>projectType}" />
-                                            <ObjectStatus text="{path: 'ProjectType', formatter: '.formatTypeText'}" 
-                                                state="{path: 'ProjectType', formatter: '.formatTypeState'}" 
-                                                inverted="true" />
-                                            <Label text="{i18n>status}" />
-                                            <ObjectStatus text="{path: 'Status', formatter: '.formatStatusText'}" 
-                                                class="statusBadgeNoWrap"
-                                                state="{path: 'Status', formatter: '.formatStatusState'}" 
-                                                inverted="true" />
+                                    <HBox width="100%">
+                                        <!-- LEFT: Profile Info -->
+                                        <VBox width="40%">
+                                            <form:SimpleForm editable="false" layout="ResponsiveGridLayout" 
+                                                labelSpanL="5" labelSpanM="5" emptySpanL="0" emptySpanM="0" 
+                                                columnsL="1" columnsM="1">
+                                                <form:content>
+                                                    <core:Title text="{i18n>identification}" />
+                                                    <Label text="{i18n>projectName}" />
+                                                    <Text text="{ProjectName}" />
+                                                    <Label text="{i18n>projectType}" />
+                                                    <ObjectStatus text="{path: 'ProjectType', formatter: '.formatTypeText'}" 
+                                                        state="{path: 'ProjectType', formatter: '.formatTypeState'}" 
+                                                        inverted="true" />
+                                                    <Label text="{i18n>status}" />
+                                                    <ObjectStatus text="{path: 'Status', formatter: '.formatStatusText'}" 
+                                                        class="statusBadgeNoWrap"
+                                                        state="{path: 'Status', formatter: '.formatStatusState'}" 
+                                                        inverted="true" />
 
-                                            <core:Title text="{i18n>schedulePlannedVsActual}" />
-                                            <Label text="{i18n>startDate}" />
-                                            <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }}" />
-                                            <Label text="{i18n>endDate}" />
-                                            <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }}" />
-                                        </form:content>
-                                    </form:SimpleForm>
+                                                    <core:Title text="{i18n>schedulePlannedVsActual}" />
+                                                    <Label text="{i18n>startDate}" />
+                                                    <Text text="{path: 'StartDate', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }}" />
+                                                    <Label text="{i18n>endDate}" />
+                                                    <Text text="{path: 'EndDate', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'dd/MM/yyyy' }}" />
+                                                </form:content>
+                                            </form:SimpleForm>
+                                        </VBox>
+
+                                        <!-- RIGHT: Burn Down Chart -->
+                                        <VBox width="60%" class="sapUiSmallMarginTop">
+                                            <viz:VizFrame id="chartBurnDown"
+                                                vizType="line"
+                                                width="100%"
+                                                height="320px">
+                                                <viz:dataset>
+                                                    <vizdata:FlattenedDataset data="{chartModel>/chartData}">
+                                                        <vizdata:dimensions>
+                                                            <vizdata:DimensionDefinition name="Date" value="{chartModel>Date}" />
+                                                        </vizdata:dimensions>
+                                                        <vizdata:measures>
+                                                            <vizdata:MeasureDefinition name="Planned" value="{chartModel>Planned}" />
+                                                            <vizdata:MeasureDefinition name="Actual" value="{chartModel>Actual}" />
+                                                        </vizdata:measures>
+                                                    </vizdata:FlattenedDataset>
+                                                </viz:dataset>
+                                                <viz:feeds>
+                                                    <feeds:FeedItem uid="categoryAxis" type="Dimension" values="Date" />
+                                                    <feeds:FeedItem uid="valueAxis" type="Measure" values="Planned,Actual" />
+                                                </viz:feeds>
+                                            </viz:VizFrame>
+                                        </VBox>
+                                    </HBox>
                                 </f:content>
                             </f:Card>
 

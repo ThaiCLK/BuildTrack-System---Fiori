@@ -42,14 +42,57 @@
 
 /* --- BAR STYLES --- */
 
-/* 1. NODE CHA: Màu Đen (Hardcoded for diagnostic) */
+/* 0. NODE GỐC (ROOT): Kiểu móc vuông [ ] */
+.gantt-bar-root {
+    background-color: transparent !important;
+    height: 8px;
+    min-width: 4px;
+    border: 2px solid #1a1a1a;
+    border-bottom: none;
+    border-radius: 0;
+    position: relative;
+}
+.gantt-bar-root::before,
+.gantt-bar-root::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    width: 2px;
+    height: 6px;
+    background-color: #1a1a1a;
+}
+.gantt-bar-root::before {
+    left: -2px;
+}
+.gantt-bar-root::after {
+    right: -2px;
+}
+
+/* 1. NODE CHA: Kiểu móc vuông đen nhỏ */
 .gantt-bar-parent {
-    background-color: #333333 !important;
-    /* Force solid color no variables */
-    height: 10px;
-    border-radius: 2px;
-    min-width: 2px;
-    border: 1px solid #000000;
+    background-color: transparent !important;
+    height: 5px;
+    min-width: 4px;
+    border: 2px solid #333333;
+    border-bottom: none;
+    border-radius: 0;
+    position: relative;
+    margin-top: 6px; /* Đẩy sát xuống dưới một chút */
+}
+.gantt-bar-parent::before,
+.gantt-bar-parent::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    width: 2px;
+    height: 4px;
+    background-color: #333333;
+}
+.gantt-bar-parent::before {
+    left: -2px;
+}
+.gantt-bar-parent::after {
+    right: -2px;
 }
 
 /* 2. NODE CON - PLAN: Màu Xanh Dương */

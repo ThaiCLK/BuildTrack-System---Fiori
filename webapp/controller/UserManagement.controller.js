@@ -31,6 +31,27 @@ sap.ui.define([
             }
         },
 
+        onSearchUser: function (oEvent) {
+            var sQuery = oEvent.getParameter("query");
+            var aFilters = [];
+
+            if (sQuery && sQuery.trim().length > 0) {
+                // Search by UserId, UserName, or Email
+                aFilters.push(new Filter({
+                    filters: [
+                        new Filter("UserId", FilterOperator.Contains, sQuery),
+                        new Filter("UserName", FilterOperator.Contains, sQuery),
+                        new Filter("Email", FilterOperator.Contains, sQuery)
+                    ],
+                    and: false
+                }));
+            }
+
+            var oTable = this.byId("userTable");
+            var oBinding = oTable.getBinding("items");
+            oBinding.filter(aFilters);
+        },
+
 
         // Formatters
         formatAuthLevel: function (iLevel) {

@@ -18,6 +18,7 @@
                     <OverflowToolbar>
                         <Title text="{i18n>userList}" level="H2"/>
                         <ToolbarSpacer/>
+                        <SearchField id="searchUserInput" placeholder="{i18n>searchUser}" search=".onSearchUser" width="300px" />
                         <Button text="{i18n>createUserRole}" icon="sap-icon://add" press=".onAddUser" type="Emphasized" visible="{= ${userModel>/authLevel} === 99 }" />
                     </OverflowToolbar>
                 </headerToolbar>

@@ -581,7 +581,7 @@ sap.ui.define([
 
             oModel.read("/SiteSet(guid'" + this._sCurrentSiteId + "')/ToWbs", {
                 urlParameters: {
-                    "$expand": "ToSubWbs,ToSubWbs/ToApprovalLog,ToApprovalLog",
+                    "$expand": "ToSubWbs,ToSubWbs/ToSubWbs,ToApprovalLog,ToSubWbs/ToApprovalLog,ToSubWbs/ToSubWbs/ToApprovalLog",
                     "$orderby": "StartDate"
                 },
                 headers: {
@@ -832,7 +832,7 @@ sap.ui.define([
             }
         },
 
-        // ── WBS: CREATE (root if no row selected, child if row selected) ────────
+        // ── WBS: CREATE (3-Level: Root → Parent → Child) ────────
         onAddWbs: function () {
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
             // Permission check: ZBT_WBS — AuthLevel 1 or 99
@@ -855,17 +855,26 @@ sap.ui.define([
                 var sParentId = oCtx ? oCtx.getProperty("WbsId") : null;
                 var sParentName = oCtx ? oCtx.getProperty("WbsName") : "";
 
-                // Prevent creating grandchildren (i.e. if the selected row is already a child)
-                var sSelectedRowParentId = oCtx ? oCtx.getProperty("ParentId") : null;
-                if (sSelectedRowParentId && sSelectedRowParentId !== "00000000-0000-0000-0000-000000000000") {
-                    var oBundle = this.getView().getModel("i18n").getResourceBundle();
+                // Determine depth of selected row
+                var iDepth = this._getWbsDepth(sParentId);
+
+                if (iDepth >= 2) {
+                    // Selected row is already a leaf (depth 2 = Child), cannot go deeper
                     sap.m.MessageBox.warning(oBundle.getText("cannotAddSubWbsError"));
                     return;
                 }
 
+                // depth 0 (Root) → creating Parent (level 2)
+                // depth 1 (Parent) → creating Child (level 3)
                 this._openWbsDialog(null, sParentId, sParentName);
             } else {
-                // No row selected → create as root WBS (null / GUID zero parent)
+                // No row selected → create as Root WBS
+                // FE check: only 1 Root per Site
+                var aTree = this.getView().getModel("viewData").getProperty("/WBS") || [];
+                if (aTree.length > 0) {
+                    sap.m.MessageBox.warning(oBundle.getText("rootWbsAlreadyExistsError"));
+                    return;
+                }
                 this._openWbsDialog(null, null, null);
             }
 
@@ -895,9 +904,9 @@ sap.ui.define([
 
             var oCtx = oTable.getContextByIndex(aIndices[0]);
 
-            // Validate WBS Status: Only allow editing if Status is PLANNING
+            // Validate WBS Status: Only allow editing if Status is PLANNING or OPEN_REJECTED
             var sStatus = oCtx.getProperty("Status");
-            if (sStatus !== "PLANNING") {
+            if (sStatus !== "PLANNING" && sStatus !== "OPEN_REJECTED") {
                 sap.m.MessageBox.error(oBundle.getText("wbsEditPlanningOnlyError"));
                 return;
             }
@@ -1646,15 +1655,22 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
 
-            // Determine if we are dealing with a Child WBS or a Root WBS
-            var bIsChild = false;
+            // Determine the depth level of this WBS node
+            // bIsLeaf = true only for Level 3 ("Con") — depth 2, which requires Quantity/Unit
+            var iNodeDepth = 0;
+            var bIsLeaf = false;
             if (bEdit) {
-                var sPid = oContext.getProperty("ParentId");
-                // Check if ParentId is exist and not an empty GUID
-                bIsChild = (!!sPid && sPid !== "00000000-0000-0000-0000-000000000000");
-            } else {
-                bIsChild = !!sParentId;
+                var sEditId = oContext.getProperty("WbsId");
+                iNodeDepth = that._getWbsDepth(sEditId);
+                bIsLeaf = (iNodeDepth >= 2);
+            } else if (sParentId) {
+                // Creating a child of sParentId — the NEW node's depth = parent depth + 1
+                var iParentDepth = that._getWbsDepth(sParentId);
+                iNodeDepth = iParentDepth + 1;
+                bIsLeaf = (iNodeDepth >= 2);
             }
+            // Keep bIsChild for backward compat in payload logic
+            var bIsChild = bIsLeaf;
 
             var oLabelCode = new Label({ text: oBundle.getText("wbsCode"), visible: bEdit });
             var oInputCode = new Input({
@@ -1778,9 +1794,13 @@ sap.ui.define([
                 oInputUnit.setValue((oContext.getProperty("UnitCode") || ""));
                 oSelectStatus.setSelectedKey(oContext.getProperty("Status"));
             } else {
-                sDialogTitle = sParentId
-                    ? oBundle.getText("addChildWbsOf", [sParentName])
-                    : oBundle.getText("createWbsRoot");
+                if (!sParentId) {
+                    sDialogTitle = oBundle.getText("createWbsRoot");
+                } else if (iNodeDepth === 1) {
+                    sDialogTitle = oBundle.getText("addChildWbsOf", [sParentName]);
+                } else {
+                    sDialogTitle = oBundle.getText("addLeafWbsOf", [sParentName]);
+                }
                 oSelectStatus.setSelectedKey("NEW");
             }
 
@@ -2287,19 +2307,57 @@ sap.ui.define([
             for (i = 0; i < aData.length; i++) {
                 map[aData[i].WbsId] = i;
                 aData[i].children = [];
-                aData[i].IsRoot = false; // Initialize explicitly
+                aData[i].IsRoot = false;
             }
             for (i = 0; i < aData.length; i++) {
                 node = aData[i];
                 if (node.ParentId && map[node.ParentId] !== undefined) {
-                    node.IsRoot = false; // It's a child
+                    node.IsRoot = false;
                     aData[map[node.ParentId]].children.push(node);
                 } else {
-                    node.IsRoot = true; // It's a root
+                    node.IsRoot = true;
                     res.push(node);
                 }
             }
+            // Assign Depth and Type based on position in tree
+            var fnSetDepth = function (nodes, depth) {
+                for (var j = 0; j < nodes.length; j++) {
+                    nodes[j].Depth = depth;
+                    if (depth === 0) {
+                        // Root ("Ông") — bracket style
+                        nodes[j].Type = "ROOT";
+                        nodes[j].IsRoot = true;
+                    } else if (depth === 1) {
+                        // Parent ("Cha") — black parent bar
+                        nodes[j].Type = "WBS";
+                        nodes[j].IsRoot = true;
+                    } else {
+                        // Child ("Con") — plan + actual bars
+                        nodes[j].Type = "PLAN";
+                        nodes[j].IsRoot = false;
+                    }
+                    if (nodes[j].children && nodes[j].children.length > 0) {
+                        fnSetDepth(nodes[j].children, depth + 1);
+                    }
+                }
+            };
+            fnSetDepth(res, 0);
             return res;
+        },
+
+        _getWbsDepth: function (sWbsId) {
+            var aTree = this.getView().getModel("viewData").getProperty("/WBS") || [];
+            var fnFind = function (nodes, depth) {
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].WbsId === sWbsId) return depth;
+                    if (nodes[i].children && nodes[i].children.length > 0) {
+                        var found = fnFind(nodes[i].children, depth + 1);
+                        if (found !== -1) return found;
+                    }
+                }
+                return -1;
+            };
+            return fnFind(aTree, 0);
         },
 
         isRootNode: function (v) { return this._oWBSDelegate.isRootNode(v); },
