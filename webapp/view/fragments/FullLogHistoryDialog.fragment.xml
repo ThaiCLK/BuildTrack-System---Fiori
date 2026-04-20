@@ -1,0 +1,79 @@
+<core:FragmentDefinition xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    <Dialog title="Chi tiết Nhật ký Thi công (Toàn thời gian)" contentWidth="900px" contentHeight="600px" draggable="true" resizable="true">
+        <VBox>
+            <Toolbar>
+                <SearchField placeholder="Tìm kiếm theo ngày, khối lượng..." width="100%" liveChange=".onSearchFullLogHistory"/>
+            </Toolbar>
+
+            <Table id="idFullLogHistoryTable" sticky="HeaderToolbar,ColumnHeaders" items="{workSummaryModel>/FullLogHistory}">
+                <columns>
+                    <Column width="15%">
+                        <Text text="Ngày" design="Bold" />
+                        <footer>
+                            <Text text="TỔNG CỘNG:" design="Bold" />
+                        </footer>
+                    </Column>
+
+                    <Column width="20%" hAlign="End">
+                        <Text text="Khối lượng" design="Bold" />
+                        <footer>
+                            <ObjectNumber number="{workSummaryModel>/FullLogHistoryTotalQty}" unit="{workSummaryModel>/FullLogHistoryUnitCode}" />
+                        </footer>
+                    </Column>
+
+                    <Column width="15%" hAlign="Center">
+                        <Text text="Thời tiết Sáng" design="Bold" />
+                        <footer>
+                            <Text text="-" />
+                        </footer>
+                    </Column>
+
+                    <Column width="15%" hAlign="Center">
+                        <Text text="Thời tiết Chiều" design="Bold" />
+                        <footer>
+                            <Text text="-" />
+                        </footer>
+                    </Column>
+
+                    <Column width="15%" hAlign="Center">
+                        <Text text="Ghi chú An toàn" design="Bold" />
+                        <footer>
+                            <Text text="-" />
+                        </footer>
+                    </Column>
+
+                    <Column width="15%" hAlign="Center">
+                        <Text text="Ghi chú Nhà thầu" design="Bold" />
+                        <footer>
+                            <Text text="-" />
+                        </footer>
+                    </Column>
+                </columns>
+
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <Text text="{workSummaryModel>DateFormatted}" />
+                            <ObjectNumber number="{workSummaryModel>Qty}" unit="{= ${workSummaryModel>Qty} === '-' ? '' : ${workSummaryModel>UnitCode} }" />
+                            <Text text="{workSummaryModel>WeatherAmIcon}" tooltip="{workSummaryModel>WeatherAmTooltip}" class="sapUiLargeText" />
+                            <Text text="{workSummaryModel>WeatherPmIcon}" tooltip="{workSummaryModel>WeatherPmTooltip}" class="sapUiLargeText" />
+                            <VBox alignItems="Center">
+                                <core:Icon src="{workSummaryModel>SafeNoteIcon}" color="Critical" tooltip="Có ghi chú an toàn" size="1.2rem" visible="{= ${workSummaryModel>SafeNoteIcon} !== '' }"/>
+                                <Text text="-" visible="{= ${workSummaryModel>SafeNoteIcon} === '' }"/>
+                            </VBox>
+                            <VBox alignItems="Center">
+                                <core:Icon src="{workSummaryModel>ContractorNoteIcon}" color="Critical" tooltip="Có ghi chú nhà thầu" size="1.2rem" visible="{= ${workSummaryModel>ContractorNoteIcon} !== '' }"/>
+                                <Text text="-" visible="{= ${workSummaryModel>ContractorNoteIcon} === '' }"/>
+                            </VBox>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </VBox>
+
+        <beginButton>
+            <Button text="Đóng" type="Reject" press=".onCloseFullLogHistory" />
+        </beginButton>
+    </Dialog>
+</core:FragmentDefinition>

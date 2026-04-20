@@ -237,9 +237,9 @@ sap.ui.define([
 
             // POS fields: mandatory
             var sLStartVal = (oLocationModel.getProperty("/PosStart") !== null && oLocationModel.getProperty("/PosStart") !== undefined) ? String(oLocationModel.getProperty("/PosStart")).trim() : "";
-            var sLEndVal   = (oLocationModel.getProperty("/PosEnd")   !== null && oLocationModel.getProperty("/PosEnd")   !== undefined) ? String(oLocationModel.getProperty("/PosEnd")).trim()   : "";
-            var sLBotVal   = (oLocationModel.getProperty("/PosBot")   !== null && oLocationModel.getProperty("/PosBot")   !== undefined) ? String(oLocationModel.getProperty("/PosBot")).trim()   : "";
-            var sLTopVal   = (oLocationModel.getProperty("/PosTop")   !== null && oLocationModel.getProperty("/PosTop")   !== undefined) ? String(oLocationModel.getProperty("/PosTop")).trim()   : "";
+            var sLEndVal = (oLocationModel.getProperty("/PosEnd") !== null && oLocationModel.getProperty("/PosEnd") !== undefined) ? String(oLocationModel.getProperty("/PosEnd")).trim() : "";
+            var sLBotVal = (oLocationModel.getProperty("/PosBot") !== null && oLocationModel.getProperty("/PosBot") !== undefined) ? String(oLocationModel.getProperty("/PosBot")).trim() : "";
+            var sLTopVal = (oLocationModel.getProperty("/PosTop") !== null && oLocationModel.getProperty("/PosTop") !== undefined) ? String(oLocationModel.getProperty("/PosTop")).trim() : "";
 
             if (!sLStartVal) {
                 oInLocStart.setValueState("Error");
@@ -529,6 +529,12 @@ sap.ui.define([
 
             // Load project info
             this._loadProjectInfo(sSiteId);
+
+            // Fetch System Date: User requested to drop backend date and use local computer date
+            var oDate = new Date();
+            this.getView().getModel("viewData").setProperty("/ServerDateObj", oDate);
+            var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy HH:mm:ss" });
+            this.getView().getModel("viewData").setProperty("/ServerDate", oDateFormat.format(oDate));
 
             // Reset daily log detail panel
             var oUIModel = this.getView().getModel("dailyLogModel");
@@ -925,13 +931,23 @@ sap.ui.define([
     // Mix in WorkSummaryDelegate functions to the controller prototype so XML views can resolve them during parsing
     Object.assign(WBSDetailController.prototype, {
         _loadWorkSummary: WorkSummaryDelegate._loadWorkSummary,
-        formatPercentage: WorkSummaryDelegate.formatPercentage,
-        formatProgress: WorkSummaryDelegate.formatProgress,
-        formatQuantityState: WorkSummaryDelegate.formatQuantityState,
-        formatProgressDisplay: WorkSummaryDelegate.formatProgressDisplay,
+        formatQtyPercentageStr: WorkSummaryDelegate.formatQtyPercentageStr,
+        formatQtyProgressPercent: WorkSummaryDelegate.formatQtyProgressPercent,
+        formatQtyProgressState: WorkSummaryDelegate.formatQtyProgressState,
+        formatQtyProgressDisplay: WorkSummaryDelegate.formatQtyProgressDisplay,
+        formatTimeElapsedDisplay: WorkSummaryDelegate.formatTimeElapsedDisplay,
+        formatTimeElapsedPercent: WorkSummaryDelegate.formatTimeElapsedPercent,
+        formatTimeElapsedPercentStr: WorkSummaryDelegate.formatTimeElapsedPercentStr,
+        formatTimeElapsedState: WorkSummaryDelegate.formatTimeElapsedState,
+        formatPerformancePanelVisible: WorkSummaryDelegate.formatPerformancePanelVisible,
         formatTotalQty: WorkSummaryDelegate.formatTotalQty,
         formatWorkSummaryStatusState: WorkSummaryDelegate.formatWorkSummaryStatusState,
         formatWorkSummaryStatusIcon: WorkSummaryDelegate.formatWorkSummaryStatusIcon,
+        formatPlanDateRange: WorkSummaryDelegate.formatPlanDateRange,
+        formatPlanDuration: WorkSummaryDelegate.formatPlanDuration,
+        formatActualDateRange: WorkSummaryDelegate.formatActualDateRange,
+        formatActualDuration: WorkSummaryDelegate.formatActualDuration,
+        formatActualDurationState: WorkSummaryDelegate.formatActualDurationState,
         onSubmitForApproval: WorkSummaryDelegate.onSubmitForApproval,
         formatStepClass: WorkSummaryDelegate.formatStepClass,
         formatStepLabelClass: WorkSummaryDelegate.formatStepLabelClass,
@@ -940,7 +956,17 @@ sap.ui.define([
         formatStepLabel: WorkSummaryDelegate.formatStepLabel,
         formatStepNumber: WorkSummaryDelegate.formatStepNumber,
         formatStepNumberVisible: WorkSummaryDelegate.formatStepNumberVisible,
-        formatCompletionRateTitle: WorkSummaryDelegate.formatCompletionRateTitle
+        formatCompletionRateTitle: WorkSummaryDelegate.formatCompletionRateTitle,
+        formatAverageProductivity: WorkSummaryDelegate.formatAverageProductivity,
+        formatScheduleVarianceText: WorkSummaryDelegate.formatScheduleVarianceText,
+        formatScheduleVarianceState: WorkSummaryDelegate.formatScheduleVarianceState,
+        formatScheduleVarianceIcon: WorkSummaryDelegate.formatScheduleVarianceIcon,
+        formatForecastDateText: WorkSummaryDelegate.formatForecastDateText,
+        formatRiskAssessmentText: WorkSummaryDelegate.formatRiskAssessmentText,
+        formatRiskAssessmentState: WorkSummaryDelegate.formatRiskAssessmentState,
+        onPressViewFullLogHistory: WorkSummaryDelegate.onPressViewFullLogHistory,
+        onSearchFullLogHistory: WorkSummaryDelegate.onSearchFullLogHistory,
+        onCloseFullLogHistory: WorkSummaryDelegate.onCloseFullLogHistory
     });
 
     // Mix in ApprovalLogDelegate functions to the controller prototype
@@ -1639,7 +1665,7 @@ sap.ui.define([
                             },
                             success: function (oData) {
                                 oView.setBusy(false);
-                                
+
                                 var oResult = oData.UpdateStatus || oData;
                                 if (oResult && oResult.Success === false) {
                                     sap.m.MessageBox.error(oResult.Message || "Lỗi khi cập nhật trạng thái.");

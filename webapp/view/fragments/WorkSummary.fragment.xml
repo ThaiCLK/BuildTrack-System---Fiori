@@ -1,210 +1,485 @@
-<core:FragmentDefinition
-    xmlns="sap.m"
+<core:FragmentDefinition xmlns="sap.m"
     xmlns:core="sap.ui.core"
     xmlns:l="sap.ui.layout"
     xmlns:f="sap.ui.layout.form"
->
-    <ScrollContainer
-        height="100%"
-        width="100%"
-        vertical="true"
-        horizontal="true"
-    >
+    xmlns:mc="sap.suite.ui.microchart">
+    <ScrollContainer height="100%" width="100%" vertical="true" horizontal="true">
         <VBox class="sapUiSmallMargin">
-            <!-- ── Section I: Executive Summary (Header) ────────────────────────────────────────── -->
+
             <Panel class="sapUiSmallMarginBottom">
                 <headerToolbar>
                     <Toolbar>
                         <Title text="{i18n>workSummaryTitle}" level="H4" />
                         <ToolbarSpacer />
-                        <!-- Mở WBS -->
-                        <Button
-                            id="btnSubmitOpenWorkSummary"
-                            text="{i18n>submitOpen}"
-                            icon="sap-icon://sys-enter-2"
-                            type="Accept"
-                            press=".onPressSubmitOpenWorkSummary"
-                            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
-                        />
-                        <Button
-                            id="btnApproveOpenWorkSummary"
-                            text="{i18n>approveOpen}"
-                            icon="sap-icon://signature"
-                            type="Emphasized"
-                            press=".onApproveOpenWorkSummary"
-                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' }"
-                        />
-                        <Button
-                            id="btnRejectOpenWorkSummary"
-                            text="{i18n>rejectOpen}"
-                            icon="sap-icon://decline"
-                            type="Reject"
-                            press=".onRejectOpenWorkSummary"
-                            visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' }"
-                        />
-                        <!-- Đóng WBS -->
-                        <Button
-                            id="btnSubmitCloseWorkSummary"
-                            text="{i18n>submitClose}"
-                            icon="sap-icon://sys-enter-2"
-                            type="Accept"
-                            press=".onPressSubmitCloseWorkSummary"
-                            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
-                        />
-                        <Button
-                            id="btnApproveCloseWorkSummary"
-                            text="{i18n>viewAcceptanceReport}"
-                            icon="sap-icon://display"
-                            type="Emphasized"
-                            press=".onPressSignAcceptanceReport"
-                            visible="{= ${Status} === 'CLOSED' || ${Status} === 'CLOSE_REJECTED' || (${Status} === 'PENDING_CLOSE' &amp;&amp; ${viewData>/isAcceptanceReportReady}) }"
-                        />
+                        <Button id="btnSubmitOpenWorkSummary" text="{i18n>submitOpen}" icon="sap-icon://sys-enter-2" type="Accept" press=".onPressSubmitOpenWorkSummary" visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }" />
+                        <Button id="btnApproveOpenWorkSummary" text="{i18n>approveOpen}" icon="sap-icon://signature" type="Emphasized" press=".onApproveOpenWorkSummary" visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' }" />
+                        <Button id="btnRejectOpenWorkSummary" text="{i18n>rejectOpen}" icon="sap-icon://decline" type="Reject" press=".onRejectOpenWorkSummary" visible="{= (${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0) &amp;&amp; ${Status} === 'PENDING_OPEN' }" />
+                        <Button id="btnSubmitCloseWorkSummary" text="{i18n>submitClose}" icon="sap-icon://sys-enter-2" type="Accept" press=".onPressSubmitCloseWorkSummary" visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }" />
+                        <Button id="btnApproveCloseWorkSummary" text="{i18n>viewAcceptanceReport}" icon="sap-icon://display" type="Emphasized" press=".onPressSignAcceptanceReport" visible="{= ${Status} === 'CLOSED' || ${Status} === 'CLOSE_REJECTED' || (${Status} === 'PENDING_CLOSE' &amp;&amp; ${viewData>/isAcceptanceReportReady}) }" />
                     </Toolbar>
                 </headerToolbar>
                 <f:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="1" columnsM="1">
                     <f:content>
                         <Label text="{i18n>workItemTitle}" design="Bold"/>
                         <Text text="{WbsName}" />
-
                         <Label text="{i18n>wbsCode}" design="Bold"/>
                         <Text text="{WbsCode}" />
-                        
                         <Label text="{i18n>site}" design="Bold"/>
                         <Text text="{projectModel>/ProjectName} — {projectModel>/SiteName}" />
-
-                        <Label text="{i18n>completedCumulative}" design="Bold" visible="{path: 'ParentId', formatter: '.isChildNode'}"/>
-                                <VBox visible="{path: 'ParentId', formatter: '.isChildNode'}">
-                                    <ObjectNumber 
-                                        number="{
-                                            path: 'workSummaryModel>/TotalQtyDone',
-                                            type: 'sap.ui.model.type.Float',
-                                            formatOptions: {
-                                                maxFractionDigits: 0,
-                                                groupingEnabled: true
-                                            }
-                                        }" 
-                                        unit="{UnitCode}" 
-                                        state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
-                                    <!-- Chú thích: chỉ hiện khi là WBS cha (đã ẩn do y/c ẩn số hoàn thành của WBS cha) -->
-                                    <Text
-                                        text="{i18n>parentWbsAggregateNote}"
-                                        visible="{path: 'ParentId', formatter: '.isParentNode'}"
-                                        class="sapUiTinyMarginTop"
-                                        wrapping="true"
-                                        />
-                                </VBox>
                     </f:content>
                 </f:SimpleForm>
             </Panel>
 
-            <!-- ── Section II: Progress Evaluation (Leaf Nodes Only) ──────────────────────────────── -->
-            <Panel headerText="{i18n>progressEvaluation}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isChildNode'}">
-                <VBox width="100%">
-                        <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom" width="100%">
-                            <Label text="{parts: ['Quantity', 'UnitCode'], formatter: '.formatCompletionRateTitle'}" design="Bold"/>
-                            <ObjectStatus 
-                                text="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}" 
-                                state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}" />
-                        </HBox>
-                        
-                        <ProgressIndicator
-                            percentValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatProgress'}"
-                            displayValue="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatPercentage'}"
-                            showValue="true"
-                            state="{parts: ['workSummaryModel>/TotalQtyDone', 'Quantity'], formatter: '.formatQuantityState'}"
-                            height="1.2rem"
-                            width="100%"/>
-                        
-                    <l:Grid defaultSpan="L6 M6 S12" class="sapUiMediumMarginTop">
+            <VBox visible="{path: 'ParentId', formatter: '.isChildNode'}">
+                <Panel headerText="Thời gian &amp; Trạng thái" class="sapUiSmallMarginBottom">
+                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                        <Title text="Trạng thái WBS:" level="H5"/>
+                        <ObjectStatus text="{path: 'Status', formatter: '.formatWbsStatusText'}" state="{path: 'Status', formatter: '.formatWbsStatusState'}" inverted="true" />
+                    </HBox>
+                    <l:Grid defaultSpan="L6 M6 S12">
                         <l:content>
                             <VBox>
-                                <Label text="{i18n>targetPlanned}" class="sapUiTinyMarginBottom"/>
-                                <ObjectNumber number="{path: 'Quantity', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="None" />
+                                <Label text="Kế hoạch thi công" design="Bold"/>
+                                <Text text="{path: 'StartDate', formatter: '.formatPlanDateRange'}" class="sapUiTinyMarginTopBottom"/>
+                                <ObjectStatus text="{path: 'StartDate', formatter: '.formatPlanDuration'}" state="None" />
                             </VBox>
                             <VBox>
-                                <Label text="{i18n>actualTotalDone}" class="sapUiTinyMarginBottom"/>
-                                <ObjectNumber number="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatTotalQty'}" unit="{UnitCode}" state="Success" />
+                                <Label text="Thời gian thực tế" design="Bold"/>
+                                <Text text="{path: 'Status', formatter: '.formatActualDateRange'}" class="sapUiTinyMarginTopBottom"/>
+                                <ObjectStatus text="{path: 'Status', formatter: '.formatActualDuration'}" state="{path: 'Status', formatter: '.formatActualDurationState'}" />
                             </VBox>
                         </l:content>
                     </l:Grid>
-                </VBox>
-            </Panel>
+                </Panel>
 
-            <!-- ── Section III: Children Summary Table (Parent Nodes Only) ────────────────────────── -->
-            <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
-                <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
-                    <columns>
-                        <Column>
-                            <Text text="{i18n>wbsCode}" />
-                        </Column>
-                        <Column>
-                            <Text text="{i18n>itemName}" />
-                        </Column>
-                        <Column hAlign="End">
-                            <Text text="{i18n>targetPlanned}" />
-                        </Column>
-                        <Column hAlign="End">
-                            <Text text="{i18n>actualTotalDone}" />
-                        </Column>
-                        <Column>
-                            <Text text="{i18n>status}" />
-                        </Column>
-                        <Column hAlign="Begin">
-                            <Text text="{i18n>workProgress}" />
-                        </Column>
-                    </columns>
-                    <items>
-                        <ColumnListItem>
-                            <cells>
-                                <Text text="{workSummaryModel>WbsCode}" />
-                                <Text text="{workSummaryModel>WbsName}" wrapping="true" />
-                                <ObjectNumber 
-                                    number="{
-                                        path: 'workSummaryModel>Quantity',
-                                        type: 'sap.ui.model.type.Float',
-                                        formatOptions: {
-                                            maxFractionDigits: 0,
-                                            groupingEnabled: true
-                                        }
-                                    }" 
-                                    unit="{workSummaryModel>UnitCode}" />
-                                <ObjectNumber 
-                                    number="{
-                                        path: 'workSummaryModel>TotalQtyDone',
-                                        type: 'sap.ui.model.type.Float',
-                                        formatOptions: {
-                                            maxFractionDigits: 0,
-                                            groupingEnabled: true
-                                        }
-                                    }" 
-                                    unit="{workSummaryModel>UnitCode}" 
-                                    state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" />
-                                
-                                <ObjectStatus 
-                                    text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" 
-                                    class="statusBadgeNoWrap"
-                                    state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}"
-                                    inverted="true" />
+                <Panel headerText="Đánh giá Hiệu suất" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                    <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
 
-                                <HBox alignItems="Center" width="100%">
-                                    <Text text="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatPercentage'}" 
-                                          width="3.5rem" textAlign="End" class="sapUiTinyMarginEnd" />
-                                    <ProgressIndicator
-                                        percentValue="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatProgress'}"
-                                        showValue="false"
-                                        state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}"
-                                        height="0.8rem"
-                                        width="100%">
-                                        <layoutData>
-                                            <FlexItemData growFactor="1" />
-                                        </layoutData>
-                                    </ProgressIndicator>
+                        <HBox justifyContent="SpaceBetween" width="100%">
+                            <Label text="Hoàn thành Khối lượng" design="Bold"/>
+                            <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressDisplay'}" />
+                        </HBox>
+                        <ProgressIndicator percentValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressPercent'}" displayValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyPercentageStr'}" showValue="true" state="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressState'}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+                        <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
+                            <Label text="Tiêu hao Thời gian" design="Bold"/>
+                            <Text text="{path: 'Status', formatter: '.formatTimeElapsedDisplay'}" />
+                        </HBox>
+                        <ProgressIndicator percentValue="{path: 'Status', formatter: '.formatTimeElapsedPercent'}" displayValue="{path: 'Status', formatter: '.formatTimeElapsedPercentStr'}" showValue="true" state="{path: 'Status', formatter: '.formatTimeElapsedState'}" height="1.2rem" width="100%"/>
+                        <VBox class="sapUiLargeMarginTop">
+                            <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="sapUiTinyMarginBottom">
+                                <Label text="Lịch sử cập nhật" design="Bold"/>
+                                <Link text="Xem tất cả" press=".onPressViewFullLogHistory" />
+                            </HBox>
+                            <ScrollContainer horizontal="true" vertical="false" width="100%" class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+                                <Table showSeparators="Inner" width="100%" fixedLayout="false">
+                                    <columns>
+                                        <Column width="6rem" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                        <Column hAlign="Center" />
+                                    </columns>
+                                    <items>
+                                        <ColumnListItem>
+                                            <cells>
+                                                <Label text="Ngày" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/0}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/1}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/2}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/3}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/4}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/5}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/6}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/7}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/8}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/9}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/10}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/11}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/12}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/13}" design="Bold" />
+                                            </cells>
+                                        </ColumnListItem>
+                                        <ColumnListItem>
+                                            <cells>
+                                                <Label text="Nhật ký" design="Bold" />
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/0}" color="{workSummaryModel>/HistoryLogColors/0}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/0} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/0}" visible="{= ${workSummaryModel>/HistoryLogIcons/0} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/1}" color="{workSummaryModel>/HistoryLogColors/1}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/1} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/1}" visible="{= ${workSummaryModel>/HistoryLogIcons/1} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/2}" color="{workSummaryModel>/HistoryLogColors/2}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/2} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/2}" visible="{= ${workSummaryModel>/HistoryLogIcons/2} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/3}" color="{workSummaryModel>/HistoryLogColors/3}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/3} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/3}" visible="{= ${workSummaryModel>/HistoryLogIcons/3} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/4}" color="{workSummaryModel>/HistoryLogColors/4}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/4} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/4}" visible="{= ${workSummaryModel>/HistoryLogIcons/4} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/5}" color="{workSummaryModel>/HistoryLogColors/5}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/5} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/5}" visible="{= ${workSummaryModel>/HistoryLogIcons/5} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/6}" color="{workSummaryModel>/HistoryLogColors/6}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/6} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/6}" visible="{= ${workSummaryModel>/HistoryLogIcons/6} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/7}" color="{workSummaryModel>/HistoryLogColors/7}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/7} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/7}" visible="{= ${workSummaryModel>/HistoryLogIcons/7} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/8}" color="{workSummaryModel>/HistoryLogColors/8}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/8} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/8}" visible="{= ${workSummaryModel>/HistoryLogIcons/8} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/9}" color="{workSummaryModel>/HistoryLogColors/9}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/9} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/9}" visible="{= ${workSummaryModel>/HistoryLogIcons/9} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/10}" color="{workSummaryModel>/HistoryLogColors/10}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/10} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/10}" visible="{= ${workSummaryModel>/HistoryLogIcons/10} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/11}" color="{workSummaryModel>/HistoryLogColors/11}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/11} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/11}" visible="{= ${workSummaryModel>/HistoryLogIcons/11} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/12}" color="{workSummaryModel>/HistoryLogColors/12}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/12} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/12}" visible="{= ${workSummaryModel>/HistoryLogIcons/12} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/13}" color="{workSummaryModel>/HistoryLogColors/13}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/13} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/13}" visible="{= ${workSummaryModel>/HistoryLogIcons/13} === '' }"/>
+                                                </VBox>
+                                            </cells>
+                                        </ColumnListItem>
+                                        <ColumnListItem>
+                                            <cells>
+                                                <Label text="Khối lượng" design="Bold" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/0}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/1}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/2}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/3}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/4}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/5}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/6}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/7}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/8}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/9}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/10}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/11}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/12}" />
+                                                <ObjectStatus text="{workSummaryModel>/HistoryQtys/13}" />
+                                            </cells>
+                                        </ColumnListItem>
+                                        <ColumnListItem>
+                                            <cells>
+                                                <Label text="Thời tiết" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryWeathers/0}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/1}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/2}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/3}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/4}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/5}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/6}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/7}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/8}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/9}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/10}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/11}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/12}" class="sapUiMediumText"/>
+                                                <Text text="{workSummaryModel>/HistoryWeathers/13}" class="sapUiMediumText"/>
+                                            </cells>
+                                        </ColumnListItem>
+                                        <ColumnListItem>
+                                            <cells>
+                                                <Label text="Ghi chú (S/C)" design="Bold" />
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/0}" color="{workSummaryModel>/HistoryNoteColors/0}" visible="{= ${workSummaryModel>/HistoryNoteIcons/0} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/0}" visible="{= ${workSummaryModel>/HistoryNoteIcons/0} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/1}" color="{workSummaryModel>/HistoryNoteColors/1}" visible="{= ${workSummaryModel>/HistoryNoteIcons/1} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/1}" visible="{= ${workSummaryModel>/HistoryNoteIcons/1} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/2}" color="{workSummaryModel>/HistoryNoteColors/2}" visible="{= ${workSummaryModel>/HistoryNoteIcons/2} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/2}" visible="{= ${workSummaryModel>/HistoryNoteIcons/2} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/3}" color="{workSummaryModel>/HistoryNoteColors/3}" visible="{= ${workSummaryModel>/HistoryNoteIcons/3} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/3}" visible="{= ${workSummaryModel>/HistoryNoteIcons/3} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/4}" color="{workSummaryModel>/HistoryNoteColors/4}" visible="{= ${workSummaryModel>/HistoryNoteIcons/4} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/4}" visible="{= ${workSummaryModel>/HistoryNoteIcons/4} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/5}" color="{workSummaryModel>/HistoryNoteColors/5}" visible="{= ${workSummaryModel>/HistoryNoteIcons/5} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/5}" visible="{= ${workSummaryModel>/HistoryNoteIcons/5} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/6}" color="{workSummaryModel>/HistoryNoteColors/6}" visible="{= ${workSummaryModel>/HistoryNoteIcons/6} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/6}" visible="{= ${workSummaryModel>/HistoryNoteIcons/6} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/7}" color="{workSummaryModel>/HistoryNoteColors/7}" visible="{= ${workSummaryModel>/HistoryNoteIcons/7} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/7}" visible="{= ${workSummaryModel>/HistoryNoteIcons/7} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/8}" color="{workSummaryModel>/HistoryNoteColors/8}" visible="{= ${workSummaryModel>/HistoryNoteIcons/8} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/8}" visible="{= ${workSummaryModel>/HistoryNoteIcons/8} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/9}" color="{workSummaryModel>/HistoryNoteColors/9}" visible="{= ${workSummaryModel>/HistoryNoteIcons/9} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/9}" visible="{= ${workSummaryModel>/HistoryNoteIcons/9} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/10}" color="{workSummaryModel>/HistoryNoteColors/10}" visible="{= ${workSummaryModel>/HistoryNoteIcons/10} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/10}" visible="{= ${workSummaryModel>/HistoryNoteIcons/10} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/11}" color="{workSummaryModel>/HistoryNoteColors/11}" visible="{= ${workSummaryModel>/HistoryNoteIcons/11} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/11}" visible="{= ${workSummaryModel>/HistoryNoteIcons/11} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/12}" color="{workSummaryModel>/HistoryNoteColors/12}" visible="{= ${workSummaryModel>/HistoryNoteIcons/12} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/12}" visible="{= ${workSummaryModel>/HistoryNoteIcons/12} === '' }"/>
+                                                </VBox>
+                                                <VBox alignItems="Center">
+                                                    <core:Icon src="{workSummaryModel>/HistoryNoteIcons/13}" color="{workSummaryModel>/HistoryNoteColors/13}" visible="{= ${workSummaryModel>/HistoryNoteIcons/13} !== '' }"/>
+                                                    <Text text="{workSummaryModel>/HistoryNoteTexts/13}" visible="{= ${workSummaryModel>/HistoryNoteIcons/13} === '' }"/>
+                                                </VBox>
+                                            </cells>
+                                        </ColumnListItem>
+                                    </items>
+                                </Table>
+                            </ScrollContainer>
+                        </VBox>
+                    </VBox>
+                </Panel>
+                <Panel headerText="Năng suất &amp; Dự báo" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                    <l:Grid defaultSpan="L3 M6 S12" class="sapUiSmallMarginTopBottom">
+                        <l:content>
+                            <VBox>
+                                <Label text="Năng suất trung bình" design="Bold"/>
+                                <Text class="sapUiTinyMarginTop" text="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatAverageProductivity'
+                                }"/>
+                            </VBox>
+                            <VBox>
+                                <Label text="Chênh lệch tiến độ" design="Bold"/>
+                                <ObjectStatus text="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatScheduleVarianceText'
+                                }" state="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatScheduleVarianceState'
+                                }" icon="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatScheduleVarianceIcon'
+                                }" class="sapUiTinyMarginTop"/>
+                            </VBox>
+                            <VBox>
+                                <Label text="Dự báo ngày hoàn thành" design="Bold"/>
+                                <Text text="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatForecastDateText'
+                                }" class="sapUiTinyMarginTop"/>
+                            </VBox>
+                            <VBox>
+                                <Label text="Đánh giá rủi ro tiến độ" design="Bold"/>
+                                <ObjectStatus text="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatRiskAssessmentText'
+                                }" state="{
+                                    parts: [
+                                        {path: 'Status'},
+                                        {path: 'workSummaryModel>/TotalQtyDone'}
+                                    ],
+                                    formatter: '.formatRiskAssessmentState'
+                                }" class="sapUiTinyMarginTop"/>
+                            </VBox>
+                        </l:content>
+                    </l:Grid>
+                </Panel>
+                <Panel headerText="Thống kê Thời tiết &amp; Cảnh báo Rủi ro" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                    <l:Grid defaultSpan="L6 M6 S12" class="sapUiSmallMarginTopBottom">
+                        <l:content>
+
+                            <VBox class="sapUiTinyMarginBottom sapUiLargeMarginEnd">
+                                <Label text="Thống kê Thời tiết" design="Bold" class="sapUiMediumMarginBottom"/>
+                                <HBox class="sapUiTinyMarginBottom">
+                                    <Text text="☁️ Nhiều mây:" width="7rem" />
+                                    <Text text="{workSummaryModel>/WeatherStats/CloudyText}" design="Bold" />
                                 </HBox>
-                            </cells>
-                        </ColumnListItem>
-                    </items>
-                </Table>
-            </Panel>
+                                <HBox class="sapUiTinyMarginBottom">
+                                    <Text text="☀️ Nắng:" width="7rem" />
+                                    <Text text="{workSummaryModel>/WeatherStats/SunnyText}" design="Bold" />
+                                </HBox>
+                                <HBox class="sapUiTinyMarginBottom">
+                                    <Text text="🌧️ Mưa:" width="7rem" />
+                                    <Text text="{workSummaryModel>/WeatherStats/RainyText}" design="Bold" />
+                                </HBox>
+                                <HBox>
+                                    <Text text="⛈️ Bão:" width="7rem" />
+                                    <Text text="{workSummaryModel>/WeatherStats/StormyText}" design="Bold" />
+                                </HBox>
+                            </VBox>
+                            <VBox class="sapUiTinyMarginBottom">
+                                <Label text="Cảnh báo Rủi ro" design="Bold" class="sapUiMediumMarginBottom"/>
+
+                                <HBox alignItems="Start" class="sapUiSmallMarginBottom">
+                                    <core:Icon src="{workSummaryModel>/RiskStats/SafeIcon}" color="{workSummaryModel>/RiskStats/SafeState}" class="sapUiTinyMarginEnd sapUiTinyMarginTop" size="1.2rem"/>
+                                    <VBox>
+                                        <Text text="{workSummaryModel>/RiskStats/SafeText}" design="Bold" />
+                                        <Text text="{workSummaryModel>/RiskStats/SafeLevel}" />
+                                    </VBox>
+                                </HBox>
+                                <HBox alignItems="Start">
+                                    <core:Icon src="{workSummaryModel>/RiskStats/ContractorIcon}" color="{workSummaryModel>/RiskStats/ContractorState}" class="sapUiTinyMarginEnd sapUiTinyMarginTop" size="1.2rem"/>
+                                    <VBox>
+                                        <Text text="{workSummaryModel>/RiskStats/ContractorText}" design="Bold" />
+                                        <Text text="{workSummaryModel>/RiskStats/ContractorLevel}" />
+                                    </VBox>
+                                </HBox>
+                            </VBox>
+                        </l:content>
+                    </l:Grid>
+                </Panel>
+
+                <Panel headerText="Dự báo Nguồn lực" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                    <VBox class="sapUiSmallMargin">
+                        <Label text="Dự toán phần công việc còn lại ({workSummaryModel>/RemainingQtyText})" design="Bold" class="sapUiSmallMarginBottom"/>
+                        <Table showSeparators="Inner" noDataText="Chưa có dữ liệu" items="{workSummaryModel>/ResourceForecasting}">
+                            <columns>
+                                <Column width="30%">
+                                    <Text text="Tên Nguồn Lực" design="Bold" />
+                                </Column>
+                                <Column hAlign="Center">
+                                    <Text text="Loại Nguồn Lực" design="Bold" />
+                                </Column>
+                                <Column hAlign="End">
+                                    <Text text="Đã dùng" design="Bold" />
+                                </Column>
+                                <Column hAlign="Center">
+                                    <Text text="Định mức TT" design="Bold" tooltip="Tính bằng: Đã dùng / Khối lượng hoàn thành thực tế"/>
+                                </Column>
+                                <Column hAlign="End">
+                                    <Text text="Cần thêm (ETC)" design="Bold" tooltip="Tính bằng: Định mức TT x Khối lượng còn lại (Làm tròn lên)"/>
+                                </Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <ObjectIdentifier title="{workSummaryModel>ResourceName}" text="{workSummaryModel>ResourceId}" />
+                                        <Text text="{workSummaryModel>ResourceType}" />
+                                        <Text text="{workSummaryModel>UsedQuantityFormatted} {workSummaryModel>UnitCode}" />
+                                        <ObjectStatus text="{workSummaryModel>NormText}" state="None" />
+                                        <ObjectNumber number="{workSummaryModel>EtcQuantity}" unit="{workSummaryModel>UnitCode}" state="{workSummaryModel>EtcState}" />
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </VBox>
+                </Panel>
+            </VBox>
         </VBox>
+
+        <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
+            <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
+                <columns>
+                    <Column>
+                        <Text text="{i18n>wbsCode}" />
+                    </Column>
+                    <Column>
+                        <Text text="{i18n>itemName}" />
+                    </Column>
+                    <Column hAlign="End">
+                        <Text text="{i18n>targetPlanned}" />
+                    </Column>
+                    <Column hAlign="End">
+                        <Text text="{i18n>actualTotalDone}" />
+                    </Column>
+                    <Column>
+                        <Text text="{i18n>status}" />
+                    </Column>
+                    <Column hAlign="Begin">
+                        <Text text="{i18n>workProgress}" />
+                    </Column>
+                </columns>
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <Text text="{workSummaryModel>WbsCode}" />
+                            <Text text="{workSummaryModel>WbsName}" wrapping="true" />
+                            <ObjectNumber number="{
+                                    path: 'workSummaryModel>Quantity',
+                                    type: 'sap.ui.model.type.Float',
+                                    formatOptions: {
+                                        maxFractionDigits: 0,
+                                        groupingEnabled: true
+                                    }
+                                }" unit="{workSummaryModel>UnitCode}" />
+                            <ObjectNumber number="{
+                                    path: 'workSummaryModel>TotalQtyDone',
+                                    type: 'sap.ui.model.type.Float',
+                                    formatOptions: {
+                                        maxFractionDigits: 0,
+                                        groupingEnabled: true
+                                    }
+                                }" unit="{workSummaryModel>UnitCode}" state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" />
+
+                            <ObjectStatus text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}" icon="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusIcon'}" />
+
+                            <HBox alignItems="Center" width="100%">
+                                <Text text="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatPercentage'}" width="3.5rem" textAlign="End" class="sapUiTinyMarginEnd" />
+                                <ProgressIndicator percentValue="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatProgress'}" showValue="false" state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" height="0.8rem" width="100%">
+                                    <layoutData>
+                                        <FlexItemData growFactor="1" />
+                                    </layoutData>
+                                </ProgressIndicator>
+                            </HBox>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </Panel>
     </ScrollContainer>
 </core:FragmentDefinition>
