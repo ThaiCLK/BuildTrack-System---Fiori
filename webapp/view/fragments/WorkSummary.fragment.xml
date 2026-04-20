@@ -93,20 +93,20 @@
                                         <ColumnListItem>
                                             <cells>
                                                 <Label text="Ngày" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/0}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/1}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/2}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/3}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/4}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/5}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/6}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/7}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/8}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/9}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/10}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/11}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/12}" design="Bold" />
-                                                <Text text="{workSummaryModel>/HistoryDates/13}" design="Bold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/0}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/1}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/2}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/3}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/4}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/5}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/6}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/7}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/8}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/9}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/10}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/11}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/12}" class="sapMTextBold" />
+                                                <Text text="{workSummaryModel>/HistoryDates/13}" class="sapMTextBold" />
                                             </cells>
                                         </ColumnListItem>
                                         <ColumnListItem>
@@ -347,19 +347,19 @@
                                 <Label text="Thống kê Thời tiết" design="Bold" class="sapUiMediumMarginBottom"/>
                                 <HBox class="sapUiTinyMarginBottom">
                                     <Text text="☁️ Nhiều mây:" width="7rem" />
-                                    <Text text="{workSummaryModel>/WeatherStats/CloudyText}" design="Bold" />
+                                    <Text text="{workSummaryModel>/WeatherStats/CloudyText}" class="sapMTextBold" />
                                 </HBox>
                                 <HBox class="sapUiTinyMarginBottom">
                                     <Text text="☀️ Nắng:" width="7rem" />
-                                    <Text text="{workSummaryModel>/WeatherStats/SunnyText}" design="Bold" />
+                                    <Text text="{workSummaryModel>/WeatherStats/SunnyText}" class="sapMTextBold" />
                                 </HBox>
                                 <HBox class="sapUiTinyMarginBottom">
                                     <Text text="🌧️ Mưa:" width="7rem" />
-                                    <Text text="{workSummaryModel>/WeatherStats/RainyText}" design="Bold" />
+                                    <Text text="{workSummaryModel>/WeatherStats/RainyText}" class="sapMTextBold" />
                                 </HBox>
                                 <HBox>
                                     <Text text="⛈️ Bão:" width="7rem" />
-                                    <Text text="{workSummaryModel>/WeatherStats/StormyText}" design="Bold" />
+                                    <Text text="{workSummaryModel>/WeatherStats/StormyText}" class="sapMTextBold" />
                                 </HBox>
                             </VBox>
                             <VBox class="sapUiTinyMarginBottom">
@@ -368,14 +368,14 @@
                                 <HBox alignItems="Start" class="sapUiSmallMarginBottom">
                                     <core:Icon src="{workSummaryModel>/RiskStats/SafeIcon}" color="{workSummaryModel>/RiskStats/SafeState}" class="sapUiTinyMarginEnd sapUiTinyMarginTop" size="1.2rem"/>
                                     <VBox>
-                                        <Text text="{workSummaryModel>/RiskStats/SafeText}" design="Bold" />
+                                        <Text text="{workSummaryModel>/RiskStats/SafeText}" class="sapMTextBold" />
                                         <Text text="{workSummaryModel>/RiskStats/SafeLevel}" />
                                     </VBox>
                                 </HBox>
                                 <HBox alignItems="Start">
                                     <core:Icon src="{workSummaryModel>/RiskStats/ContractorIcon}" color="{workSummaryModel>/RiskStats/ContractorState}" class="sapUiTinyMarginEnd sapUiTinyMarginTop" size="1.2rem"/>
                                     <VBox>
-                                        <Text text="{workSummaryModel>/RiskStats/ContractorText}" design="Bold" />
+                                        <Text text="{workSummaryModel>/RiskStats/ContractorText}" class="sapMTextBold" />
                                         <Text text="{workSummaryModel>/RiskStats/ContractorLevel}" />
                                     </VBox>
                                 </HBox>
@@ -390,19 +390,19 @@
                         <Table showSeparators="Inner" noDataText="Chưa có dữ liệu" items="{workSummaryModel>/ResourceForecasting}">
                             <columns>
                                 <Column width="30%">
-                                    <Text text="Tên Nguồn Lực" design="Bold" />
+                                    <Text text="Tên Nguồn Lực" class="sapMTextBold" />
                                 </Column>
                                 <Column hAlign="Center">
-                                    <Text text="Loại Nguồn Lực" design="Bold" />
+                                    <Text text="Loại Nguồn Lực" class="sapMTextBold" />
                                 </Column>
                                 <Column hAlign="End">
-                                    <Text text="Đã dùng" design="Bold" />
+                                    <Text text="Đã dùng" class="sapMTextBold" />
                                 </Column>
                                 <Column hAlign="Center">
-                                    <Text text="Định mức TT" design="Bold" tooltip="Tính bằng: Đã dùng / Khối lượng hoàn thành thực tế"/>
+                                    <Text text="Định mức TT" class="sapMTextBold" tooltip="Tính bằng: Đã dùng / Khối lượng hoàn thành thực tế"/>
                                 </Column>
                                 <Column hAlign="End">
-                                    <Text text="Cần thêm (ETC)" design="Bold" tooltip="Tính bằng: Định mức TT x Khối lượng còn lại (Làm tròn lên)"/>
+                                    <Text text="Cần thêm (ETC)" class="sapMTextBold" tooltip="Tính bằng: Định mức TT x Khối lượng còn lại (Làm tròn lên)"/>
                                 </Column>
                             </columns>
                             <items>

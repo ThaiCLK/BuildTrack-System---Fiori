@@ -20,6 +20,10 @@ sap.ui.define([
             oController.formatWorkSummaryStatusIcon = this.formatWorkSummaryStatusIcon.bind(oController);
             oController.onSubmitForApproval = this.onSubmitForApproval.bind(oController);
 
+            oController.formatQuantityState = this.formatQuantityState.bind(oController);
+            oController.formatPercentage = this.formatPercentage.bind(oController);
+            oController.formatProgress = this.formatProgress.bind(oController);
+
             // New Date Formatters
             oController.formatPlanDateRange = this.formatPlanDateRange.bind(oController);
             oController.formatPlanDuration = this.formatPlanDuration.bind(oController);
@@ -757,6 +761,29 @@ sap.ui.define([
             if (fTarget === 0) return "0%";
             var fPercent = (fActual / fTarget) * 100;
             return parseFloat(fPercent.toFixed(2)) + "%";
+        },
+
+        formatQuantityState: function (sTotalQtyDone, sQuantity) {
+            var fTotal = parseFloat(sTotalQtyDone) || 0;
+            var fQty = parseFloat(sQuantity) || 0;
+            if (fQty === 0) return "Warning";
+            return fTotal >= fQty ? "Success" : "Warning";
+        },
+
+        formatPercentage: function (sTotalQtyDone, sQuantity) {
+            var fTotal = parseFloat(sTotalQtyDone) || 0;
+            var fQty = parseFloat(sQuantity) || 0;
+            if (fQty === 0) return "0%";
+            var fPct = (fTotal / fQty) * 100;
+            return parseFloat(fPct.toFixed(2)) + "%";
+        },
+
+        formatProgress: function (sTotalQtyDone, sQuantity) {
+            var fTotal = parseFloat(sTotalQtyDone) || 0;
+            var fQty = parseFloat(sQuantity) || 0;
+            if (fQty === 0) return 0;
+            var fPct = (fTotal / fQty) * 100;
+            return Math.min(fPct, 100);
         },
 
         formatCompletionRateTitle: function (sTarget, sUnit) {
