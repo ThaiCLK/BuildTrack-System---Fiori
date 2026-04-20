@@ -307,15 +307,15 @@ sap.ui.define([
             });
 
             var getSafeRiskState = function (pct) {
-                if (pct > 10) return { level: "Cao", state: "Error", icon: "sap-icon://message-error" };
-                if (pct > 2) return { level: "Trung bình", state: "Warning", icon: "sap-icon://message-warning" };
-                return { level: "Thấp", state: "Success", icon: "sap-icon://sys-enter-2" };
+                if (pct > 10) return { level: "Cao", state: "Negative", icon: "sap-icon://message-error" };
+                if (pct > 2) return { level: "Trung bình", state: "Critical", icon: "sap-icon://message-warning" };
+                return { level: "Thấp", state: "Positive", icon: "sap-icon://sys-enter-2" };
             };
 
             var getContractorRiskState = function (pct) {
-                if (pct > 20) return { level: "Cao", state: "Error", icon: "sap-icon://message-error" };
-                if (pct > 10) return { level: "Trung bình", state: "Warning", icon: "sap-icon://message-warning" };
-                return { level: "Thấp", state: "Success", icon: "sap-icon://sys-enter-2" };
+                if (pct > 20) return { level: "Cao", state: "Negative", icon: "sap-icon://message-error" };
+                if (pct > 10) return { level: "Trung bình", state: "Critical", icon: "sap-icon://message-warning" };
+                return { level: "Thấp", state: "Positive", icon: "sap-icon://sys-enter-2" };
             };
 
             var fSafePct = iTotalDaysWithLog > 0 ? (iSafe / iTotalDaysWithLog) * 100 : 0;
