@@ -1867,7 +1867,7 @@ sap.ui.define([
                 labelSpanL: 4, labelSpanM: 4, labelSpanS: 12,
                 columnsL: 1, columnsM: 1,
                 content: [
-                    new Label({ text: oBundle.getText("locationName"), required: true }), oLocName,
+                    new Label({ text: oBundle.getText("locationName") }), oLocName,
                     new Label({ text: oBundle.getText("posStart") }), oLocStart,
                     new Label({ text: oBundle.getText("posEnd") }), oLocEnd,
                     new Label({ text: oBundle.getText("posTop") }), oLocTop,
@@ -2051,16 +2051,8 @@ sap.ui.define([
                         var bLocationError = false;
                         var aLocationErrors = [];
 
-                        // 1. Location Name: mandatory + max 100 chars
-                        if (!sLName) {
-                            oLocName.setValueState("Error");
-                            oLocName.setValueStateText(oBundle.getText("locationNameRequired"));
-                            if (aLocationErrors.indexOf(oBundle.getText("locationNameRequired")) === -1) {
-                                aLocationErrors.push(oBundle.getText("locationNameRequired"));
-                            }
-                            bHasError = true;
-                            bLocationError = true;
-                        } else if (sLName.length > 100) {
+                        // 1. Location Name: max 100 chars
+                        if (sLName && sLName.length > 100) {
                             oLocName.setValueState("Error");
                             oLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
                             if (aLocationErrors.indexOf(oBundle.getText("locationNameTooLong")) === -1) {

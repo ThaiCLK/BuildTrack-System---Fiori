@@ -225,11 +225,7 @@ sap.ui.define([
             var oInLocTop = this.byId("inLocTop");
 
             var sLName = (oLocationModel.getProperty("/LocationName") || "").trim();
-            if (!sLName) {
-                oInLocName.setValueState("Error");
-                oInLocName.setValueStateText(oBundle.getText("locationNameRequired"));
-                bHasError = true;
-            } else if (sLName.length > 100) {
+            if (sLName && sLName.length > 100) {
                 oInLocName.setValueState("Error");
                 oInLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
                 bHasError = true;

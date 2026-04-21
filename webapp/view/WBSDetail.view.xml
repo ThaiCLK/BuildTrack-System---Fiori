@@ -106,7 +106,7 @@
                             <form:content>
                                 <core:Title text="{i18n>location}" />
 
-                                <Label text="{i18n>locationName}" design="Bold" required="true" />
+                                <Label text="{i18n>locationName}" design="Bold" />
                                 <VBox width="100%">
                                     <Input id="inLocName" value="{locationModel>/LocationName}" visible="{viewData>/editMode}" liveChange=".onLocationNameLiveChange" />
                                     <Text text="{locationModel>/LocationName}" visible="{= !${viewData>/editMode} }" />
