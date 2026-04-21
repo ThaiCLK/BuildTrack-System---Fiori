@@ -969,7 +969,8 @@ sap.ui.define([
         formatRiskAssessmentState: WorkSummaryDelegate.formatRiskAssessmentState,
         onPressViewFullLogHistory: WorkSummaryDelegate.onPressViewFullLogHistory,
         onSearchFullLogHistory: WorkSummaryDelegate.onSearchFullLogHistory,
-        onCloseFullLogHistory: WorkSummaryDelegate.onCloseFullLogHistory
+        onCloseFullLogHistory: WorkSummaryDelegate.onCloseFullLogHistory,
+        onPressChildWbs: WorkSummaryDelegate.onPressChildWbs
     });
 
     // Mix in ApprovalLogDelegate functions to the controller prototype

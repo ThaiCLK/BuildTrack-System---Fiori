@@ -897,7 +897,7 @@ sap.ui.define([
             var oCtx = oEvent.getSource().getBindingContext("workSummaryModel");
             if (!oCtx) { return; }
             var oItem = oCtx.getObject();
-            var sWbsId  = oItem.WbsId;
+            var sWbsId = oItem.WbsId;
             var sSiteId = oItem.SiteId;
             if (!sWbsId || !sSiteId) { return; }
             this.getOwnerComponent().getRouter().navTo("WBSDetail", {
