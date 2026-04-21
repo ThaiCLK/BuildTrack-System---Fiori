@@ -198,15 +198,31 @@ sap.ui.define([
                                 return mSiteIds[w.SiteId];
                             });
 
-                            // Keep only leaf nodes (no children)
+                            // Identify parent nodes (nodes that have children)
                             var mParentIds = {};
                             aProjectWbs.forEach(function (w) {
                                 if (w.ParentId) {
-                                    mParentIds[w.ParentId] = true;
+                                    var sNormPid = String(w.ParentId).toLowerCase();
+                                    mParentIds[sNormPid] = true;
                                 }
                             });
+
+                            // Identify root WBS nodes (no parent or empty GUID parent)
+                            var mRootIds = {};
+                            aProjectWbs.forEach(function (w) {
+                                var sPid = w.ParentId ? String(w.ParentId).replace(/-/g, "") : "";
+                                if (!sPid || /^0+$/.test(sPid)) {
+                                    mRootIds[String(w.WbsId).toLowerCase()] = true;
+                                }
+                            });
+
+                            // Keep only TRUE leaf tasks: no children AND parent is not a root
+                            // (i.e., depth >= 3 in the tree; excludes section/category nodes
+                            //  that sit directly under the site root without sub-tasks)
                             var aLeafWbs = aProjectWbs.filter(function (w) {
-                                return !mParentIds[w.WbsId];
+                                var sNormId = String(w.WbsId).toLowerCase();
+                                var sNormPid = w.ParentId ? String(w.ParentId).toLowerCase() : "";
+                                return !mParentIds[sNormId] && !mRootIds[sNormPid];
                             });
 
                             console.log("[CHART] Sites:", aSites.length, "All WBS:", aAllWbs.length, "Project WBS:", aProjectWbs.length, "Leaf:", aLeafWbs.length);
@@ -284,7 +300,7 @@ sap.ui.define([
                         iPlannedRemaining++;
                     } else {
                         oEnd.setHours(23, 59, 59, 999);
-                        if (oEnd.getTime() >= oDate.getTime()) {
+                        if (oEnd.getTime() > oDate.getTime()) {
                             iPlannedRemaining++;
                         }
                     }
@@ -325,7 +341,7 @@ sap.ui.define([
                     if (!oEnd) iPlannedRemaining++;
                     else {
                         oEnd.setHours(23, 59, 59, 999);
-                        if (oEnd.getTime() >= oDate.getTime()) iPlannedRemaining++;
+                        if (oEnd.getTime() > oDate.getTime()) iPlannedRemaining++;
                     }
                 });
                 var vActual = null;
@@ -370,7 +386,11 @@ sap.ui.define([
                         label: { rotation: "auto" }
                     },
                     valueAxis: {
-                        title: { visible: false }
+                        title: { visible: false },
+                        label: { formatString: "0" },
+                        axisTick: { shortTickVisible: false },
+                        // Ensure max value is at least 4 so VizFrame generates integer gridlines (0, 1, 2, 3, 4)
+                        scale: { fixedRange: true, minValue: 0, maxValue: Math.max(iTotalWbs, 4) }
                     },
                     interaction: {
                         selectability: { mode: "EXCLUSIVE" }
