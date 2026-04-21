@@ -1,4 +1,4 @@
-sap.ui.define([
+﻿sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/m/MessageToast",
@@ -35,6 +35,15 @@ sap.ui.define([
                 hasData: false,
                 chartData: []
             }), "chartModel");
+
+            this.getView().setModel(new JSONModel({
+                ProjectProgress: 0,
+                ProjectProgressStr: "0.00%",
+                ProjectProgressState: "None",
+                ProjectActualStartStr: "---",
+                ProjectActualEndStr: "---",
+                Sites: []
+            }), "projectSummaryModel");
 
             this.getView().setModel(new JSONModel({
                 siteCodeItems: [],
@@ -212,6 +221,7 @@ sap.ui.define([
                             console.log("[CHART] Sites:", aSites.length, "All WBS:", aAllWbs.length, "Project WBS:", aProjectWbs.length, "Leaf:", aLeafWbs.length);
 
                             that._processBurnDownChartData(oProjectObj, aLeafWbs);
+                            that._loadProjectProgressRollup(oProjectObj, aProjectWbs, aSites);
                         },
                         error: function () {
                             oChartModel.setProperty("/hasData", false);
@@ -237,60 +247,69 @@ sap.ui.define([
             var oStartDate = new Date(oProjectObj.StartDate);
             oStartDate.setHours(0, 0, 0, 0);
             var oEndDate = new Date(oProjectObj.EndDate);
-            oEndDate.setHours(0, 0, 0, 0);
+            oEndDate.setHours(23, 59, 59, 999);
 
             if (oEndDate < oStartDate) {
                 oChartModel.setProperty("/hasData", false);
                 return;
             }
 
-            var iOneDay = 24 * 60 * 60 * 1000;
-            var iTotalDays = Math.round((oEndDate.getTime() - oStartDate.getTime()) / iOneDay);
-
-            function fmtDate(d) {
-                return String(d.getDate()).padStart(2, '0') + "/" +
-                       String(d.getMonth() + 1).padStart(2, '0');
-            }
-
             var oToday = new Date();
             oToday.setHours(23, 59, 59, 999);
 
-            // Create daily chart points for a smooth timeline
-            var aChartData = [];
+            // 1. Gather all significant dates (Event-driven)
+            var mUniqueDates = {};
             
-            // To avoid too many points, dynamically adjust step based on total duration
-            var iStep = 1;
-            if (iTotalDays > 365) {
-                iStep = 30; // ~Monthly
-            } else if (iTotalDays > 180) {
-                iStep = 14; // Bi-weekly
-            } else if (iTotalDays > 90) {
-                iStep = 7; // Weekly
-            } else if (iTotalDays > 30) {
-                iStep = 5; // Every 5 days
-            } else if (iTotalDays > 14) {
-                iStep = 2; // Every 2 days
+            function addDate(d) {
+                if (!d) return;
+                var dt = new Date(d);
+                dt.setHours(23, 59, 59, 999);
+                if (dt >= oStartDate && dt <= oEndDate) {
+                    mUniqueDates[dt.getTime()] = dt;
+                }
             }
 
-            for (var i = 0; i <= iTotalDays; i += iStep) {
-                var oDate = new Date(oStartDate.getTime() + (i * iOneDay));
-                oDate.setHours(23, 59, 59, 999); // end of that day
+            // Always add project boundaries and today (if within range)
+            addDate(oStartDate);
+            addDate(oEndDate);
+            if (oToday >= oStartDate && oToday <= oEndDate) {
+                addDate(oToday);
+            }
 
+            // Add all WBS dates
+            aWbs.forEach(function (w) {
+                if (w.EndDate) addDate(w.EndDate);
+                if (w.EndActual) addDate(w.EndActual);
+                if (w.StartActual) addDate(w.StartActual);
+            });
+
+            // Convert map to sorted array
+            var aSortedDates = Object.keys(mUniqueDates).map(function (k) {
+                return mUniqueDates[k];
+            }).sort(function (a, b) {
+                return a.getTime() - b.getTime();
+            });
+
+            function fmtDate(d) {
+                return String(d.getDate()).padStart(2, '0') + "/" +
+                       String(d.getMonth() + 1).padStart(2, '0') + "/" +
+                       String(d.getFullYear()).slice(-2);
+            }
+
+            var aChartData = [];
+
+            aSortedDates.forEach(function (oDate) {
                 // Planned: how many tasks are planned to finish AFTER this date
                 var iPlannedRemaining = 0;
                 aWbs.forEach(function (w) {
-                    var oEnd = w.EndDate ? new Date(w.EndDate) : null;
-                    if (!oEnd) {
+                    var oEnd = w.EndDate ? new Date(w.EndDate) : new Date(oEndDate);
+                    oEnd.setHours(23, 59, 59, 999);
+                    if (oEnd.getTime() > oDate.getTime()) {
                         iPlannedRemaining++;
-                    } else {
-                        oEnd.setHours(23, 59, 59, 999);
-                        if (oEnd.getTime() >= oDate.getTime()) {
-                            iPlannedRemaining++;
-                        }
                     }
                 });
 
-                // Actual: how many tasks were NOT YET closed by this date (only calc up to today)
+                // Actual: how many tasks were NOT YET closed by this date
                 var vActual = null;
                 if (oDate.getTime() <= oToday.getTime()) {
                     var iClosed = 0;
@@ -313,41 +332,7 @@ sap.ui.define([
                     Planned: iPlannedRemaining,
                     Actual: vActual
                 });
-            }
-
-            // Always ensure the exact end date is included if skipped by iStep
-            if (iTotalDays % iStep !== 0) {
-                var oDate = new Date(oEndDate.getTime());
-                oDate.setHours(23, 59, 59, 999);
-                var iPlannedRemaining = 0;
-                aWbs.forEach(function (w) {
-                    var oEnd = w.EndDate ? new Date(w.EndDate) : null;
-                    if (!oEnd) iPlannedRemaining++;
-                    else {
-                        oEnd.setHours(23, 59, 59, 999);
-                        if (oEnd.getTime() >= oDate.getTime()) iPlannedRemaining++;
-                    }
-                });
-                var vActual = null;
-                if (oDate.getTime() <= oToday.getTime()) {
-                    var iClosed = 0;
-                    aWbs.forEach(function (w) {
-                        if ((w.Status || "").toUpperCase() === "CLOSED") {
-                            var oCloseDate = w.EndActual ? new Date(w.EndActual) : null;
-                            if (oCloseDate) {
-                                oCloseDate.setHours(23, 59, 59, 999);
-                                if (oCloseDate.getTime() <= oDate.getTime()) iClosed++;
-                            }
-                        }
-                    });
-                    vActual = iTotalWbs - iClosed;
-                }
-                aChartData.push({
-                    Date: fmtDate(oDate),
-                    Planned: iPlannedRemaining,
-                    Actual: vActual
-                });
-            }
+            });
 
             oChartModel.setProperty("/chartData", aChartData);
             oChartModel.setProperty("/hasData", true);
@@ -377,6 +362,250 @@ sap.ui.define([
                     }
                 });
             }
+        },
+
+        _loadProjectProgressRollup: function (oProjectObj, aAllWbs, aSites) {
+            var oSummaryModel = this.getView().getModel("projectSummaryModel");
+            if (!aAllWbs || aAllWbs.length === 0) {
+                oSummaryModel.setProperty("/ProjectProgress", 0);
+                oSummaryModel.setProperty("/ProjectProgressStr", "0.00%");
+                return;
+            }
+
+            // 1. Build a Tree Map of WBS
+            var mWbsMap = {};
+            var aRootWbs = [];
+            aAllWbs.forEach(function (w) {
+                w._children = [];
+                mWbsMap[w.WbsId] = w;
+            });
+
+            aAllWbs.forEach(function (w) {
+                if (w.ParentId && mWbsMap[w.ParentId]) {
+                    mWbsMap[w.ParentId]._children.push(w);
+                } else {
+                    aRootWbs.push(w);
+                }
+            });
+
+            // 2. Recursive Roll-up Function
+            var fnCalculateProgress = function (oNode) {
+                var dStart = oNode.StartDate ? new Date(oNode.StartDate) : null;
+                var dEnd = oNode.EndDate ? new Date(oNode.EndDate) : null;
+                var iDuration = 0;
+                if (dStart && dEnd) {
+                    dStart.setHours(0,0,0,0);
+                    dEnd.setHours(0,0,0,0);
+                    iDuration = Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 3600 * 24)) + 1;
+                }
+                if (iDuration < 0) iDuration = 0;
+
+                oNode._duration = iDuration;
+
+                // Leaf Node
+                if (oNode._children.length === 0) {
+                    var fQty = parseFloat(oNode.Quantity) || 0;
+                    var fDone = parseFloat(oNode.TotalQuantityDone) || 0;
+                    var sStatus = (oNode.Status || "").toUpperCase();
+                    var fProgress = 0;
+
+                    if (sStatus === "CLOSED") {
+                        fProgress = 100;
+                    } else if (sStatus === "IN_PROGRESS" || fDone > 0) {
+                        fProgress = fQty > 0 ? (fDone / fQty) * 100 : 0;
+                        if (fProgress > 100) fProgress = 100;
+                        if (fProgress < 0) fProgress = 0;
+                    }
+
+                    oNode._progress = fProgress;
+                    
+                    var oStartActual = oNode.StartActual ? new Date(oNode.StartActual) : null;
+                    var oEndActual = oNode.EndActual ? new Date(oNode.EndActual) : null;
+                    oNode._computedStartActual = oStartActual;
+                    oNode._computedEndActual = (sStatus === "CLOSED") ? oEndActual : null;
+                    oNode._isAllClosed = (sStatus === "CLOSED");
+                } 
+                // Parent Node
+                else {
+                    var fTotalWeight = 0;
+                    var fWeightedProgressSum = 0;
+                    var oMinStart = null;
+                    var oMaxEnd = null;
+                    var bAllClosed = true;
+
+                    oNode._children.forEach(function (child) {
+                        fnCalculateProgress(child);
+                        
+                        // Weights
+                        var fChildWeight = child._duration > 0 ? child._duration : 1;
+                        fTotalWeight += fChildWeight;
+                        fWeightedProgressSum += (child._progress * fChildWeight);
+
+                        // Min Start Actual
+                        if (child._computedStartActual) {
+                            if (!oMinStart || child._computedStartActual < oMinStart) oMinStart = child._computedStartActual;
+                        }
+                        
+                        // Max End Actual
+                        if (child._computedEndActual) {
+                            if (!oMaxEnd || child._computedEndActual > oMaxEnd) oMaxEnd = child._computedEndActual;
+                        }
+
+                        if (!child._isAllClosed) {
+                            bAllClosed = false;
+                        }
+                    });
+
+                    oNode._progress = fTotalWeight > 0 ? (fWeightedProgressSum / fTotalWeight) : 0;
+                    oNode._computedStartActual = oMinStart;
+                    oNode._computedEndActual = bAllClosed ? oMaxEnd : null;
+                    oNode._isAllClosed = bAllClosed;
+                }
+            };
+
+            // 3. Roll-up Sites & Project
+            var fProjectTotalWeight = 0;
+            var fProjectWeightedProgressSum = 0;
+            var oProjectStartActual = null;
+            var oProjectEndActual = null;
+            var bProjectAllClosed = true;
+
+            var mSiteRootMap = {};
+            aRootWbs.forEach(function (root) {
+                fnCalculateProgress(root);
+                mSiteRootMap[root.SiteId] = root;
+                
+                var fSiteWeight = root._duration > 0 ? root._duration : 1;
+                fProjectTotalWeight += fSiteWeight;
+                fProjectWeightedProgressSum += (root._progress * fSiteWeight);
+
+                if (root._computedStartActual) {
+                    if (!oProjectStartActual || root._computedStartActual < oProjectStartActual) oProjectStartActual = root._computedStartActual;
+                }
+                if (root._computedEndActual) {
+                    if (!oProjectEndActual || root._computedEndActual > oProjectEndActual) oProjectEndActual = root._computedEndActual;
+                }
+                if (!root._isAllClosed) {
+                    bProjectAllClosed = false;
+                }
+            });
+
+            var fProjectProgress = fProjectTotalWeight > 0 ? (fProjectWeightedProgressSum / fProjectTotalWeight) : 0;
+
+            // Tính Thời gian tiêu hao của Dự án từ ProjectObj
+            var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
+            var dProjStart = oProjectObj.StartDate ? new Date(oProjectObj.StartDate) : null;
+            var dProjEnd   = oProjectObj.EndDate   ? new Date(oProjectObj.EndDate)   : null;
+            var iProjectPlanDays = 0;
+            var iProjectUsedDays = 0;
+            var fProjectTimePct  = 0;
+            if (dProjStart && dProjEnd) {
+                dProjStart.setHours(0,0,0,0); dProjEnd.setHours(23,59,59,999);
+                iProjectPlanDays = Math.round((dProjEnd - dProjStart) / (1000*3600*24)) + 1;
+            }
+            var dToday = new Date(); dToday.setHours(0,0,0,0);
+            if (dProjStart && iProjectPlanDays > 0) {
+                iProjectUsedDays = Math.round((dToday - dProjStart) / (1000*3600*24)) + 1;
+                if (iProjectUsedDays < 0) iProjectUsedDays = 0;
+                if (bProjectAllClosed) iProjectUsedDays = Math.min(iProjectUsedDays, iProjectPlanDays);
+                fProjectTimePct = Math.min((iProjectUsedDays / iProjectPlanDays) * 100, 100);
+            }
+
+            // Map to Sites Array for UI
+            var aSiteSummaries = [];
+            aSites.forEach(function(site) {
+                var oRoot = mSiteRootMap[site.SiteId];
+                var fProgress = oRoot ? oRoot._progress : 0;
+                var fWeight = oRoot && oRoot._duration > 0 ? oRoot._duration : 1;
+                var fContribution = fProjectTotalWeight > 0 ? (fWeight / fProjectTotalWeight) * 100 : 0;
+
+                // Thời gian tiêu hao của Site (dựa vào StartDate/EndDate của Root WBS)
+                var iSitePlanDays = oRoot ? oRoot._duration : 0;
+                var iSiteUsedDays = 0;
+                var fSiteTimePct  = 0;
+                var dRootStart = oRoot && oRoot.StartDate ? new Date(oRoot.StartDate) : null;
+                if (dRootStart && iSitePlanDays > 0) {
+                    dRootStart.setHours(0,0,0,0);
+                    iSiteUsedDays = Math.round((dToday - dRootStart) / (1000*3600*24)) + 1;
+                    if (iSiteUsedDays < 0) iSiteUsedDays = 0;
+                    var bSiteClosed = oRoot && oRoot._isAllClosed;
+                    if (bSiteClosed) iSiteUsedDays = Math.min(iSiteUsedDays, iSitePlanDays);
+                    fSiteTimePct = Math.min((iSiteUsedDays / iSitePlanDays) * 100, 100);
+                }
+                var sTimeStr = iSiteUsedDays + " / " + iSitePlanDays + " Ngày (" + oQtyFmt.format(fSiteTimePct) + "%)";
+
+                // Đánh giá
+                var sSiteStatus = (site.Status || "").toUpperCase();
+                var sAssessmentText, sAssessmentState;
+                if (sSiteStatus === "CLOSED" || (oRoot && oRoot._isAllClosed)) {
+                    sAssessmentText  = "Hoàn thành";
+                    sAssessmentState = "Success";
+                } else if (sSiteStatus === "PLANNING") {
+                    sAssessmentText  = "Chưa thi công";
+                    sAssessmentState = "None";
+                } else {
+                    var fDiff = fSiteTimePct - fProgress;
+                    if (fDiff > 0) {
+                        sAssessmentText  = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentState = "Warning";
+                    } else if (fDiff < 0) {
+                        sAssessmentText  = "Vượt tiến độ (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
+                        sAssessmentState = "Success";
+                    } else {
+                        sAssessmentText  = "Đúng tiến độ";
+                        sAssessmentState = "Success";
+                    }
+                }
+
+                aSiteSummaries.push({
+                    SiteId: site.SiteId,
+                    SiteCode: site.SiteCode,
+                    SiteName: site.SiteName,
+                    Status: site.Status,
+                    Progress: fProgress,
+                    ProgressStr: fProgress.toFixed(2) + "%",
+                    ContributionStr: fContribution.toFixed(2) + "%",
+                    TimeStr: sTimeStr,
+                    TimePct: fSiteTimePct,
+                    AssessmentText: sAssessmentText,
+                    AssessmentState: sAssessmentState,
+                    StartActual: oRoot ? oRoot._computedStartActual : null,
+                    EndActual: oRoot ? oRoot._computedEndActual : null
+                });
+            });
+
+            // Sort sites by progress
+            aSiteSummaries.sort(function(a, b) { return b.Progress - a.Progress; });
+
+            var fnFormatDate = function(d) {
+                if (!d) return "---";
+                return sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" }).format(d);
+            };
+
+            oSummaryModel.setProperty("/ProjectProgress", fProjectProgress);
+            oSummaryModel.setProperty("/ProjectProgressStr", fProjectProgress.toFixed(2) + "%");
+            // --- State dong bo voi WorkSummaryDelegate ---
+            var sProjectTimeState = "Success";
+            if (fProjectTimePct > 100) sProjectTimeState = "Error";
+            else if (fProjectTimePct > 80) sProjectTimeState = "Warning";
+
+            var sProjectProgressState;
+            if (fProjectProgress >= 100) {
+                sProjectProgressState = "Success";
+            } else {
+                var fProjDiff = fProjectTimePct - fProjectProgress;
+                if (fProjDiff > 10) sProjectProgressState = "Error";
+                else if (fProjDiff > 0) sProjectProgressState = "Warning";
+                else sProjectProgressState = "Success";
+            }
+
+            oSummaryModel.setProperty("/ProjectProgressState", sProjectProgressState);
+            oSummaryModel.setProperty("/ProjectTimePct", fProjectTimePct);
+            oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePct) + "%)" );
+            oSummaryModel.setProperty("/ProjectTimeState", sProjectTimeState);
+            oSummaryModel.setProperty("/ProjectActualStartStr", fnFormatDate(oProjectStartActual));
+            oSummaryModel.setProperty("/ProjectActualEndStr", bProjectAllClosed ? fnFormatDate(oProjectEndActual) : "---");
+            oSummaryModel.setProperty("/Sites", aSiteSummaries);
         },
 
         _fetchUserRoles: function (fnSuccess) {
@@ -873,6 +1102,14 @@ sap.ui.define([
 
         onSitePress: function (oEvent) {
             var oCtx = oEvent.getSource().getBindingContext();
+            if (!oCtx) return;
+            this.getOwnerComponent().getRouter().navTo("SiteDetail", {
+                site_id: oCtx.getProperty("SiteId")
+            });
+        },
+
+        onPressSiteProgress: function (oEvent) {
+            var oCtx = oEvent.getSource().getBindingContext("projectSummaryModel");
             if (!oCtx) return;
             this.getOwnerComponent().getRouter().navTo("SiteDetail", {
                 site_id: oCtx.getProperty("SiteId")

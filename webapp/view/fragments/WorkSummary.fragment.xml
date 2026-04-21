@@ -30,28 +30,44 @@
                 </f:SimpleForm>
             </Panel>
 
-            <VBox visible="{path: 'ParentId', formatter: '.isChildNode'}">
-                <Panel headerText="Thời gian &amp; Trạng thái" class="sapUiSmallMarginBottom">
-                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
-                        <Title text="Trạng thái WBS:" level="H5"/>
-                        <ObjectStatus text="{path: 'Status', formatter: '.formatWbsStatusText'}" state="{path: 'Status', formatter: '.formatWbsStatusState'}" inverted="true" />
+            <!-- Visible for ALL -->
+            <Panel headerText="Thời gian &amp; Trạng thái" class="sapUiSmallMarginBottom">
+                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                    <Title text="Trạng thái WBS:" level="H5"/>
+                    <ObjectStatus text="{path: 'Status', formatter: '.formatWbsStatusText'}" state="{path: 'Status', formatter: '.formatWbsStatusState'}" inverted="true" />
+                </HBox>
+                <l:Grid defaultSpan="L6 M6 S12">
+                    <l:content>
+                        <VBox>
+                            <Label text="Kế hoạch thi công" design="Bold"/>
+                            <Text text="{path: 'StartDate', formatter: '.formatPlanDateRange'}" class="sapUiTinyMarginTopBottom"/>
+                            <ObjectStatus text="{path: 'StartDate', formatter: '.formatPlanDuration'}" state="None" />
+                        </VBox>
+                        <VBox>
+                            <Label text="Thời gian thực tế" design="Bold"/>
+                            <Text text="{path: 'Status', formatter: '.formatActualDateRange'}" class="sapUiTinyMarginTopBottom"/>
+                            <ObjectStatus text="{path: 'Status', formatter: '.formatActualDuration'}" state="{path: 'Status', formatter: '.formatActualDurationState'}" />
+                        </VBox>
+                    </l:content>
+                </l:Grid>
+            </Panel>
+            <Panel headerText="Tiến độ Tổng hợp" class="sapUiSmallMarginBottom" visible="{workSummaryModel>/IsParentNode}">
+                <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
+                    <HBox justifyContent="SpaceBetween" width="100%">
+                        <Label text="Tiến độ hoàn thành" design="Bold"/>
+                        <Text text="{workSummaryModel>/ParentWeightedProgressStr}" />
                     </HBox>
-                    <l:Grid defaultSpan="L6 M6 S12">
-                        <l:content>
-                            <VBox>
-                                <Label text="Kế hoạch thi công" design="Bold"/>
-                                <Text text="{path: 'StartDate', formatter: '.formatPlanDateRange'}" class="sapUiTinyMarginTopBottom"/>
-                                <ObjectStatus text="{path: 'StartDate', formatter: '.formatPlanDuration'}" state="None" />
-                            </VBox>
-                            <VBox>
-                                <Label text="Thời gian thực tế" design="Bold"/>
-                                <Text text="{path: 'Status', formatter: '.formatActualDateRange'}" class="sapUiTinyMarginTopBottom"/>
-                                <ObjectStatus text="{path: 'Status', formatter: '.formatActualDuration'}" state="{path: 'Status', formatter: '.formatActualDurationState'}" />
-                            </VBox>
-                        </l:content>
-                    </l:Grid>
-                </Panel>
+                    <ProgressIndicator percentValue="{workSummaryModel>/ParentWeightedProgress}" showValue="false" state="{workSummaryModel>/ParentProgressState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
 
+                    <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
+                        <Label text="Tiêu hao Thời gian" design="Bold"/>
+                        <Text text="{workSummaryModel>/ParentTimeElapsedStr}" />
+                    </HBox>
+                    <ProgressIndicator percentValue="{workSummaryModel>/ParentTimeElapsedPercent}" showValue="false" state="{workSummaryModel>/ParentTimeState}" height="1.2rem" width="100%"/>
+                </VBox>
+            </Panel>
+
+            <VBox visible="{workSummaryModel>/IsLeafNode}">
                 <Panel headerText="Đánh giá Hiệu suất" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
                     <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
 
@@ -420,66 +436,51 @@
                     </VBox>
                 </Panel>
             </VBox>
+
+            <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{workSummaryModel>/IsParentNode}">
+                <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
+                    <columns>
+                        <Column>
+                            <Text text="{i18n>itemName}" />
+                        </Column>
+                        <Column>
+                            <Text text="Khối lượng / Tiến độ" />
+                        </Column>
+                        <Column>
+                            <Text text="Thời gian" />
+                        </Column>
+                        <Column hAlign="Begin">
+                            <Text text="Trọng số" />
+                        </Column>
+                        <Column minWidth="180" demandPopin="false">
+                            <Text text="Đánh giá" />
+                        </Column>
+                        <Column>
+                            <Text text="{i18n>status}" />
+                        </Column>
+                    </columns>
+                    <items>
+                        <ColumnListItem type="Navigation" press=".onPressChildWbs">
+                            <cells>
+                                <Text text="{workSummaryModel>WbsName}" wrapping="true" />
+
+                                <Text text="{workSummaryModel>QuantityProgressStr}" />
+
+                                <Text text="{workSummaryModel>TimeProgressStr}" />
+
+                                <Text text="{workSummaryModel>ContributionStr}" />
+
+                                <ObjectStatus
+                                    text="{workSummaryModel>AssessmentText}"
+                                    state="{workSummaryModel>AssessmentState}"
+                                    class="statusBadgeNoWrap" />
+
+                                <ObjectStatus text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}" icon="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusIcon'}" />
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+            </Panel>
         </VBox>
-
-        <Panel headerText="{i18n>subWbsProgressTable}" class="sapUiSmallMarginBottom" visible="{path: 'ParentId', formatter: '.isParentNode'}">
-            <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
-                <columns>
-                    <Column>
-                        <Text text="{i18n>wbsCode}" />
-                    </Column>
-                    <Column>
-                        <Text text="{i18n>itemName}" />
-                    </Column>
-                    <Column hAlign="End">
-                        <Text text="{i18n>targetPlanned}" />
-                    </Column>
-                    <Column hAlign="End">
-                        <Text text="{i18n>actualTotalDone}" />
-                    </Column>
-                    <Column>
-                        <Text text="{i18n>status}" />
-                    </Column>
-                    <Column hAlign="Begin">
-                        <Text text="{i18n>workProgress}" />
-                    </Column>
-                </columns>
-                <items>
-                    <ColumnListItem>
-                        <cells>
-                            <Text text="{workSummaryModel>WbsCode}" />
-                            <Text text="{workSummaryModel>WbsName}" wrapping="true" />
-                            <ObjectNumber number="{
-                                    path: 'workSummaryModel>Quantity',
-                                    type: 'sap.ui.model.type.Float',
-                                    formatOptions: {
-                                        maxFractionDigits: 0,
-                                        groupingEnabled: true
-                                    }
-                                }" unit="{workSummaryModel>UnitCode}" />
-                            <ObjectNumber number="{
-                                    path: 'workSummaryModel>TotalQtyDone',
-                                    type: 'sap.ui.model.type.Float',
-                                    formatOptions: {
-                                        maxFractionDigits: 0,
-                                        groupingEnabled: true
-                                    }
-                                }" unit="{workSummaryModel>UnitCode}" state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" />
-
-                            <ObjectStatus text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}" icon="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusIcon'}" />
-
-                            <HBox alignItems="Center" width="100%">
-                                <Text text="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatPercentage'}" width="3.5rem" textAlign="End" class="sapUiTinyMarginEnd" />
-                                <ProgressIndicator percentValue="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatProgress'}" showValue="false" state="{parts: ['workSummaryModel>TotalQtyDone', 'workSummaryModel>Quantity'], formatter: '.formatQuantityState'}" height="0.8rem" width="100%">
-                                    <layoutData>
-                                        <FlexItemData growFactor="1" />
-                                    </layoutData>
-                                </ProgressIndicator>
-                            </HBox>
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
-        </Panel>
     </ScrollContainer>
 </core:FragmentDefinition>

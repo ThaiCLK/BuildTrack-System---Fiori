@@ -198,6 +198,9 @@
 }
 
 /* Status Badge No Wrap */
+.statusBadgeNoWrap {
+    white-space: nowrap !important;
+}
 .statusBadgeNoWrap .sapMObjStatusText {
     white-space: nowrap !important;
 }

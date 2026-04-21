@@ -1,5 +1,4 @@
-<mvc:View
-    controllerName="z.bts.buildtrack551.controller.SiteDetail"
+<mvc:View controllerName="z.bts.buildtrack551.controller.SiteDetail"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:core="sap.ui.core">
@@ -10,7 +9,7 @@
                     <IconTabFilter icon="sap-icon://hint" text="{i18n>siteInfoTab}">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.SiteGeneralInfo" type="XML" />
                     </IconTabFilter>
-                    
+
                     <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="{i18n>siteWbsTab}">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBS" type="XML" />
                     </IconTabFilter>

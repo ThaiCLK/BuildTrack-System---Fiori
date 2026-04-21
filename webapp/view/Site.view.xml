@@ -122,6 +122,76 @@
                             </f:Card>
                         </VBox>
                     </IconTabFilter>
+                    <IconTabFilter text="Tiến độ Tổng hợp" key="progress" icon="sap-icon://document">
+                        <VBox class="sapUiResponsiveMargin">
+                            <Panel headerText="Tiến độ Dự án" class="sapUiSmallMarginBottom">
+                                <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
+                                    <HBox justifyContent="SpaceBetween" width="100%">
+                                        <Label text="Tiến độ hoàn thành" design="Bold"/>
+                                        <Text text="{projectSummaryModel>/ProjectProgressStr}" />
+                                    </HBox>
+                                    <ProgressIndicator percentValue="{projectSummaryModel>/ProjectProgress}" showValue="false" state="{projectSummaryModel>/ProjectProgressState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+                                    <HBox justifyContent="SpaceBetween" width="100%" class="sapUiTinyMarginTop">
+                                        <Label text="Tiêu hao Thời gian" design="Bold"/>
+                                        <Text text="{projectSummaryModel>/ProjectTimeStr}" />
+                                    </HBox>
+                                    <ProgressIndicator percentValue="{projectSummaryModel>/ProjectTimePct}" showValue="false" state="{projectSummaryModel>/ProjectTimeState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+                                </VBox>
+                                <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="2" columnsM="2">
+                                    <form:content>
+                                        <core:Title text="Lịch trình thực tế" />
+                                        <Label text="Khởi công" design="Bold"/>
+                                        <Text text="{projectSummaryModel>/ProjectActualStartStr}" />
+                                        <Label text="Hoàn thành" design="Bold"/>
+                                        <Text text="{projectSummaryModel>/ProjectActualEndStr}" />
+                                    </form:content>
+                                </form:SimpleForm>
+                            </Panel>
+
+                            <Panel headerText="Tiến độ chi tiết từng Công trường (Sites)">
+                                <Table items="{path: 'projectSummaryModel>/Sites', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%" noDataText="Chưa có dữ liệu tiến độ">
+                                    <columns>
+                                        <Column>
+                                            <Text text="Tên Công trường" />
+                                        </Column>
+                                        <Column>
+                                            <Text text="Tiến độ" />
+                                        </Column>
+                                        <Column>
+                                            <Text text="Thời gian" />
+                                        </Column>
+                                        <Column hAlign="Begin">
+                                            <Text text="Trọng số" />
+                                        </Column>
+                                        <Column minWidth="180" demandPopin="false">
+                                            <Text text="Đánh giá" />
+                                        </Column>
+                                        <Column>
+                                            <Text text="Trạng thái" />
+                                        </Column>
+                                    </columns>
+                                    <items>
+                                        <ColumnListItem type="Navigation" press=".onPressSiteProgress">
+                                            <cells>
+                                                <VBox>
+                                                    <Text text="{projectSummaryModel>SiteName}" class="sapMTextBold"/>
+                                                    <Text text="{projectSummaryModel>SiteCode}" />
+                                                </VBox>
+                                                <Text text="{projectSummaryModel>ProgressStr}" />
+                                                <Text text="{projectSummaryModel>TimeStr}" />
+                                                <Text text="{projectSummaryModel>ContributionStr}" />
+                                                <ObjectStatus
+                                                    text="{projectSummaryModel>AssessmentText}"
+                                                    state="{projectSummaryModel>AssessmentState}"
+                                                    class="statusBadgeNoWrap" />
+                                                <ObjectStatus text="{path: 'projectSummaryModel>Status', formatter: '.formatStatusText'}" state="{path: 'projectSummaryModel>Status', formatter: '.formatStatusState'}" inverted="true" class="statusBadgeNoWrap" />
+                                            </cells>
+                                        </ColumnListItem>
+                                    </items>
+                                </Table>
+                            </Panel>
+                        </VBox>
+                    </IconTabFilter>
                     <IconTabFilter text="{i18n>siteList}" key="sites" icon="sap-icon://list">
             <fb:FilterBar id="siteFilterBar"
                 useToolbar="false"

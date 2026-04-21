@@ -143,7 +143,7 @@
 
                     </IconTabFilter>
                     
-                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="{i18n>dailyLogTab}" visible="{path: 'ParentId', formatter: '.isChildNode'}">
+                    <IconTabFilter id="idDailyLogTab" key="dailyLogTab" icon="sap-icon://activity-assigned-to-goal" text="{i18n>dailyLogTab}" visible="{workSummaryModel>/IsLeafNode}">
                         <!-- Fragment được include trực tiếp — không cần lazy load -->
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.DailyLog" type="XML"/>
                     </IconTabFilter>

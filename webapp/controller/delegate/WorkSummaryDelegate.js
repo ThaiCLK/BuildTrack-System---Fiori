@@ -38,6 +38,7 @@ sap.ui.define([
             oController.formatStepIcon = this.formatStepIcon.bind(oController);
             oController.formatStepLabel = this.formatStepLabel.bind(oController);
             oController.formatCompletionRateTitle = this.formatCompletionRateTitle.bind(oController);
+            oController.onPressChildWbs = this.onPressChildWbs.bind(oController);
         },
 
         /**
@@ -50,44 +51,73 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var oWSModel = this.getView().getModel("workSummaryModel");
 
-            // 1. Reset model only if navigating to a DIFFERENT WBS to clear stale data.
-            // If it's a refresh of the same WBS, keep the current data to avoid UI flicker (resetting to 0%).
             if (oWSModel.getProperty("/WbsId") !== sWbsId) {
                 oWSModel.setData({
                     TotalQtyDone: "0",
                     Children: [],
                     DailyLogs: [],
-                    WbsId: sWbsId
+                    WbsId: sWbsId,
+                    IsParentNode: false,
+                    IsLeafNode: false
                 });
             }
 
-            // Race-condition guard: stamp the current request token.
-            // Callbacks will abort if this token has changed (i.e. user navigated away).
             this._sWorkSummaryToken = sWbsId;
 
-            // 2. Fetch the WBS record to get the ABSOLUTE LATEST ParentId for this ID
             oModel.read("/WBSSet(guid'" + sWbsId + "')", {
                 success: function (oWbs) {
-                    // Abort if user already navigated to another WBS
                     if (that._sWorkSummaryToken !== sWbsId) { return; }
 
-                    var bIsParent = false;
-                    var vParentId = oWbs.ParentId;
-
-                    if (!vParentId) {
-                        bIsParent = true;
-                    } else {
-                        var sClean = vParentId.toString().replace(/-/g, "");
-                        if (/^0+$/.test(sClean)) bIsParent = true;
+                    var sSiteId = oWbs.SiteId;
+                    if (!sSiteId) {
+                        console.error("WBS Node has no SiteId. Cannot build full tree.");
+                        return;
                     }
 
-                    if (bIsParent) {
-                        // 3. Parent Branch: Calculate aggregate from children
-                        WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oModel, oWbs);
-                    } else {
-                        // 4. Leaf Node Branch: Aggregate logs for THIS WBS
-                        WorkSummaryDelegate._loadLeafNodeAggregation.call(that, sWbsId, oWSModel, oModel, oWbs);
-                    }
+                    // Fetch ALL WBS for the Site to build the tree
+                    oModel.read("/WBSSet", {
+                        filters: [new Filter("SiteId", FilterOperator.EQ, sSiteId)],
+                        urlParameters: { "$expand": "ToApprovalLog" },
+                        success: function (oWbsData) {
+                            if (that._sWorkSummaryToken !== sWbsId) { return; }
+
+                            var aAllWbs = oWbsData.results || [];
+                            // Build Tree: map of ParentId -> Array of Children
+                            var oTreeMap = {};
+                            aAllWbs.forEach(function (w) {
+                                var sPid = w.ParentId ? w.ParentId.toLowerCase().replace(/-/g, "") : "root";
+                                if (!oTreeMap[sPid]) oTreeMap[sPid] = [];
+                                oTreeMap[sPid].push(w);
+                            });
+
+                            var sNormWbsId = sWbsId.toLowerCase().replace(/-/g, "");
+                            var aDirectChildren = oTreeMap[sNormWbsId] || [];
+
+                            var bIsParent = aDirectChildren.length > 0;
+                            oWSModel.setProperty("/IsParentNode", bIsParent);
+                            oWSModel.setProperty("/IsLeafNode", !bIsParent);
+
+                            // Fetch ALL Daily Logs
+                            oModel.read("/DailyLogSet", {
+                                success: function (oLogData) {
+                                    if (that._sWorkSummaryToken !== sWbsId) { return; }
+                                    var aAllLogs = oLogData.results || [];
+
+                                    if (bIsParent) {
+                                        WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oWbs, aDirectChildren, oTreeMap, aAllLogs);
+                                    } else {
+                                        WorkSummaryDelegate._loadLeafNodeAggregation.call(that, sWbsId, oWSModel, oModel, oWbs);
+                                    }
+                                },
+                                error: function () {
+                                    console.error("Failed to load DailyLogSet");
+                                }
+                            });
+                        },
+                        error: function () {
+                            console.error("Failed to load WBS tree for Site:", sSiteId);
+                        }
+                    });
                 },
                 error: function () {
                     console.error("Failed to load WBS metadata for Work Summary:", sWbsId);
@@ -95,90 +125,223 @@ sap.ui.define([
             });
         },
 
-        _loadParentAggregation: function (sWbsId, oWSModel, oModel, oWbs) {
-            var that = this;
-            oModel.read("/WBSSet", {
-                filters: sWbsId ? [new Filter("ParentId", FilterOperator.EQ, sWbsId)] : [],
-                urlParameters: {
-                    "$expand": "ToApprovalLog"
-                },
-                success: function (oData) {
-                    // Race-condition guard
-                    if (that._sWorkSummaryToken !== sWbsId) { return; }
+        _calculateWbsProgressRecursive: function (oWbsNode, oTreeMap, aAllLogs) {
+            var sWbsId = oWbsNode.WbsId.toLowerCase().replace(/-/g, "");
+            var aChildren = oTreeMap[sWbsId] || [];
 
-                    var sNormParentId = sWbsId.toLowerCase().replace(/-/g, "");
-                    var aChildren = (oData.results || []).filter(function (w) {
-                        if (!w.ParentId) return false;
-                        return w.ParentId.toLowerCase().replace(/-/g, "") === sNormParentId;
-                    });
+            var dStart = oWbsNode.StartDate ? new Date(oWbsNode.StartDate) : null;
+            var dEnd = oWbsNode.EndDate ? new Date(oWbsNode.EndDate) : null;
+            var iPlannedDays = 0;
+            if (dStart && dEnd && !isNaN(dStart) && !isNaN(dEnd)) {
+                iPlannedDays = Math.round((dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
+            }
+            if (iPlannedDays < 0) iPlannedDays = 0;
+            oWbsNode.PlannedDays = iPlannedDays;
 
-                    if (aChildren.length === 0) {
-                        oWSModel.setProperty("/Children", []);
-                        var dServerDateObjZero = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
-                        WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, [], oWSModel, dServerDateObjZero);
-                        return;
+            if (aChildren.length === 0) {
+                // Leaf Node
+                var fSum = 0;
+                var aLogs = [];
+                aAllLogs.forEach(function (l) {
+                    var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                    if (sLogWbsId === sWbsId) {
+                        fSum += parseFloat(l.QuantityDone) || 0;
+                        aLogs.push(l);
                     }
+                });
 
-                    var iProcessed = 0;
-                    aChildren.forEach(function (oChild) {
-                        var sChildId = oChild.WbsId;
-                        var sNormChildId = sChildId ? sChildId.toLowerCase().replace(/-/g, "") : "";
+                oWbsNode.TotalQtyDone = fSum.toString();
+                oWbsNode.DailyLogs = aLogs;
 
-                        oModel.read("/DailyLogSet", {
-                            filters: sChildId ? [new Filter("WbsId", FilterOperator.EQ, sChildId)] : [],
-                            success: function (oLogData) {
-                                // Race-condition guard
-                                if (that._sWorkSummaryToken !== sWbsId) { return; }
+                var fTarget = parseFloat(oWbsNode.Quantity) || 0;
+                var fActual = parseFloat(oWbsNode.TotalQtyDone) || 0;
+                var sStatus = oWbsNode.Status;
 
-                                var fSum = 0;
-                                var aLogs = [];
-                                // Client-side filter: backend có thể ignore $filter và trả về tất cả logs
-                                (oLogData.results || []).forEach(function (l) {
-                                    var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
-                                    if (!sLogWbsId || sLogWbsId === sNormChildId) {
-                                        fSum += parseFloat(l.QuantityDone) || 0;
-                                        aLogs.push(l);
-                                    }
-                                });
-                                oChild.TotalQtyDone = Math.round(fSum).toString();
-                                oChild.DailyLogs = aLogs;
+                var fProgress = 0;
+                if (sStatus === "CLOSED") fProgress = 100;
+                else if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") fProgress = 0;
+                else {
+                    fProgress = fTarget > 0 ? (fActual / fTarget) * 100 : 0;
+                    if (fProgress > 100) fProgress = 100;
+                }
 
-                                iProcessed++;
-                                if (iProcessed === aChildren.length) {
-                                    var fParentAggregate = 0;
-                                    var aAllLogs = [];
-                                    aChildren.forEach(function (c) {
-                                        fParentAggregate += parseFloat(c.TotalQtyDone) || 0;
-                                        if (c.DailyLogs) {
-                                            aAllLogs = aAllLogs.concat(c.DailyLogs);
-                                        }
-                                    });
+                oWbsNode.CalculatedProgress = fProgress;
+                return { progress: fProgress, plannedDays: iPlannedDays, logs: aLogs };
+            } else {
+                // Parent Node
+                var iTotalPlannedDays = 0;
+                var aAllChildLogs = [];
+                var aChildResults = [];
 
-                                    oWSModel.setProperty("/Children", aChildren);
-                                    oWSModel.setProperty("/TotalQtyDone", Math.round(fParentAggregate).toString());
-                                    oWSModel.setProperty("/DailyLogs", aAllLogs);
+                aChildren.forEach(function (oChild) {
+                    var oResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oChild, oTreeMap, aAllLogs);
+                    iTotalPlannedDays += oResult.plannedDays;
+                    aAllChildLogs = aAllChildLogs.concat(oResult.logs);
+                    aChildResults.push({ child: oChild, result: oResult });
+                });
 
-                                    WorkSummaryDelegate._calculateWeatherAndRiskStats(aAllLogs, oWSModel);
-                                    WorkSummaryDelegate._loadResourceForecasting.call(that, aAllLogs, oWSModel, fParentAggregate, parseFloat(oWbs.Quantity) || 0);
+                var fWeightedProgress = 0;
+                aChildResults.forEach(function (item) {
+                    var oChild = item.child;
+                    var oResult = item.result;
+                    var fContribution = iTotalPlannedDays > 0 ? (oResult.plannedDays / iTotalPlannedDays) : 0;
+                    oChild.ContributionPercent = fContribution * 100;
+                    fWeightedProgress += (oResult.progress * fContribution);
+                });
 
-                                    var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
-                                    WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, aAllLogs, oWSModel, dServerDateObj);
-                                }
-                            },
-                            error: function () {
-                                if (that._sWorkSummaryToken !== sWbsId) { return; }
-                                iProcessed++;
-                                if (iProcessed === aChildren.length) {
-                                    oWSModel.setProperty("/Children", aChildren);
-                                }
-                            }
-                        });
-                    });
-                },
-                error: function () {
-                    oWSModel.setProperty("/Children", []);
+                var sStatus = oWbsNode.Status;
+                if (sStatus === "CLOSED") fWeightedProgress = 100;
+                else if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") fWeightedProgress = 0;
+
+                oWbsNode.CalculatedProgress = fWeightedProgress;
+                oWbsNode.DailyLogs = aAllChildLogs;
+                oWbsNode.TotalQtyDone = "0";
+
+                return { progress: fWeightedProgress, plannedDays: iPlannedDays, logs: aAllChildLogs };
+            }
+        },
+
+        _loadParentAggregation: function (sWbsId, oWSModel, oWbs, aChildren, oTreeMap, aAllLogs) {
+            var that = this;
+            var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
+            var oIntFmt = sap.ui.core.format.NumberFormat.getIntegerInstance({ groupingEnabled: true });
+            var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
+
+            if (!aChildren || aChildren.length === 0) {
+                oWSModel.setProperty("/Children", []);
+                WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, [], oWSModel, dServerDateObj);
+                return;
+            }
+
+            var oParentResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oWbs, oTreeMap, aAllLogs);
+            var fParentWeightedProgress = oParentResult.progress;
+            var aParentLogs = oParentResult.logs;
+
+            aChildren.forEach(function (c) {
+                c.ContributionStr = oQtyFmt.format(c.ContributionPercent) + "%";
+
+                var dStartActual = c.StartActual ? new Date(c.StartActual) : null;
+                var dEndActual = c.EndActual ? new Date(c.EndActual) : null;
+                var sStatus = c.Status;
+
+                var iElapsedDays = 0;
+                if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
+                    iElapsedDays = 0;
+                } else if (sStatus === "CLOSED") {
+                    if (dStartActual && dEndActual && !isNaN(dStartActual) && !isNaN(dEndActual)) {
+                        iElapsedDays = Math.round((dEndActual - dStartActual) / (1000 * 60 * 60 * 24)) + 1;
+                    }
+                } else {
+                    if (dStartActual && !isNaN(dStartActual)) {
+                        var dTarget = new Date(dServerDateObj.getTime());
+                        dTarget.setHours(0, 0, 0, 0);
+                        var dStartOnly = new Date(dStartActual.getTime());
+                        dStartOnly.setHours(0, 0, 0, 0);
+                        iElapsedDays = Math.round((dTarget - dStartOnly) / (1000 * 60 * 60 * 24)) + 1;
+                    }
+                }
+                if (iElapsedDays < 0) iElapsedDays = 0;
+
+                c.ElapsedDays = iElapsedDays;
+                var fTimePct = c.PlannedDays > 0 ? (iElapsedDays / c.PlannedDays) * 100 : 0;
+                if (fTimePct > 100) fTimePct = 100;
+                c.TimeProgressStr = oIntFmt.format(iElapsedDays) + " / " + oIntFmt.format(c.PlannedDays) + " Ngày (" + oQtyFmt.format(fTimePct) + "%)";
+
+                var sNormId = c.WbsId.toLowerCase().replace(/-/g, "");
+                var bIsLeaf = !(oTreeMap[sNormId] && oTreeMap[sNormId].length > 0);
+
+                c.IsLeaf = bIsLeaf;
+                if (bIsLeaf) {
+                    var fChildQtyDone = parseFloat(c.TotalQtyDone) || 0;
+                    var fChildQty = parseFloat(c.Quantity) || 0;
+                    var sUnit = c.UnitCode || "";
+                    c.QuantityProgressStr = oQtyFmt.format(fChildQtyDone) + " / " + oQtyFmt.format(fChildQty) + " " + sUnit + " (" + oQtyFmt.format(c.CalculatedProgress) + "%)";
+                } else {
+                    c.QuantityProgressStr = oQtyFmt.format(c.CalculatedProgress) + "%";
+                }
+
+                // Đánh giá: chỉ áp dụng cho node đang thi công
+                var sChildStatus = (c.Status || "").toUpperCase();
+                if (sChildStatus === "CLOSED") {
+                    c.AssessmentDiff = 0;
+                    c.AssessmentText = "Hoàn thành";
+                    c.AssessmentState = "Success";
+                } else if (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED" || sChildStatus === "OPENED") {
+                    c.AssessmentDiff = 0;
+                    c.AssessmentText = "Chưa thi công";
+                    c.AssessmentState = "None";
+                } else {
+                    // fTimePct đã tính bên trên (raw float, chưa làm tròn)
+                    var fDiff = fTimePct - c.CalculatedProgress;
+                    c.AssessmentDiff = fDiff;
+                    if (fDiff > 0) {
+                        c.AssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
+                        c.AssessmentState = "Warning";
+                    } else if (fDiff < 0) {
+                        c.AssessmentText = "Vượt (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
+                        c.AssessmentState = "Success";
+                    } else {
+                        c.AssessmentText = "Đủ";
+                        c.AssessmentState = "Success";
+                    }
                 }
             });
+
+            var iParentPlannedDays = oWbs.PlannedDays;
+            var iParentElapsedDays = 0;
+            var sParentStatus = oWbs.Status;
+            var dParentStartActual = oWbs.StartActual ? new Date(oWbs.StartActual) : null;
+            var dParentEndActual = oWbs.EndActual ? new Date(oWbs.EndActual) : null;
+
+            if (sParentStatus === "PLANNING" || sParentStatus === "PENDING_OPEN" || sParentStatus === "OPEN_REJECTED" || sParentStatus === "OPENED") {
+                iParentElapsedDays = 0;
+            } else if (sParentStatus === "CLOSED") {
+                if (dParentStartActual && dParentEndActual && !isNaN(dParentStartActual) && !isNaN(dParentEndActual)) {
+                    iParentElapsedDays = Math.round((dParentEndActual - dParentStartActual) / (1000 * 60 * 60 * 24)) + 1;
+                }
+            } else {
+                if (dParentStartActual && !isNaN(dParentStartActual)) {
+                    var dTarget = new Date(dServerDateObj.getTime());
+                    dTarget.setHours(0, 0, 0, 0);
+                    var dStartOnly = new Date(dParentStartActual.getTime());
+                    dStartOnly.setHours(0, 0, 0, 0);
+                    iParentElapsedDays = Math.round((dTarget - dStartOnly) / (1000 * 60 * 60 * 24)) + 1;
+                }
+            }
+            if (iParentElapsedDays < 0) iParentElapsedDays = 0;
+
+            var fParentTimeElapsedPercent = iParentPlannedDays > 0 ? (iParentElapsedDays / iParentPlannedDays) * 100 : 0;
+            if (fParentTimeElapsedPercent > 100) fParentTimeElapsedPercent = 100;
+
+            var sParentTimeState = "Success";
+            if (fParentTimeElapsedPercent > 100) sParentTimeState = "Error";
+            else if (fParentTimeElapsedPercent > 80) sParentTimeState = "Warning";
+
+            var sParentProgressState = "Success";
+            if (fParentWeightedProgress >= 100) {
+                sParentProgressState = "Success";
+            } else {
+                var fDiff = fParentTimeElapsedPercent - fParentWeightedProgress;
+                if (fDiff > 10) sParentProgressState = "Error";
+                else if (fDiff > 0) sParentProgressState = "Warning";
+                else sParentProgressState = "Success";
+            }
+
+            oWSModel.setProperty("/ParentWeightedProgress", fParentWeightedProgress);
+            oWSModel.setProperty("/ParentWeightedProgressStr", oQtyFmt.format(fParentWeightedProgress) + "%");
+            oWSModel.setProperty("/ParentProgressState", sParentProgressState);
+            oWSModel.setProperty("/ParentTimeElapsedPercent", fParentTimeElapsedPercent);
+            oWSModel.setProperty("/ParentTimeElapsedStr", oIntFmt.format(iParentElapsedDays) + " / " + oIntFmt.format(iParentPlannedDays) + " Ngày (" + oQtyFmt.format(fParentTimeElapsedPercent) + "%)");
+            oWSModel.setProperty("/ParentTimeState", sParentTimeState);
+
+            oWSModel.setProperty("/Children", aChildren);
+            oWSModel.setProperty("/TotalQtyDone", "0");
+            oWSModel.setProperty("/DailyLogs", aParentLogs);
+
+            WorkSummaryDelegate._calculateWeatherAndRiskStats(aParentLogs, oWSModel);
+            WorkSummaryDelegate._loadResourceForecasting.call(that, aParentLogs, oWSModel, 0, 0);
+
+            WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, aParentLogs, oWSModel, dServerDateObj);
         },
 
         _loadLeafNodeAggregation: function (sWbsId, oWSModel, oModel, oWbs) {
@@ -212,13 +375,15 @@ sap.ui.define([
                         }
                     });
 
-                    oWSModel.setProperty("/TotalQtyDone", Math.round(fTotal).toString());
+                    var fTotalQtyDone = parseFloat(oWbs.TotalQuantityDone) || 0;
+
+                    oWSModel.setProperty("/TotalQtyDone", fTotalQtyDone.toString());
                     oWSModel.setProperty("/ActualStart", dMinLog);
                     oWSModel.setProperty("/ActualEnd", dMaxLog);
                     oWSModel.setProperty("/DailyLogs", aLogs);
 
                     WorkSummaryDelegate._calculateWeatherAndRiskStats(aLogs, oWSModel);
-                    WorkSummaryDelegate._loadResourceForecasting.call(that, aLogs, oWSModel, fTotal, parseFloat(oWbs.Quantity) || 0);
+                    WorkSummaryDelegate._loadResourceForecasting.call(that, aLogs, oWSModel, fTotalQtyDone, parseFloat(oWbs.Quantity) || 0);
 
                     var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
                     WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, aLogs, oWSModel, dServerDateObj);
@@ -337,7 +502,7 @@ sap.ui.define([
             });
         },
 
-        _loadResourceForecasting: function(aLogs, oWSModel, fTotalQtyDone, fQuantity) {
+        _loadResourceForecasting: function (aLogs, oWSModel, fTotalQtyDone, fQuantity) {
             var oModel = this.getOwnerComponent().getModel();
             if (!aLogs || aLogs.length === 0) {
                 oWSModel.setProperty("/ResourceForecasting", []);
@@ -345,7 +510,7 @@ sap.ui.define([
             }
 
             var aLogIds = [];
-            aLogs.forEach(function(l) {
+            aLogs.forEach(function (l) {
                 if (l.LogId && aLogIds.indexOf(l.LogId) === -1) {
                     aLogIds.push(l.LogId);
                 }
@@ -359,7 +524,7 @@ sap.ui.define([
             oModel.read("/ResourceSet", {
                 success: function (oResMaster) {
                     var mResMaster = {};
-                    (oResMaster.results || []).forEach(function(r) {
+                    (oResMaster.results || []).forEach(function (r) {
                         mResMaster[r.ResourceId] = r;
                     });
 
@@ -368,9 +533,9 @@ sap.ui.define([
                     var iBatches = Math.ceil(aLogIds.length / iBatchSize);
                     var iDone = 0;
 
-                    var fnProcessResults = function() {
+                    var fnProcessResults = function () {
                         var mGrouped = {};
-                        aAllResourceUses.forEach(function(u) {
+                        aAllResourceUses.forEach(function (u) {
                             var sResId = (u.ResourceId || "").trim().toUpperCase();
                             if (!sResId) return;
 
@@ -397,22 +562,22 @@ sap.ui.define([
                         var oNumFormat = sap.ui.core.format.NumberFormat.getFloatInstance({ maxFractionDigits: 2, groupingEnabled: true });
                         var oNormFormat = sap.ui.core.format.NumberFormat.getFloatInstance({ maxFractionDigits: 4, groupingEnabled: true });
 
-                        Object.keys(mGrouped).forEach(function(k) {
+                        Object.keys(mGrouped).forEach(function (k) {
                             var oItem = mGrouped[k];
                             oItem.UsedQuantityFormatted = oNumFormat.format(oItem.UsedQuantity);
-                            
+
                             oItem.Norm = fTotalQtyDone > 0 ? (oItem.UsedQuantity / fTotalQtyDone) : 0;
                             oItem.NormText = oNormFormat.format(oItem.Norm) + " / Khối lượng";
-                            
+
                             var fEtc = oItem.Norm * fRemainingQty;
                             oItem.EtcQuantityRaw = fEtc;
                             oItem.EtcQuantity = oNumFormat.format(Math.ceil(fEtc)); // Làm tròn lên
                             oItem.EtcState = fEtc > 0 ? "Warning" : "None";
-                            
+
                             aForecasting.push(oItem);
                         });
 
-                        aForecasting.sort(function(a, b) {
+                        aForecasting.sort(function (a, b) {
                             if (a.ResourceType !== b.ResourceType) return a.ResourceType.localeCompare(b.ResourceType);
                             return a.ResourceName.localeCompare(b.ResourceName);
                         });
@@ -422,26 +587,26 @@ sap.ui.define([
 
                     for (var i = 0; i < iBatches; i++) {
                         var aBatchIds = aLogIds.slice(i * iBatchSize, (i + 1) * iBatchSize);
-                        var aFilters = aBatchIds.map(function(id) {
+                        var aFilters = aBatchIds.map(function (id) {
                             return new sap.ui.model.Filter("LogId", sap.ui.model.FilterOperator.EQ, id);
                         });
                         var oFilter = new sap.ui.model.Filter({ filters: aFilters, and: false });
 
                         oModel.read("/ResourceUseSet", {
                             filters: [oFilter],
-                            success: function(oData) {
+                            success: function (oData) {
                                 aAllResourceUses = aAllResourceUses.concat(oData.results || []);
                                 iDone++;
                                 if (iDone === iBatches) fnProcessResults();
                             },
-                            error: function() {
+                            error: function () {
                                 iDone++;
                                 if (iDone === iBatches) fnProcessResults();
                             }
                         });
                     }
                 },
-                error: function() {
+                error: function () {
                     oWSModel.setProperty("/ResourceForecasting", []);
                 }
             });
@@ -483,7 +648,8 @@ sap.ui.define([
 
             var dEnd = null, dStart = null;
             var bIsClosed = (sStatus === "CLOSED");
-            dEnd = bIsClosed ? dEndActual : dServerDateObj;
+            // Bug 2 fix: nếu CLOSED nhưng EndActual null → fallback về SystemDate
+            dEnd = bIsClosed ? (dEndActual || dServerDateObj) : dServerDateObj;
 
             if (!dEnd || !dStartActual) { fnSetProps(); return; }
 
@@ -596,8 +762,8 @@ sap.ui.define([
             }
 
             // Determine start date
-            var dStart = oWbs.ActualStart || oWSModel.getProperty("/ActualStart");
-            if (!dStart) {
+            var dStartRaw = oWbs.StartActual || oWSModel.getProperty("/ActualStart") || oWbs.StartDate;
+            if (!dStartRaw) {
                 oWSModel.setProperty("/FullLogHistory", aFullHistory);
                 oWSModel.setProperty("/FullLogHistoryTotalQty", "0");
                 oWSModel.setProperty("/FullLogHistoryUnitCode", sUnitCode);
@@ -605,10 +771,13 @@ sap.ui.define([
             }
 
             // Determine end date
+            // Bug 3 fix: nếu CLOSED nhưng EndActual null → fallback về SystemDate tránh kéo dài sai
             var dEnd = dServerDateObj;
             if (sStatus === "CLOSED") {
-                dEnd = oWbs.ActualEnd || oWSModel.getProperty("/ActualEnd") || dEnd;
+                dEnd = oWbs.EndActual || oWSModel.getProperty("/ActualEnd") || dServerDateObj;
             }
+
+            var dStart = dStartRaw;
 
             // Standardize to midnight for loop
             dStart = new Date(dStart);
@@ -724,6 +893,19 @@ sap.ui.define([
             this._oFullLogHistoryDialog.open();
         },
 
+        onPressChildWbs: function (oEvent) {
+            var oCtx = oEvent.getSource().getBindingContext("workSummaryModel");
+            if (!oCtx) { return; }
+            var oItem = oCtx.getObject();
+            var sWbsId  = oItem.WbsId;
+            var sSiteId = oItem.SiteId;
+            if (!sWbsId || !sSiteId) { return; }
+            this.getOwnerComponent().getRouter().navTo("WBSDetail", {
+                site_id: sSiteId,
+                wbsId: sWbsId
+            });
+        },
+
         onSearchFullLogHistory: function (oEvent) {
             var sQuery = oEvent.getParameter("newValue");
             var aFilters = [];
@@ -805,11 +987,25 @@ sap.ui.define([
 
         formatQtyProgressState: function (vDummy) {
             var oCtx = this.getView().getBindingContext();
-            if (!oCtx) return "Warning";
+            if (!oCtx) return "Success";
+
+            var sStatus = oCtx.getProperty("Status");
+            if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") return "Success";
+            if (sStatus === "CLOSED") return "Success";
+
             var fActual = parseFloat(this.getView().getModel("workSummaryModel").getProperty("/TotalQtyDone")) || 0;
             var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
-            if (fTarget === 0) return "Warning";
-            return fActual >= fTarget ? "Success" : "Warning";
+            var fQtyPct = fTarget > 0 ? (fActual / fTarget) * 100 : 0;
+            if (fQtyPct >= 100) return "Success";
+
+            var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
+            var oTime = WorkSummaryDelegate._calculateTimeElapsed(oCtx, dServerDateObj);
+            var fTimePct = oTime.plan > 0 ? (oTime.used / oTime.plan) * 100 : 0;
+
+            var fDiff = fTimePct - fQtyPct;
+            if (fDiff > 10) return "Error";
+            if (fDiff > 0) return "Warning";
+            return "Success";
         },
 
         formatQtyProgressDisplay: function (vDummy) {
@@ -999,6 +1195,11 @@ sap.ui.define([
             }
 
             usedDays = Math.max(0, usedDays);
+            // Bug 4 fix: CLOSED xong thì usedDays không được vượt quá planDays
+            // để tránh % thời gian > 100% gây state Error sai
+            if (sStatus === "CLOSED" && planDays > 0) {
+                usedDays = Math.min(usedDays, planDays);
+            }
 
             return { used: usedDays, plan: planDays };
         },
