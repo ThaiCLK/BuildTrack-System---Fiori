@@ -2070,31 +2070,7 @@ sap.ui.define([
                             bLocationError = true;
                         }
 
-                        // 2. POS fields: mandatory
-                        if (!sLStartVal) {
-                            oLocStart.setValueState("Error");
-                            oLocStart.setValueStateText(oBundle.getText("posStartRequired"));
-                            bHasError = true;
-                            bLocationError = true;
-                        }
-                        if (!sLEndVal) {
-                            oLocEnd.setValueState("Error");
-                            oLocEnd.setValueStateText(oBundle.getText("posEndRequired"));
-                            bHasError = true;
-                            bLocationError = true;
-                        }
-                        if (!sLBotVal) {
-                            oLocBot.setValueState("Error");
-                            oLocBot.setValueStateText(oBundle.getText("posBotRequired"));
-                            bHasError = true;
-                            bLocationError = true;
-                        }
-                        if (!sLTopVal) {
-                            oLocTop.setValueState("Error");
-                            oLocTop.setValueStateText(oBundle.getText("posTopRequired"));
-                            bHasError = true;
-                            bLocationError = true;
-                        }
+
 
                         // 3. POS_START <= POS_END
                         if (!isNaN(fLStart) && !isNaN(fLEnd) && fLStart > fLEnd) {
