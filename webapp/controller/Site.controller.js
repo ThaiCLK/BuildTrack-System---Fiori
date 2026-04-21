@@ -207,15 +207,31 @@
                                 return mSiteIds[w.SiteId];
                             });
 
-                            // Keep only leaf nodes (no children)
+                            // Identify parent nodes (nodes that have children)
                             var mParentIds = {};
                             aProjectWbs.forEach(function (w) {
                                 if (w.ParentId) {
-                                    mParentIds[w.ParentId] = true;
+                                    var sNormPid = String(w.ParentId).toLowerCase();
+                                    mParentIds[sNormPid] = true;
                                 }
                             });
+
+                            // Identify root WBS nodes (no parent or empty GUID parent)
+                            var mRootIds = {};
+                            aProjectWbs.forEach(function (w) {
+                                var sPid = w.ParentId ? String(w.ParentId).replace(/-/g, "") : "";
+                                if (!sPid || /^0+$/.test(sPid)) {
+                                    mRootIds[String(w.WbsId).toLowerCase()] = true;
+                                }
+                            });
+
+                            // Keep only TRUE leaf tasks: no children AND parent is not a root
+                            // (i.e., depth >= 3 in the tree; excludes section/category nodes
+                            //  that sit directly under the site root without sub-tasks)
                             var aLeafWbs = aProjectWbs.filter(function (w) {
-                                return !mParentIds[w.WbsId];
+                                var sNormId = String(w.WbsId).toLowerCase();
+                                var sNormPid = w.ParentId ? String(w.ParentId).toLowerCase() : "";
+                                return !mParentIds[sNormId] && !mRootIds[sNormPid];
                             });
 
                             console.log("[CHART] Sites:", aSites.length, "All WBS:", aAllWbs.length, "Project WBS:", aProjectWbs.length, "Leaf:", aLeafWbs.length);
@@ -259,7 +275,7 @@
 
             // 1. Gather all significant dates (Event-driven)
             var mUniqueDates = {};
-            
+
             function addDate(d) {
                 if (!d) return;
                 var dt = new Date(d);
@@ -292,8 +308,8 @@
 
             function fmtDate(d) {
                 return String(d.getDate()).padStart(2, '0') + "/" +
-                       String(d.getMonth() + 1).padStart(2, '0') + "/" +
-                       String(d.getFullYear()).slice(-2);
+                    String(d.getMonth() + 1).padStart(2, '0') + "/" +
+                    String(d.getFullYear()).slice(-2);
             }
 
             var aChartData = [];
@@ -306,6 +322,11 @@
                     oEnd.setHours(23, 59, 59, 999);
                     if (oEnd.getTime() > oDate.getTime()) {
                         iPlannedRemaining++;
+                    } else {
+                        oEnd.setHours(23, 59, 59, 999);
+                        if (oEnd.getTime() > oDate.getTime()) {
+                            iPlannedRemaining++;
+                        }
                     }
                 });
 
@@ -334,6 +355,40 @@
                 });
             });
 
+            // Always ensure the exact end date is included if skipped by iStep
+            if (iTotalDays % iStep !== 0) {
+                var oDate = new Date(oEndDate.getTime());
+                oDate.setHours(23, 59, 59, 999);
+                var iPlannedRemaining = 0;
+                aWbs.forEach(function (w) {
+                    var oEnd = w.EndDate ? new Date(w.EndDate) : null;
+                    if (!oEnd) iPlannedRemaining++;
+                    else {
+                        oEnd.setHours(23, 59, 59, 999);
+                        if (oEnd.getTime() > oDate.getTime()) iPlannedRemaining++;
+                    }
+                });
+                var vActual = null;
+                if (oDate.getTime() <= oToday.getTime()) {
+                    var iClosed = 0;
+                    aWbs.forEach(function (w) {
+                        if ((w.Status || "").toUpperCase() === "CLOSED") {
+                            var oCloseDate = w.EndActual ? new Date(w.EndActual) : null;
+                            if (oCloseDate) {
+                                oCloseDate.setHours(23, 59, 59, 999);
+                                if (oCloseDate.getTime() <= oDate.getTime()) iClosed++;
+                            }
+                        }
+                    });
+                    vActual = iTotalWbs - iClosed;
+                }
+                aChartData.push({
+                    Date: fmtDate(oDate),
+                    Planned: iPlannedRemaining,
+                    Actual: vActual
+                });
+            }
+
             oChartModel.setProperty("/chartData", aChartData);
             oChartModel.setProperty("/hasData", true);
 
@@ -355,7 +410,11 @@
                         label: { rotation: "auto" }
                     },
                     valueAxis: {
-                        title: { visible: false }
+                        title: { visible: false },
+                        label: { formatString: "0" },
+                        axisTick: { shortTickVisible: false },
+                        // Ensure max value is at least 4 so VizFrame generates integer gridlines (0, 1, 2, 3, 4)
+                        scale: { fixedRange: true, minValue: 0, maxValue: Math.max(iTotalWbs, 4) }
                     },
                     interaction: {
                         selectability: { mode: "EXCLUSIVE" }
@@ -394,8 +453,8 @@
                 var dEnd = oNode.EndDate ? new Date(oNode.EndDate) : null;
                 var iDuration = 0;
                 if (dStart && dEnd) {
-                    dStart.setHours(0,0,0,0);
-                    dEnd.setHours(0,0,0,0);
+                    dStart.setHours(0, 0, 0, 0);
+                    dEnd.setHours(0, 0, 0, 0);
                     iDuration = Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 3600 * 24)) + 1;
                 }
                 if (iDuration < 0) iDuration = 0;
@@ -418,13 +477,13 @@
                     }
 
                     oNode._progress = fProgress;
-                    
+
                     var oStartActual = oNode.StartActual ? new Date(oNode.StartActual) : null;
                     var oEndActual = oNode.EndActual ? new Date(oNode.EndActual) : null;
                     oNode._computedStartActual = oStartActual;
                     oNode._computedEndActual = (sStatus === "CLOSED") ? oEndActual : null;
                     oNode._isAllClosed = (sStatus === "CLOSED");
-                } 
+                }
                 // Parent Node
                 else {
                     var fTotalWeight = 0;
@@ -435,7 +494,7 @@
 
                     oNode._children.forEach(function (child) {
                         fnCalculateProgress(child);
-                        
+
                         // Weights
                         var fChildWeight = child._duration > 0 ? child._duration : 1;
                         fTotalWeight += fChildWeight;
@@ -445,7 +504,7 @@
                         if (child._computedStartActual) {
                             if (!oMinStart || child._computedStartActual < oMinStart) oMinStart = child._computedStartActual;
                         }
-                        
+
                         // Max End Actual
                         if (child._computedEndActual) {
                             if (!oMaxEnd || child._computedEndActual > oMaxEnd) oMaxEnd = child._computedEndActual;
@@ -474,7 +533,7 @@
             aRootWbs.forEach(function (root) {
                 fnCalculateProgress(root);
                 mSiteRootMap[root.SiteId] = root;
-                
+
                 var fSiteWeight = root._duration > 0 ? root._duration : 1;
                 fProjectTotalWeight += fSiteWeight;
                 fProjectWeightedProgressSum += (root._progress * fSiteWeight);
@@ -495,17 +554,17 @@
             // Tính Thời gian tiêu hao của Dự án từ ProjectObj
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
             var dProjStart = oProjectObj.StartDate ? new Date(oProjectObj.StartDate) : null;
-            var dProjEnd   = oProjectObj.EndDate   ? new Date(oProjectObj.EndDate)   : null;
+            var dProjEnd = oProjectObj.EndDate ? new Date(oProjectObj.EndDate) : null;
             var iProjectPlanDays = 0;
             var iProjectUsedDays = 0;
-            var fProjectTimePct  = 0;
+            var fProjectTimePct = 0;
             if (dProjStart && dProjEnd) {
-                dProjStart.setHours(0,0,0,0); dProjEnd.setHours(23,59,59,999);
-                iProjectPlanDays = Math.round((dProjEnd - dProjStart) / (1000*3600*24)) + 1;
+                dProjStart.setHours(0, 0, 0, 0); dProjEnd.setHours(23, 59, 59, 999);
+                iProjectPlanDays = Math.round((dProjEnd - dProjStart) / (1000 * 3600 * 24)) + 1;
             }
-            var dToday = new Date(); dToday.setHours(0,0,0,0);
+            var dToday = new Date(); dToday.setHours(0, 0, 0, 0);
             if (dProjStart && iProjectPlanDays > 0) {
-                iProjectUsedDays = Math.round((dToday - dProjStart) / (1000*3600*24)) + 1;
+                iProjectUsedDays = Math.round((dToday - dProjStart) / (1000 * 3600 * 24)) + 1;
                 if (iProjectUsedDays < 0) iProjectUsedDays = 0;
                 if (bProjectAllClosed) iProjectUsedDays = Math.min(iProjectUsedDays, iProjectPlanDays);
                 fProjectTimePct = Math.min((iProjectUsedDays / iProjectPlanDays) * 100, 100);
@@ -513,7 +572,7 @@
 
             // Map to Sites Array for UI
             var aSiteSummaries = [];
-            aSites.forEach(function(site) {
+            aSites.forEach(function (site) {
                 var oRoot = mSiteRootMap[site.SiteId];
                 var fProgress = oRoot ? oRoot._progress : 0;
                 var fWeight = oRoot && oRoot._duration > 0 ? oRoot._duration : 1;
@@ -522,11 +581,11 @@
                 // Thời gian tiêu hao của Site (dựa vào StartDate/EndDate của Root WBS)
                 var iSitePlanDays = oRoot ? oRoot._duration : 0;
                 var iSiteUsedDays = 0;
-                var fSiteTimePct  = 0;
+                var fSiteTimePct = 0;
                 var dRootStart = oRoot && oRoot.StartDate ? new Date(oRoot.StartDate) : null;
                 if (dRootStart && iSitePlanDays > 0) {
-                    dRootStart.setHours(0,0,0,0);
-                    iSiteUsedDays = Math.round((dToday - dRootStart) / (1000*3600*24)) + 1;
+                    dRootStart.setHours(0, 0, 0, 0);
+                    iSiteUsedDays = Math.round((dToday - dRootStart) / (1000 * 3600 * 24)) + 1;
                     if (iSiteUsedDays < 0) iSiteUsedDays = 0;
                     var bSiteClosed = oRoot && oRoot._isAllClosed;
                     if (bSiteClosed) iSiteUsedDays = Math.min(iSiteUsedDays, iSitePlanDays);
@@ -538,21 +597,21 @@
                 var sSiteStatus = (site.Status || "").toUpperCase();
                 var sAssessmentText, sAssessmentState;
                 if (sSiteStatus === "CLOSED" || (oRoot && oRoot._isAllClosed)) {
-                    sAssessmentText  = "Hoàn thành";
+                    sAssessmentText = "Hoàn thành";
                     sAssessmentState = "Success";
                 } else if (sSiteStatus === "PLANNING") {
-                    sAssessmentText  = "Chưa thi công";
+                    sAssessmentText = "Chưa thi công";
                     sAssessmentState = "None";
                 } else {
                     var fDiff = fSiteTimePct - fProgress;
                     if (fDiff > 0) {
-                        sAssessmentText  = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentText = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
                         sAssessmentState = "Warning";
                     } else if (fDiff < 0) {
-                        sAssessmentText  = "Vượt tiến độ (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
+                        sAssessmentText = "Vượt tiến độ (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
                         sAssessmentState = "Success";
                     } else {
-                        sAssessmentText  = "Đúng tiến độ";
+                        sAssessmentText = "Đúng tiến độ";
                         sAssessmentState = "Success";
                     }
                 }
@@ -575,9 +634,9 @@
             });
 
             // Sort sites by progress
-            aSiteSummaries.sort(function(a, b) { return b.Progress - a.Progress; });
+            aSiteSummaries.sort(function (a, b) { return b.Progress - a.Progress; });
 
-            var fnFormatDate = function(d) {
+            var fnFormatDate = function (d) {
                 if (!d) return "---";
                 return sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" }).format(d);
             };
@@ -601,7 +660,7 @@
 
             oSummaryModel.setProperty("/ProjectProgressState", sProjectProgressState);
             oSummaryModel.setProperty("/ProjectTimePct", fProjectTimePct);
-            oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePct) + "%)" );
+            oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePct) + "%)");
             oSummaryModel.setProperty("/ProjectTimeState", sProjectTimeState);
             oSummaryModel.setProperty("/ProjectActualStartStr", fnFormatDate(oProjectStartActual));
             oSummaryModel.setProperty("/ProjectActualEndStr", bProjectAllClosed ? fnFormatDate(oProjectEndActual) : "---");

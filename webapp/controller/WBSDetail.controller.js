@@ -94,7 +94,7 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("locationEditSiteClosed"));
                 return;
             }
-            if (sWbsStatus !== "PLANNING") {
+            if (sWbsStatus !== "PLANNING" && sWbsStatus !== "OPEN_REJECTED") {
                 MessageBox.error(oBundle.getText("wbsEditPlanningOnlyError"));
                 return;
             }
@@ -171,7 +171,7 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("locationEditSiteClosed"));
                 return;
             }
-            if (sWbsStatus !== "PLANNING") {
+            if (sWbsStatus !== "PLANNING" && sWbsStatus !== "OPEN_REJECTED") {
                 MessageBox.error(oBundle.getText("wbsEditPlanningOnlyError"));
                 return;
             }
@@ -225,11 +225,7 @@ sap.ui.define([
             var oInLocTop = this.byId("inLocTop");
 
             var sLName = (oLocationModel.getProperty("/LocationName") || "").trim();
-            if (!sLName) {
-                oInLocName.setValueState("Error");
-                oInLocName.setValueStateText(oBundle.getText("locationNameRequired"));
-                bHasError = true;
-            } else if (sLName.length > 100) {
+            if (sLName && sLName.length > 100) {
                 oInLocName.setValueState("Error");
                 oInLocName.setValueStateText(oBundle.getText("locationNameTooLong"));
                 bHasError = true;
@@ -241,26 +237,7 @@ sap.ui.define([
             var sLBotVal = (oLocationModel.getProperty("/PosBot") !== null && oLocationModel.getProperty("/PosBot") !== undefined) ? String(oLocationModel.getProperty("/PosBot")).trim() : "";
             var sLTopVal = (oLocationModel.getProperty("/PosTop") !== null && oLocationModel.getProperty("/PosTop") !== undefined) ? String(oLocationModel.getProperty("/PosTop")).trim() : "";
 
-            if (!sLStartVal) {
-                oInLocStart.setValueState("Error");
-                oInLocStart.setValueStateText(oBundle.getText("posStartRequired"));
-                bHasError = true;
-            }
-            if (!sLEndVal) {
-                oInLocEnd.setValueState("Error");
-                oInLocEnd.setValueStateText(oBundle.getText("posEndRequired"));
-                bHasError = true;
-            }
-            if (!sLBotVal) {
-                oInLocBot.setValueState("Error");
-                oInLocBot.setValueStateText(oBundle.getText("posBotRequired"));
-                bHasError = true;
-            }
-            if (!sLTopVal) {
-                oInLocTop.setValueState("Error");
-                oInLocTop.setValueStateText(oBundle.getText("posTopRequired"));
-                bHasError = true;
-            }
+
 
             // POS_START <= POS_END
             var fLStart = parseFloat(sLStartVal);
