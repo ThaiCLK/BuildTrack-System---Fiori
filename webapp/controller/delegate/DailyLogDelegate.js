@@ -286,7 +286,7 @@ sap.ui.define([
             var oUserModel = this.getView().getModel("userModel");
             var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            
+
             if (iAuthLevel !== 0) {
                 MessageBox.error(oBundle.getText("dailyLogPermissionError"));
                 return;
@@ -298,16 +298,16 @@ sap.ui.define([
 
             var oUIModel = this.getView().getModel("dailyLogModel");
             var bEditMode = oUIModel.getProperty("/ui/editMode");
-            
+
             // Check if there's unsaved data to warn user
             if (bEditMode) {
                 var oLog = oUIModel.getProperty("/selectedLog") || {};
                 var aResources = oUIModel.getProperty("/resourceUseList") || [];
-                var bHasData = (parseFloat(oLog.QuantityDone) > 0) || 
-                               (oLog.GeneralNote && oLog.GeneralNote.trim() !== "") ||
-                               (oLog.SafeNote && oLog.SafeNote.trim() !== "") ||
-                               (oLog.ContractorNote && oLog.ContractorNote.trim() !== "") ||
-                               (aResources.length > 0);
+                var bHasData = (parseFloat(oLog.QuantityDone) > 0) ||
+                    (oLog.GeneralNote && oLog.GeneralNote.trim() !== "") ||
+                    (oLog.SafeNote && oLog.SafeNote.trim() !== "") ||
+                    (oLog.ContractorNote && oLog.ContractorNote.trim() !== "") ||
+                    (aResources.length > 0);
 
                 if (bHasData) {
                     MessageBox.confirm(oBundle.getText("dailyLogUnsavedDataConfirm"), {
@@ -681,25 +681,50 @@ sap.ui.define([
                 return;
             }
 
-            this.byId("importPreviewDialog").close();
-            MessageToast.show(oBundle.getText("importingLogsSequentially", [aSelectedLogs.length]));
+            var fWbsQty = oWbsCtx ? parseFloat(oWbsCtx.getProperty("Quantity")) || 0 : 0;
+            var fWbsTotalDone = oWbsCtx ? parseFloat(oWbsCtx.getProperty("TotalQtyDone")) || 0 : 0;
+            var fImportTotal = 0;
+            aSelectedLogs.forEach(function (l) {
+                fImportTotal += parseFloat(l.qty_done) || 0;
+            });
+            var fProjectedTotal = fWbsTotalDone + fImportTotal;
 
             var that = this;
-            var oModel = this.getOwnerComponent().getModel();
-            var oUIModel = this.getView().getModel("dailyLogModel");
-            oUIModel.setProperty("/ui/busy", true);
+            var fnStartImport = function () {
+                that.byId("importPreviewDialog").close();
+                MessageToast.show(oBundle.getText("importingLogsSequentially", [aSelectedLogs.length]));
 
-            oModel.read("/DailyLogSet", {
-                filters: this._sWbsId ? [new Filter("WbsId", FilterOperator.EQ, this._sWbsId)] : [],
-                success: function (oData) {
-                    var aExistingLogs = oData.results || [];
-                    that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
-                },
-                error: function () {
-                    oUIModel.setProperty("/ui/busy", false);
-                    MessageBox.error(oBundle.getText("logDateValidationError"));
-                }
-            });
+                var oModel = that.getOwnerComponent().getModel();
+                var oUIModel = that.getView().getModel("dailyLogModel");
+                oUIModel.setProperty("/ui/busy", true);
+
+                oModel.read("/DailyLogSet", {
+                    filters: that._sWbsId ? [new Filter("WbsId", FilterOperator.EQ, that._sWbsId)] : [],
+                    success: function (oData) {
+                        var aExistingLogs = oData.results || [];
+                        that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                    },
+                    error: function () {
+                        oUIModel.setProperty("/ui/busy", false);
+                        MessageBox.error(oBundle.getText("logDateValidationError"));
+                    }
+                });
+            };
+
+            if (fWbsQty > 0 && fProjectedTotal > fWbsQty) {
+                MessageBox.warning("Tổng khối lượng thi công sau khi Import (ước tính ~" + fProjectedTotal.toFixed(2) + ") sẽ vượt quá khối lượng kế hoạch (" + fWbsQty.toFixed(2) + "). Bạn có chắc chắn muốn thêm?", {
+                    title: "Cảnh báo vượt khối lượng",
+                    actions: [MessageBox.Action.YES, MessageBox.Action.NO],
+                    onClose: function (sAction) {
+                        if (sAction === MessageBox.Action.YES) {
+                            fnStartImport();
+                        }
+                    }
+                });
+                return;
+            }
+
+            fnStartImport();
         },
 
         onCancelImport: function () {
@@ -1630,6 +1655,31 @@ sap.ui.define([
             });
 
             if (bMissingResourceInfo || bInvalidResourceQty) {
+                return;
+            }
+
+            var fWbsQty = oWbsCtx ? parseFloat(oWbsCtx.getProperty("Quantity")) || 0 : 0;
+            var fWbsTotalDone = oWbsCtx ? parseFloat(oWbsCtx.getProperty("TotalQtyDone")) || 0 : 0;
+            var bIsNew = oUIModel.getProperty("/ui/isNewRecord");
+            var fOldQty = 0;
+            if (!bIsNew && oLog.LogId) {
+                var aList = oUIModel.getProperty("/list") || [];
+                var oOrig = aList.find(function (l) { return l.LogId === oLog.LogId; });
+                if (oOrig) fOldQty = parseFloat(oOrig.QuantityDone) || 0;
+            }
+            var fProjectedTotal = fWbsTotalDone - fOldQty + fQty;
+
+            var that = this;
+            if (fWbsQty > 0 && fProjectedTotal > fWbsQty) {
+                sap.m.MessageBox.warning("Tổng khối lượng thi công (" + fProjectedTotal.toFixed(2) + ") sẽ vượt quá khối lượng kế hoạch (" + fWbsQty.toFixed(2) + "). Bạn có chắc chắn muốn tiếp tục lưu?", {
+                    title: "Cảnh báo vượt khối lượng",
+                    actions: [sap.m.MessageBox.Action.YES, sap.m.MessageBox.Action.NO],
+                    onClose: function (sAction) {
+                        if (sAction === sap.m.MessageBox.Action.YES) {
+                            that._persistLog(oBundle.getText("dailyLogSaveSuccess"));
+                        }
+                    }
+                });
                 return;
             }
 

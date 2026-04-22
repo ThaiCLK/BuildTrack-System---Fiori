@@ -162,11 +162,11 @@ sap.ui.define([
                 else if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") fProgress = 0;
                 else {
                     fProgress = fTarget > 0 ? (fActual / fTarget) * 100 : 0;
-                    if (fProgress > 100) fProgress = 100;
                 }
 
                 oWbsNode.CalculatedProgress = fProgress;
-                return { progress: fProgress, plannedDays: iPlannedDays, logs: aLogs };
+                var fRollupProgress = fProgress > 100 ? 100 : fProgress;
+                return { progress: fRollupProgress, plannedDays: iPlannedDays, logs: aLogs };
             } else {
                 // Parent Node
                 var iTotalPlannedDays = 0;

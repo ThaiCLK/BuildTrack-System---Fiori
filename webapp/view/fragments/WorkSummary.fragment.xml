@@ -444,7 +444,7 @@
                             <Text text="{i18n>itemName}" />
                         </Column>
                         <Column>
-                            <Text text="Khối lượng / Tiến độ" />
+                            <Text text="Tiến độ" />
                         </Column>
                         <Column>
                             <Text text="Thời gian" />
@@ -470,10 +470,7 @@
 
                                 <Text text="{workSummaryModel>ContributionStr}" />
 
-                                <ObjectStatus
-                                    text="{workSummaryModel>AssessmentText}"
-                                    state="{workSummaryModel>AssessmentState}"
-                                    class="statusBadgeNoWrap" />
+                                <ObjectStatus text="{workSummaryModel>AssessmentText}" state="{workSummaryModel>AssessmentState}" class="statusBadgeNoWrap" />
 
                                 <ObjectStatus text="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusText'}" state="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusState'}" icon="{path: 'workSummaryModel>Status', formatter: '.formatWbsStatusIcon'}" />
                             </cells>

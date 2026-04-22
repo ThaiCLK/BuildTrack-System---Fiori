@@ -576,7 +576,7 @@ sap.ui.define([
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
             var oView = this.getView();
-            
+
             oView.setBusy(true);
 
             oModel.read("/SiteSet(guid'" + this._sCurrentSiteId + "')/ToWbs", {
@@ -593,7 +593,7 @@ sap.ui.define([
                     var aRawResults = oData.results || [];
                     var aResults = [];
                     var mSeen = {};
-                    
+
                     var fnFlatten = function (aItems) {
                         if (!aItems) return;
                         aItems.forEach(function (oItem) {
@@ -721,7 +721,7 @@ sap.ui.define([
                 if (!item.ParentId) return true;
                 var sPId = String(item.ParentId);
                 var sParent = sPId.replace(/-/g, "").toLowerCase();
-                if (/^0+$/.test(sParent) || sParent === "null" || sParent === "undefined") return true; 
+                if (/^0+$/.test(sParent) || sParent === "null" || sParent === "undefined") return true;
 
                 var aItemLogs = (item.ToApprovalLog && item.ToApprovalLog.results) ? item.ToApprovalLog.results : [];
                 var bHasOwnLog = aItemLogs.some(function (l) {
@@ -769,7 +769,7 @@ sap.ui.define([
                 var aLogs = (wbs.ToApprovalLog && wbs.ToApprovalLog.results) ? wbs.ToApprovalLog.results : [];
                 if (aLogs.length > 0) {
                     // Filter logs to match the current pending action type (OPEN or CLOSE)
-                    var aTypeLogs = aLogs.filter(function(l) { return l.ApprovalType === sType; });
+                    var aTypeLogs = aLogs.filter(function (l) { return l.ApprovalType === sType; });
                     if (aTypeLogs.length > 0) {
                         var aSortedLogs = aTypeLogs.slice().sort(function (a, b) {
                             var tA = a.CreatedTimestamp ? parseInt((a.CreatedTimestamp.toString() || "").replace(/[^0-9]/g, ""), 10) || 0 : 0;
@@ -781,13 +781,13 @@ sap.ui.define([
                         var oSenderLog = aSortedLogs.find(function (l) {
                             var sAct = (l.Action || "").toUpperCase();
                             var sBy = (l.ActionBy || "").toUpperCase();
-                            
+
                             // Skip automated routing and receipt logs
-                            var bIsReceiverLog = sAct === "0000" || 
-                                                 sBy === "WF-BATCH" || 
-                                                 sAct.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 || 
-                                                 sAct.indexOf("ĐÃ CHUYỂN LUỒNG") !== -1;
-                            
+                            var bIsReceiverLog = sAct === "0000" ||
+                                sBy === "WF-BATCH" ||
+                                sAct.indexOf("ĐÃ NHẬN YÊU CẦU") !== -1 ||
+                                sAct.indexOf("ĐÃ CHUYỂN LUỒNG") !== -1;
+
                             return !bIsReceiverLog;
                         });
 
@@ -1048,11 +1048,19 @@ sap.ui.define([
 
             // Check if all selected items are in IN_PROGRESS or CLOSE_REJECTED status
             var aInvalidItems = [];
+            var aIncompleteItems = [];
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
                 if (oData.Status !== "IN_PROGRESS" && oData.Status !== "CLOSE_REJECTED") {
                     aInvalidItems.push(oData.WbsName + " (Status: " + oData.Status + ")");
+                }
+
+                var fQty = parseFloat(oData.Quantity) || 0;
+                var fDone = parseFloat(oData.TotalQtyDone) || 0;
+                if (fQty > 0 && fDone < fQty) {
+                    var pct = Math.round((fDone / fQty) * 100);
+                    aIncompleteItems.push(oData.WbsName + " (" + pct + "%)");
                 }
             });
 
@@ -1061,7 +1069,14 @@ sap.ui.define([
                 return;
             }
 
-            MessageBox.confirm(oBundle.getText("submitCloseApprovalConfirm", [aIndices.length]), {
+            var sConfirmText = oBundle.getText("submitCloseApprovalConfirm", [aIndices.length]);
+            if (aIncompleteItems.length > 0) {
+                var sIncompleteWarn = oBundle.getText("submitCloseConfirmQty") || "Khối lượng công việc thực tế chưa đạt so với khối lượng kế hoạch. Bạn có chắc chắn muốn gửi yêu cầu nghiệm thu không?";
+                sConfirmText = "Cảnh báo: Có " + aIncompleteItems.length + " hạng mục chưa đạt khối lượng kế hoạch:\n- " + aIncompleteItems.join("\n- ") + "\n\n" + sIncompleteWarn + "\n" + sConfirmText;
+            }
+
+            MessageBox.confirm(sConfirmText, {
+                title: aIncompleteItems.length > 0 ? "Cảnh báo nghiệm thu" : (oBundle.getText("confirmWbsApprovalTitle") || "Xác nhận"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
                         that._submitMultipleWbs(aIndices, true);

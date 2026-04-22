@@ -473,7 +473,6 @@ sap.ui.define([
                         fProgress = 100;
                     } else if (sStatus === "IN_PROGRESS" || fDone > 0) {
                         fProgress = fQty > 0 ? (fDone / fQty) * 100 : 0;
-                        if (fProgress > 100) fProgress = 100;
                         if (fProgress < 0) fProgress = 0;
                     }
 
@@ -499,7 +498,8 @@ sap.ui.define([
                         // Weights
                         var fChildWeight = child._duration > 0 ? child._duration : 1;
                         fTotalWeight += fChildWeight;
-                        fWeightedProgressSum += (child._progress * fChildWeight);
+                        var fChildRollupProgress = child._progress > 100 ? 100 : child._progress;
+                        fWeightedProgressSum += (fChildRollupProgress * fChildWeight);
 
                         // Min Start Actual
                         if (child._computedStartActual) {
