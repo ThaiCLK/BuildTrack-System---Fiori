@@ -1,4 +1,4 @@
-﻿sap.ui.define([
+sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/core/routing/History",
     "sap/m/MessageToast",
@@ -260,18 +260,48 @@
                 return;
             }
 
-            var oStartDate = new Date(oProjectObj.StartDate);
-            oStartDate.setHours(0, 0, 0, 0);
-            var oEndDate = new Date(oProjectObj.EndDate);
-            oEndDate.setHours(23, 59, 59, 999);
+            var oProjectStart = new Date(oProjectObj.StartDate);
+            oProjectStart.setHours(0, 0, 0, 0);
+            var oProjectEnd = new Date(oProjectObj.EndDate);
+            oProjectEnd.setHours(23, 59, 59, 999);
 
-            if (oEndDate < oStartDate) {
+            if (oProjectEnd < oProjectStart) {
                 oChartModel.setProperty("/hasData", false);
                 return;
             }
 
+            // --- Xác định biên mở rộng của Chart (MIN/MAX Dates) ---
+            var oChartStartDate = new Date(oProjectStart);
+            var oChartEndDate = new Date(oProjectEnd);
+
+            aWbs.forEach(function (w) {
+                if (w.StartDate) {
+                    var d = new Date(w.StartDate); d.setHours(0, 0, 0, 0);
+                    if (d < oChartStartDate) oChartStartDate = d;
+                }
+                if (w.StartActual) {
+                    var d = new Date(w.StartActual); d.setHours(0, 0, 0, 0);
+                    if (d < oChartStartDate) oChartStartDate = d;
+                }
+                if (w.EndDate) {
+                    var d = new Date(w.EndDate); d.setHours(23, 59, 59, 999);
+                    if (d > oChartEndDate) oChartEndDate = d;
+                }
+                if (w.EndActual) {
+                    var d = new Date(w.EndActual); d.setHours(23, 59, 59, 999);
+                    if (d > oChartEndDate) oChartEndDate = d;
+                }
+            });
+
             var oToday = new Date();
             oToday.setHours(23, 59, 59, 999);
+            // Nếu hôm nay vượt quá Chart End Date nhưng dự án chưa xong, kéo dài trục X tới hôm nay
+            if (oToday > oChartEndDate) {
+                var iClosed = aWbs.filter(function (w) { return (w.Status || "").toUpperCase() === "CLOSED"; }).length;
+                if (iClosed < iTotalWbs) {
+                    oChartEndDate = new Date(oToday);
+                }
+            }
 
             // 1. Gather all significant dates (Event-driven)
             var mUniqueDates = {};
@@ -280,20 +310,21 @@
                 if (!d) return;
                 var dt = new Date(d);
                 dt.setHours(23, 59, 59, 999);
-                if (dt >= oStartDate && dt <= oEndDate) {
+                if (dt >= oChartStartDate && dt <= oChartEndDate) {
                     mUniqueDates[dt.getTime()] = dt;
                 }
             }
 
             // Always add project boundaries and today (if within range)
-            addDate(oStartDate);
-            addDate(oEndDate);
-            if (oToday >= oStartDate && oToday <= oEndDate) {
+            addDate(oProjectStart);
+            addDate(oProjectEnd);
+            if (oToday >= oChartStartDate && oToday <= oChartEndDate) {
                 addDate(oToday);
             }
 
             // Add all WBS dates
             aWbs.forEach(function (w) {
+                if (w.StartDate) addDate(w.StartDate);
                 if (w.EndDate) addDate(w.EndDate);
                 if (w.EndActual) addDate(w.EndActual);
                 if (w.StartActual) addDate(w.StartActual);
@@ -314,19 +345,16 @@
 
             var aChartData = [];
 
+            var sDeadlineDateStr = fmtDate(oProjectEnd);
+
             aSortedDates.forEach(function (oDate) {
                 // Planned: how many tasks are planned to finish AFTER this date
                 var iPlannedRemaining = 0;
                 aWbs.forEach(function (w) {
-                    var oEnd = w.EndDate ? new Date(w.EndDate) : new Date(oEndDate);
+                    var oEnd = w.EndDate ? new Date(w.EndDate) : new Date(oProjectEnd);
                     oEnd.setHours(23, 59, 59, 999);
                     if (oEnd.getTime() > oDate.getTime()) {
                         iPlannedRemaining++;
-                    } else {
-                        oEnd.setHours(23, 59, 59, 999);
-                        if (oEnd.getTime() > oDate.getTime()) {
-                            iPlannedRemaining++;
-                        }
                     }
                 });
 
@@ -348,46 +376,19 @@
                     vActual = iTotalWbs - iClosed;
                 }
 
+                var sDateStr = fmtDate(oDate);
+                if (sDateStr === sDeadlineDateStr) {
+                    sDateStr += "🚩";
+                }
+
                 aChartData.push({
-                    Date: fmtDate(oDate),
+                    Date: sDateStr,
                     Planned: iPlannedRemaining,
                     Actual: vActual
                 });
             });
 
-            // Always ensure the exact end date is included if skipped by iStep
-            if (iTotalDays % iStep !== 0) {
-                var oDate = new Date(oEndDate.getTime());
-                oDate.setHours(23, 59, 59, 999);
-                var iPlannedRemaining = 0;
-                aWbs.forEach(function (w) {
-                    var oEnd = w.EndDate ? new Date(w.EndDate) : null;
-                    if (!oEnd) iPlannedRemaining++;
-                    else {
-                        oEnd.setHours(23, 59, 59, 999);
-                        if (oEnd.getTime() > oDate.getTime()) iPlannedRemaining++;
-                    }
-                });
-                var vActual = null;
-                if (oDate.getTime() <= oToday.getTime()) {
-                    var iClosed = 0;
-                    aWbs.forEach(function (w) {
-                        if ((w.Status || "").toUpperCase() === "CLOSED") {
-                            var oCloseDate = w.EndActual ? new Date(w.EndActual) : null;
-                            if (oCloseDate) {
-                                oCloseDate.setHours(23, 59, 59, 999);
-                                if (oCloseDate.getTime() <= oDate.getTime()) iClosed++;
-                            }
-                        }
-                    });
-                    vActual = iTotalWbs - iClosed;
-                }
-                aChartData.push({
-                    Date: fmtDate(oDate),
-                    Planned: iPlannedRemaining,
-                    Actual: vActual
-                });
-            }
+
 
             oChartModel.setProperty("/chartData", aChartData);
             oChartModel.setProperty("/hasData", true);
