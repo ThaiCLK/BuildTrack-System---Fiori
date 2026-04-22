@@ -176,8 +176,25 @@ sap.ui.define([
 
         _loadChartData: function (oProjectObj) {
             var oChartModel = this.getView().getModel("chartModel");
+            var oSummaryModel = this.getView().getModel("projectSummaryModel");
+
+            // Xóa dữ liệu cũ để tránh lỗi hiển thị nhầm dữ liệu của Project trước đó
+            oChartModel.setProperty("/hasData", false);
+            oChartModel.setProperty("/chartData", []);
+
+            oSummaryModel.setData({
+                ProjectProgress: 0,
+                ProjectProgressStr: "0.00%",
+                ProjectProgressState: "None",
+                ProjectTimePct: 0,
+                ProjectTimeStr: "---",
+                ProjectTimeState: "None",
+                ProjectActualStartStr: "---",
+                ProjectActualEndStr: "---",
+                Sites: []
+            });
+
             if (!oProjectObj || !oProjectObj.StartDate || !oProjectObj.EndDate || !oProjectObj.ProjectId) {
-                oChartModel.setProperty("/hasData", false);
                 return;
             }
 
