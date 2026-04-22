@@ -12,13 +12,13 @@ sap.ui.define([
         /* =========================================================== */
 
         init: function (oController) {
-            oController._loadDependencies       = this._loadDependencies.bind(oController);
-            oController.onAddDependency         = this.onAddDependency.bind(oController);
-            oController.onConfirmAddDependency  = this.onConfirmAddDependency.bind(oController);
-            oController.onCancelAddDependency   = this.onCancelAddDependency.bind(oController);
-            oController.onDeleteDependency      = this.onDeleteDependency.bind(oController);
-            oController.formatDepType           = this.formatDepType.bind(oController);
-            oController.formatDepTypeState      = this.formatDepTypeState.bind(oController);
+            oController._loadDependencies = this._loadDependencies.bind(oController);
+            oController.onAddDependency = this.onAddDependency.bind(oController);
+            oController.onConfirmAddDependency = this.onConfirmAddDependency.bind(oController);
+            oController.onCancelAddDependency = this.onCancelAddDependency.bind(oController);
+            oController.onDeleteDependency = this.onDeleteDependency.bind(oController);
+            oController.formatDepType = this.formatDepType.bind(oController);
+            oController.formatDepTypeState = this.formatDepTypeState.bind(oController);
             oController.validateDependencyOnRun = this.validateDependencyOnRun.bind(oController);
             oController.validateDependencyOnClose = this.validateDependencyOnClose.bind(oController);
 
@@ -59,7 +59,7 @@ sap.ui.define([
                             success: function (oPred) {
                                 oDep.PredWbsCode = oPred.WbsCode || "";
                                 oDep.PredWbsName = oPred.WbsName || "";
-                                oDep.PredStatus  = oPred.Status  || "";
+                                oDep.PredStatus = oPred.Status || "";
                                 iDone++;
                                 if (iDone === aDeps.length) {
                                     oDepModel.setProperty("/dependencies", aDeps);
@@ -68,7 +68,7 @@ sap.ui.define([
                             error: function () {
                                 oDep.PredWbsCode = sPredId;
                                 oDep.PredWbsName = "";
-                                oDep.PredStatus  = "";
+                                oDep.PredStatus = "";
                                 iDone++;
                                 if (iDone === aDeps.length) {
                                     oDepModel.setProperty("/dependencies", aDeps);
@@ -108,7 +108,7 @@ sap.ui.define([
                 return;
             }
 
-            var sSiteId   = oCtx.getProperty("SiteId");
+            var sSiteId = oCtx.getProperty("SiteId");
             // ParentId may arrive as string GUID or null
             var sParentId = oCtx.getProperty("ParentId") || null;
 
@@ -119,8 +119,8 @@ sap.ui.define([
 
             // Normalize GUID strings to lowercase for safe comparison
             var fnNorm = function (s) { return s ? s.toLowerCase().replace(/[{}]/g, "") : null; };
-            var sNormParent   = fnNorm(sParentId);
-            var sNormCurrent  = fnNorm(sCurrentWbsId);
+            var sNormParent = fnNorm(sParentId);
+            var sNormCurrent = fnNorm(sCurrentWbsId);
 
             // Read all WBS for this site directly (avoids navigation path issues)
             oModel.read("/WBSSet", {
@@ -130,34 +130,41 @@ sap.ui.define([
                 success: function (oData) {
                     var aAll = oData.results || [];
 
-                    var isRoot = function (id) {
-                        if (!id) return true;
-                        var sClean = id.replace(/-/g, "");
-                        return /^0+$/.test(sClean);
+                    var mParents = {};
+                    aAll.forEach(function (w) {
+                        if (w.ParentId) {
+                            mParents[fnNorm(w.ParentId)] = true;
+                        }
+                    });
+
+                    var isLeaf = function (id) {
+                        return !mParents[fnNorm(id)];
                     };
 
-                    var bCurrentIsRoot = isRoot(sParentId);
+                    var aExistingDeps = oDepModel.getProperty("/dependencies") || [];
+                    var mExistingDeps = {};
+                    aExistingDeps.forEach(function (d) {
+                        if (d.DepWbsId) {
+                            mExistingDeps[fnNorm(d.DepWbsId)] = true;
+                        }
+                    });
 
                     var aFiltered = aAll.filter(function (w) {
                         var bSelf = fnNorm(w.WbsId) === sNormCurrent;
                         var bSameSite = fnNorm(w.SiteId) === fnNorm(sSiteId);
-                        
-                        if (bSelf || !bSameSite) return false;
+                        var bAlreadyAdded = mExistingDeps[fnNorm(w.WbsId)];
 
-                        if (bCurrentIsRoot) {
-                            // Current is Root -> Show only other Root WBS (in same site)
-                            return isRoot(w.ParentId);
-                        } else {
-                            // Current is Child -> Show only siblings (same ParentId)
-                            return fnNorm(w.ParentId) === sNormParent;
-                        }
+                        if (bSelf || !bSameSite || bAlreadyAdded) return false;
+
+                        // Only show leaf WBS (no children) across the entire site
+                        return isLeaf(w.WbsId);
                     });
 
                     oDepModel.setProperty("/allWbs", aFiltered);
-                    
+
                     var sInitialWbsId = (aFiltered && aFiltered.length > 0) ? aFiltered[0].WbsId : "";
-                    oDepModel.setProperty("/newDep", { 
-                        DepWbsId: sInitialWbsId, 
+                    oDepModel.setProperty("/newDep", {
+                        DepWbsId: sInitialWbsId,
                         DepType: "FS"
                     });
 
@@ -207,9 +214,9 @@ sap.ui.define([
             }
 
             var oPayload = {
-                WbsId:          sCurrentWbsId,
-                DepWbsId:       oNewDep.DepWbsId,
-                DepType:        oNewDep.DepType
+                WbsId: sCurrentWbsId,
+                DepWbsId: oNewDep.DepWbsId,
+                DepType: oNewDep.DepType
             };
 
             oView.setBusy(true);
@@ -226,7 +233,7 @@ sap.ui.define([
                     try {
                         var oErr = JSON.parse(oError.responseText);
                         sMsg = (oErr.error && oErr.error.message && oErr.error.message.value) || sMsg;
-                    } catch (e) {}
+                    } catch (e) { }
                     sap.m.MessageBox.error(sMsg);
                 }
             });

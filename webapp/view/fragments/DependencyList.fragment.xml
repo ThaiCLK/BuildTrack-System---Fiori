@@ -6,7 +6,7 @@
     xmlns:t="sap.ui.table">
 
     <Panel headerText="{i18n>depSectionTitle}" expandable="true" expanded="true"
-           class="sapUiSmallMarginTop">
+           class="sapUiSmallMarginTop" visible="{workSummaryModel>/IsLeafNode}">
         <content>
             <Toolbar design="Transparent">
                 <ToolbarSpacer />
