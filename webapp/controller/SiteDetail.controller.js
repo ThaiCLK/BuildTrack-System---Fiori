@@ -528,12 +528,12 @@ sap.ui.define([
 
         onNavBack: function () {
             this.onCancelSite();
-            // Check if there is a previous history entry
-            var oHistory = sap.ui.core.routing.History.getInstance();
-            var sPreviousHash = oHistory.getPreviousHash();
-
-            if (sPreviousHash !== undefined) {
-                window.history.go(-1);
+            // Use explicit navTo instead of window.history.go(-1) to ensure
+            // UI5 router fires attachPatternMatched on the Site page (forces data reload).
+            var oCtx = this.getView().getBindingContext();
+            var sProjectId = oCtx ? oCtx.getProperty("ProjectId") : null;
+            if (sProjectId) {
+                this.getOwnerComponent().getRouter().navTo("Site", { project_id: sProjectId }, true);
             } else {
                 this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
             }
@@ -551,6 +551,12 @@ sap.ui.define([
                     dataReceived: function () { that.getView().setBusy(false); }
                 }
             });
+
+            // Force refresh to bypass OData entity cache on every navigation (including back)
+            var oElementBinding = this.getView().getElementBinding();
+            if (oElementBinding) {
+                oElementBinding.refresh(true);
+            }
 
             this.onCancelSite();
 

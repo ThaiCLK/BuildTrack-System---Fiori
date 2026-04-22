@@ -492,6 +492,12 @@ sap.ui.define([
                 }
             });
 
+            // Force refresh to bypass OData entity cache on every navigation
+            var oElementBinding = this.getView().getElementBinding();
+            if (oElementBinding) {
+                oElementBinding.refresh(true);
+            }
+
             // Bind daily log list
             this._bindDailyLogList(sWbsId);
 

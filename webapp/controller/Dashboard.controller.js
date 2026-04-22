@@ -112,6 +112,14 @@ sap.ui.define([
 
         // ── Route matched ──────────────────────────────────────────────────
         _onDashboardMatched: function () {
+            // Reset cached arrays so _checkAndBuildCharts waits for ALL
+            // fresh requests to complete before rebuilding charts.
+            this._allProjects = null;
+            this._allSites = null;
+            this._allWbs = null;
+            this._allLogs = null;
+
+            this.getView().setBusy(true);
             this._loadStats();
             this._loadWeather();
             this._loadAnalyticsData();
@@ -161,9 +169,14 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
             var oDash = this.getView().getModel("dashboard");
+            var oNoCacheHeaders = {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache"
+            };
 
             // 1. Projects → populate ComboBox
             oModel.read("/ProjectSet", {
+                headers: oNoCacheHeaders,
                 success: function (oData) {
                     that._allProjects = oData.results || [];
                     var aItems = that._allProjects.map(function (p) {
@@ -172,20 +185,22 @@ sap.ui.define([
                     oDash.setProperty("/projects", aItems);
                     that._checkAndBuildCharts();
                 },
-                error: function () { }
+                error: function () { that._allProjects = []; that._checkAndBuildCharts(); }
             });
 
             // 2. Sites
             oModel.read("/SiteSet", {
+                headers: oNoCacheHeaders,
                 success: function (oData) {
                     that._allSites = oData.results || [];
                     that._checkAndBuildCharts();
                 },
-                error: function () { }
+                error: function () { that._allSites = []; that._checkAndBuildCharts(); }
             });
 
-            // 3. WBS -> status map, etc.
+            // 3. WBS
             oModel.read("/WBSSet", {
+                headers: oNoCacheHeaders,
                 success: function (oData) {
                     that._allWbs = oData.results || [];
 
@@ -205,29 +220,31 @@ sap.ui.define([
 
                     that._checkAndBuildCharts();
                 },
-                error: function () { }
+                error: function () { that._allWbs = []; that._checkAndBuildCharts(); }
             });
 
             // 4. DailyLog
             oModel.read("/DailyLogSet", {
+                headers: oNoCacheHeaders,
                 success: function (oData) {
                     that._allLogs = oData.results || [];
                     that._checkAndBuildCharts();
                 },
-                error: function () { }
+                error: function () { that._allLogs = []; that._checkAndBuildCharts(); }
             });
         },
 
         // Wait until all 4 entity sets are loaded before building charts
         _checkAndBuildCharts: function () {
-            if (this._allProjects &&
-                this._allSites &&
-                this._allWbs &&
-                this._allLogs) {
-                
+            if (this._allProjects !== null &&
+                this._allSites !== null &&
+                this._allWbs !== null &&
+                this._allLogs !== null) {
+
                 var oCombo = this.byId("cbProject");
                 var sKey = oCombo ? oCombo.getSelectedKey() : null;
                 this._buildCharts(sKey || null);
+                this.getView().setBusy(false);
             }
         },
 

@@ -78,10 +78,19 @@ sap.ui.define([
                 oFilterBar.attachClear(this.onFilterClear, this);
             }
 
-            this._loadProjectValueHelps();
-            this._fetchUserRoles(); // Fetch users for ID -> Name mapping
-            this._readProjects("");
+            // Attach route matched handler so data is refreshed every time
+            // the user navigates to this page (e.g. coming back from Site/WBS detail).
+            // Without this, onInit only runs once and data becomes stale.
+            var oRouter = this.getOwnerComponent().getRouter();
+            oRouter.getRoute("RouteMain").attachPatternMatched(this._onRouteMatched, this);
+
             sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
+        },
+
+        _onRouteMatched: function () {
+            this._loadProjectValueHelps();
+            this._fetchUserRoles();
+            this._readProjects("");
         },
 
         _resolveProjectCollectionPath: function () {
@@ -509,9 +518,16 @@ sap.ui.define([
                 mUrlParameters.$filter = sFilterExpr;
             }
 
+            this.getView().setBusy(true);
+
             oModel.read(sPath, {
                 urlParameters: mUrlParameters,
+                headers: {
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache"
+                },
                 success: function (oData) {
+                    that.getView().setBusy(false);
                     var aResults = (oData && oData.results) ? oData.results : [];
                     if (aResults.length > 0) {
                         this._detectProjectFieldMap(aResults[0]);
@@ -539,6 +555,7 @@ sap.ui.define([
                     this._updatePagination(1);
                 }.bind(this),
                 error: function () {
+                    that.getView().setBusy(false);
                     oPmModel.setProperty("/projects", []);
                     this._updatePagination(1);
                 }.bind(this)

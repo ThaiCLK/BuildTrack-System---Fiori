@@ -172,6 +172,12 @@ sap.ui.define([
                     }.bind(this)
                 }
             });
+
+            // Force refresh to bypass OData entity cache on every navigation (including back)
+            var oElementBinding = this.getView().getElementBinding();
+            if (oElementBinding) {
+                oElementBinding.refresh(true);
+            }
         },
 
         _loadChartData: function (oProjectObj) {
