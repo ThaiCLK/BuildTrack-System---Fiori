@@ -2,7 +2,10 @@
     xmlns:core="sap.ui.core"
     xmlns:l="sap.ui.layout"
     xmlns:f="sap.ui.layout.form"
-    xmlns:mc="sap.suite.ui.microchart">
+    xmlns:mc="sap.suite.ui.microchart"
+    xmlns:viz="sap.viz.ui5.controls"
+    xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds"
+    xmlns:viz.data="sap.viz.ui5.data">
     <ScrollContainer height="100%" width="100%" vertical="true" horizontal="true">
         <VBox class="sapUiSmallMargin">
 
@@ -292,6 +295,30 @@
                     </VBox>
                 </Panel>
                 <Panel headerText="Năng suất &amp; Dự báo" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                    <VBox visible="{= ${workSummaryModel>/IsLeafNode} &amp;&amp; ${workSummaryModel>/BurnDownHasData} }" class="sapUiSmallMarginTop">
+                        <viz:VizFrame
+                            id="chartWbsBurnDown"
+                            vizType="line"
+                            height="300px"
+                            width="100%"
+                            uiConfig="{applicationSet:'fiori'}">
+                            <viz:dataset>
+                                <viz.data:FlattenedDataset data="{workSummaryModel>/BurnDownData}">
+                                    <viz.data:dimensions>
+                                        <viz.data:DimensionDefinition name="Ngày" value="{workSummaryModel>Date}"/>
+                                    </viz.data:dimensions>
+                                    <viz.data:measures>
+                                        <viz.data:MeasureDefinition name="Kế hoạch" value="{workSummaryModel>Planned}"/>
+                                        <viz.data:MeasureDefinition name="Thực tế" value="{workSummaryModel>Actual}"/>
+                                    </viz.data:measures>
+                                </viz.data:FlattenedDataset>
+                            </viz:dataset>
+                            <viz:feeds>
+                                <viz.feeds:FeedItem uid="primaryValues" type="Measure" values="Kế hoạch,Thực tế"/>
+                                <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Ngày"/>
+                            </viz:feeds>
+                        </viz:VizFrame>
+                    </VBox>
                     <l:Grid defaultSpan="L3 M6 S12" class="sapUiSmallMarginTopBottom">
                         <l:content>
                             <VBox>

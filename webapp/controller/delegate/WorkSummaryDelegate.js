@@ -39,6 +39,10 @@ sap.ui.define([
             oController.formatStepLabel = this.formatStepLabel.bind(oController);
             oController.formatCompletionRateTitle = this.formatCompletionRateTitle.bind(oController);
             oController.onPressChildWbs = this.onPressChildWbs.bind(oController);
+
+            // WBS Leaf Burn Down Chart
+            oController._buildWbsBurnDownChart = WorkSummaryDelegate._buildWbsBurnDownChart;
+            oController._applyWbsBurnDownVizProperties = WorkSummaryDelegate._applyWbsBurnDownVizProperties.bind(oController);
         },
 
         /**
@@ -388,6 +392,13 @@ sap.ui.define([
                     var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
                     WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, aLogs, oWSModel, dServerDateObj);
                     WorkSummaryDelegate._buildFullLogHistory(oWbs, aLogs, oWSModel, dServerDateObj);
+
+                    // Build WBS Leaf Burn Down Chart data
+                    WorkSummaryDelegate._buildWbsBurnDownChart(oWbs, aLogs, oWSModel);
+                    // Apply VizFrame properties after data is ready (slight delay to allow binding)
+                    setTimeout(function () {
+                        WorkSummaryDelegate._applyWbsBurnDownVizProperties.call(that);
+                    }, 100);
 
                     if (typeof that._bindApprovalLogList === "function") {
                         that._bindApprovalLogList(sWbsId);
@@ -876,6 +887,173 @@ sap.ui.define([
             oWSModel.setProperty("/FullLogHistory", aFullHistory);
             oWSModel.setProperty("/FullLogHistoryTotalQty", Math.round(fTotalQty).toString());
             oWSModel.setProperty("/FullLogHistoryUnitCode", sUnitCode);
+        },
+
+        /* =========================================================== */
+        /* WBS LEAF BURN DOWN CHART                                     */
+        /* =========================================================== */
+
+        /**
+         * Build daily Burn Down chart data for a WBS Leaf node.
+         * X-axis : every day from Min(StartDate, StartActual) to Max(EndDate, EndActual).
+         *          If the WBS is still active and today > EndDate, extend to today.
+         * Y-axis : remaining quantity.
+         *   Planned  — linear decrease from Quantity (day 0) to 0 (EndDate).
+         *   Actual   — Quantity minus cumulative QuantityDone logged up to that day
+         *              (only plotted up to today).
+         */
+        _buildWbsBurnDownChart: function (oWbs, aLogs, oWSModel) {
+            // Clear previous data
+            oWSModel.setProperty("/BurnDownData", []);
+            oWSModel.setProperty("/BurnDownHasData", false);
+
+            if (!oWbs) { return; }
+
+            var sStatus = oWbs.Status || "";
+            // Only show for statuses that are visible in the Performance panel
+            var aVisibleStatuses = ["IN_PROGRESS", "PENDING_CLOSE", "CLOSE_REJECTED", "CLOSED"];
+            if (aVisibleStatuses.indexOf(sStatus) === -1) { return; }
+
+            var fQuantity = parseFloat(oWbs.Quantity) || 0;
+            if (fQuantity <= 0) { return; }
+
+            // ── Determine chart boundaries ──────────────────────────────────────
+            var dStartDate   = oWbs.StartDate   ? new Date(oWbs.StartDate)   : null;
+            var dEndDate     = oWbs.EndDate     ? new Date(oWbs.EndDate)     : null;
+            var dStartActual = oWbs.StartActual ? new Date(oWbs.StartActual) : null;
+            var dEndActual   = oWbs.EndActual   ? new Date(oWbs.EndActual)   : null;
+
+            if (!dStartDate && !dStartActual) { return; }
+            if (!dEndDate   && !dEndActual)   { return; }
+
+            // Chart start = Min(StartDate, StartActual)
+            var dChartStart = dStartDate || dStartActual;
+            if (dStartActual && dStartActual < dChartStart) { dChartStart = dStartActual; }
+            dChartStart = new Date(dChartStart); dChartStart.setHours(0, 0, 0, 0);
+
+            // Chart end = Max(EndDate, EndActual); extend to today for active WBS
+            var dToday = new Date(); dToday.setHours(0, 0, 0, 0);
+            var dChartEnd = dEndDate || dEndActual;
+            if (dEndActual && dEndActual > dChartEnd) { dChartEnd = dEndActual; }
+            // If WBS still active and today is beyond planned end, extend axis to today
+            if (sStatus !== "CLOSED" && dToday > dChartEnd) { dChartEnd = new Date(dToday); }
+            dChartEnd = new Date(dChartEnd); dChartEnd.setHours(0, 0, 0, 0);
+
+            if (dChartEnd < dChartStart) { return; }
+
+            // ── Planned line: linear burn-down from Quantity on StartDate to 0 on EndDate ──
+            var dPlanStart = dStartDate ? new Date(dStartDate) : new Date(dChartStart);
+            dPlanStart.setHours(0, 0, 0, 0);
+            var dPlanEnd = dEndDate ? new Date(dEndDate) : new Date(dChartEnd);
+            dPlanEnd.setHours(0, 0, 0, 0);
+
+            var iPlanDays = Math.round((dPlanEnd - dPlanStart) / (1000 * 60 * 60 * 24));
+            if (iPlanDays <= 0) { iPlanDays = 1; } // avoid div/0
+            var fDailyBurnRate = fQuantity / iPlanDays;
+
+            // ── Build a lookup map: date-string → cumulative QuantityDone ────────
+            // Group logs by date
+            var mLogsByDate = {};
+            (aLogs || []).forEach(function (l) {
+                if (!l.LogDate) { return; }
+                var dLog = new Date(l.LogDate);
+                dLog.setHours(0, 0, 0, 0);
+                var sKey = dLog.getTime().toString();
+                if (!mLogsByDate[sKey]) { mLogsByDate[sKey] = 0; }
+                mLogsByDate[sKey] += parseFloat(l.QuantityDone) || 0;
+            });
+
+            // ── Iterate every day in the chart range ─────────────────────────────
+            var aChartData = [];
+            var fCumActual = 0;
+            var dCurrent = new Date(dChartStart);
+
+            function fmtDate(d) {
+                return ("0" + d.getDate()).slice(-2) + "/" +
+                       ("0" + (d.getMonth() + 1)).slice(-2) + "/" +
+                       String(d.getFullYear()).slice(-2);
+            }
+
+            while (dCurrent <= dChartEnd) {
+                var sKey = dCurrent.getTime().toString();
+                var sDateStr = fmtDate(dCurrent);
+
+                // Planned remaining on this day
+                var fPlanned = null;
+                var iDaysFromPlanStart = Math.round((dCurrent - dPlanStart) / (1000 * 60 * 60 * 24));
+                if (iDaysFromPlanStart < 0) {
+                    // Before plan start — full quantity remains
+                    fPlanned = fQuantity;
+                } else if (iDaysFromPlanStart >= iPlanDays) {
+                    // On or after plan end — 0
+                    fPlanned = 0;
+                } else {
+                    fPlanned = Math.max(0, fQuantity - (fDailyBurnRate * iDaysFromPlanStart));
+                }
+                fPlanned = Math.round(fPlanned * 100) / 100;
+
+                // Actual remaining — only up to today
+                var fActual = null;
+                if (dCurrent <= dToday) {
+                    if (mLogsByDate[sKey]) {
+                        fCumActual += mLogsByDate[sKey];
+                    }
+                    fActual = Math.max(0, Math.round((fQuantity - fCumActual) * 100) / 100);
+                }
+
+                // Mark deadline day
+                var sLabel = sDateStr;
+                if (dEndDate) {
+                    var dED = new Date(dEndDate); dED.setHours(0, 0, 0, 0);
+                    if (dCurrent.getTime() === dED.getTime()) { sLabel += " 🚩"; }
+                }
+
+                aChartData.push({
+                    Date: sLabel,
+                    Planned: fPlanned,
+                    Actual: fActual
+                });
+
+                dCurrent.setDate(dCurrent.getDate() + 1);
+            }
+
+            oWSModel.setProperty("/BurnDownData", aChartData);
+            oWSModel.setProperty("/BurnDownHasData", aChartData.length > 0);
+            oWSModel.setProperty("/BurnDownMaxY", Math.max(fQuantity, 4));
+        },
+
+        /**
+         * Apply VizProperties to the WBS Burn Down VizFrame (chartWbsBurnDown).
+         * Must be called on the controller instance (this = controller).
+         */
+        _applyWbsBurnDownVizProperties: function () {
+            var oViz = this.byId("chartWbsBurnDown");
+            if (!oViz) { return; }
+            var oWSModel = this.getView().getModel("workSummaryModel");
+            var fMaxY = oWSModel ? (oWSModel.getProperty("/BurnDownMaxY") || 4) : 4;
+
+            oViz.setVizProperties({
+                title: { visible: false },
+                legend: { visible: true },
+                plotArea: {
+                    dataLabel: { visible: false },
+                    colorPalette: ["#5899DA", "#E8743B"],
+                    line: { marker: { visible: true, size: 4 } }
+                },
+                categoryAxis: {
+                    title: { visible: false },
+                    label: { rotation: "auto" }
+                },
+                valueAxis: {
+                    title: { visible: false },
+                    label: { formatString: "0.##" },
+                    axisTick: { shortTickVisible: false },
+                    scale: { fixedRange: true, minValue: 0, maxValue: fMaxY }
+                },
+                interaction: {
+                    selectability: { mode: "EXCLUSIVE" }
+                }
+            });
         },
 
 
