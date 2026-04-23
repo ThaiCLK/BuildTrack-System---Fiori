@@ -300,8 +300,7 @@
                             id="chartWbsBurnDown"
                             vizType="line"
                             height="300px"
-                            width="100%"
-                            uiConfig="{applicationSet:'fiori'}">
+                            width="100%">
                             <viz:dataset>
                                 <viz.data:FlattenedDataset data="{workSummaryModel>/BurnDownData}">
                                     <viz.data:dimensions>
@@ -314,10 +313,11 @@
                                 </viz.data:FlattenedDataset>
                             </viz:dataset>
                             <viz:feeds>
-                                <viz.feeds:FeedItem uid="primaryValues" type="Measure" values="Kế hoạch,Thực tế"/>
+                                <viz.feeds:FeedItem uid="valueAxis" type="Measure" values="Kế hoạch,Thực tế"/>
                                 <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Ngày"/>
                             </viz:feeds>
                         </viz:VizFrame>
+                        <viz:Popover id="popoverWbsBurnDown"/>
                     </VBox>
                     <l:Grid defaultSpan="L3 M6 S12" class="sapUiSmallMarginTopBottom">
                         <l:content>

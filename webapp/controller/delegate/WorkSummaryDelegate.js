@@ -1054,6 +1054,12 @@ sap.ui.define([
                     selectability: { mode: "EXCLUSIVE" }
                 }
             });
+
+            // Connect Popover to VizFrame for click-tooltip functionality
+            var oPopover = this.byId("popoverWbsBurnDown");
+            if (oPopover) {
+                oPopover.connect(oViz.getVizUid());
+            }
         },
 
 
