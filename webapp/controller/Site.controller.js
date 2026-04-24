@@ -48,7 +48,6 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({
                 siteCodeItems: [],
                 siteNameItems: [],
-                statusItems: [],
                 addressItems: []
             }), "siteVh");
 
@@ -144,7 +143,6 @@ sap.ui.define([
             if (oVhModel) {
                 oVhModel.setProperty("/siteCodeItems", []);
                 oVhModel.setProperty("/siteNameItems", []);
-                oVhModel.setProperty("/statusItems", []);
                 oVhModel.setProperty("/addressItems", []);
             }
 
@@ -768,7 +766,9 @@ sap.ui.define([
         _resetSiteFilterState: function () {
             ["fbSiteCode", "fbSiteName", "fbSiteStatus", "fbSiteAddress", "fbSiteCreatedOn"].forEach(function (sId) {
                 var oControl = this.byId(sId);
-                if (oControl && oControl.setValue) {
+                if (oControl && sId === "fbSiteStatus" && oControl.setSelectedKey) {
+                    oControl.setSelectedKey("");
+                } else if (oControl && oControl.setValue) {
                     oControl.setValue("");
                 }
             }.bind(this));
@@ -797,17 +797,14 @@ sap.ui.define([
             var fnSetValueHelpItems = function (aRows) {
                 var mCodes = Object.create(null);
                 var mNames = Object.create(null);
-                var mStatuses = Object.create(null);
                 var mAddresses = Object.create(null);
 
                 (aRows || []).forEach(function (oRow) {
                     var sCode = (oRow.SiteCode || "").trim();
                     var sName = (oRow.SiteName || "").trim();
-                    var sStatus = (oRow.Status || "").trim();
                     var sAddress = (oRow.Address || "").trim();
                     if (sCode) { mCodes[sCode] = sName; }
                     if (sName) { mNames[sName] = sCode; }
-                    if (sStatus) { mStatuses[sStatus] = true; }
                     if (sAddress) { mAddresses[sAddress] = true; }
                 });
 
@@ -816,9 +813,6 @@ sap.ui.define([
                 }));
                 oVhModel.setProperty("/siteNameItems", Object.keys(mNames).sort().map(function (sKey) {
                     return { key: sKey, text: sKey, additionalText: mNames[sKey] || "" };
-                }));
-                oVhModel.setProperty("/statusItems", Object.keys(mStatuses).sort().map(function (sKey) {
-                    return { key: sKey, text: sKey };
                 }));
                 oVhModel.setProperty("/addressItems", Object.keys(mAddresses).sort().map(function (sKey) {
                     return { key: sKey, text: sKey };
@@ -854,7 +848,6 @@ sap.ui.define([
                 error: function () {
                     oVhModel.setProperty("/siteCodeItems", []);
                     oVhModel.setProperty("/siteNameItems", []);
-                    oVhModel.setProperty("/statusItems", []);
                     oVhModel.setProperty("/addressItems", []);
                     if (fnDone) {
                         fnDone();
@@ -916,15 +909,6 @@ sap.ui.define([
                     primaryLabel: "Site Name",
                     showSecondary: true,
                     secondaryLabel: "Site Code",
-                    patternPlaceholder: "Nhập từ khóa"
-                },
-                {
-                    inputId: "fbSiteStatus",
-                    title: "Status",
-                    itemsPath: "/statusItems",
-                    primaryLabel: "Status",
-                    showSecondary: false,
-                    secondaryLabel: "",
                     patternPlaceholder: "Nhập từ khóa"
                 },
                 {
@@ -1105,18 +1089,6 @@ sap.ui.define([
             });
         },
 
-        onValueHelpSiteStatusRequest: function () {
-            this._openSiteValueHelpWithFreshData({
-                inputId: "fbSiteStatus",
-                title: "Status",
-                itemsPath: "/statusItems",
-                primaryLabel: "Status",
-                showSecondary: false,
-                secondaryLabel: "",
-                patternPlaceholder: "Nhập từ khóa"
-            });
-        },
-
         onValueHelpSiteAddressRequest: function () {
             this._openSiteValueHelpWithFreshData({
                 inputId: "fbSiteAddress",
@@ -1132,7 +1104,7 @@ sap.ui.define([
         onFilterSearch: function () {
             var sSiteCode = (this.byId("fbSiteCode").getValue() || "").trim();
             var sSiteName = (this.byId("fbSiteName").getValue() || "").trim();
-            var sStatus = (this.byId("fbSiteStatus").getValue() || "").trim();
+            var sStatus = (this.byId("fbSiteStatus").getSelectedKey() || "").trim();
             var sAddress = (this.byId("fbSiteAddress").getValue() || "").trim();
             var oCreatedOn = this.byId("fbSiteCreatedOn").getDateValue();
 
@@ -1177,7 +1149,7 @@ sap.ui.define([
         onFilterClear: function () {
             this.byId("fbSiteCode").setValue("");
             this.byId("fbSiteName").setValue("");
-            this.byId("fbSiteStatus").setValue("");
+            this.byId("fbSiteStatus").setSelectedKey("");
             this.byId("fbSiteAddress").setValue("");
             this.byId("fbSiteCreatedOn").setValue("");
             this.onFilterSearch();

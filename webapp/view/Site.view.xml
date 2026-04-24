@@ -218,10 +218,14 @@
                     </fb:FilterGroupItem>
                     <fb:FilterGroupItem name="Status" label="{i18n>status}" groupName="Basic" visibleInFilterBar="true">
                         <fb:control>
-                            <Input id="fbSiteStatus"
-                                placeholder="{i18n>selectStatus}"
-                                showValueHelp="true"
-                                valueHelpRequest="onValueHelpSiteStatusRequest"/>
+                            <Select id="fbSiteStatus" selectedKey="" forceSelection="false">
+                                <items>
+                                    <core:Item key="" text="{i18n>selectStatus}"/>
+                                    <core:Item key="PLANNING" text="{i18n>planningStatus}"/>
+                                    <core:Item key="IN_PROGRESS" text="{i18n>inProgressStatus}"/>
+                                    <core:Item key="CLOSED" text="{i18n>closedStatus}"/>
+                                </items>
+                            </Select>
                         </fb:control>
                     </fb:FilterGroupItem>
                     <fb:FilterGroupItem name="Address" label="{i18n>address}" groupName="Basic" visibleInFilterBar="true">
