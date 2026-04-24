@@ -465,12 +465,13 @@ sap.ui.define([
             }
 
             var aNodes = [
-                { id: "node0", lane: "lane0", title: oBundle.getText("nodePlanning"), state: state0, stateText: text0, texts: aPlanningTexts, children: ["node1_1"] }
+                { id: "node0", lane: "lane0", title: oBundle.getText("nodePlanning"), state: state0, stateText: text0, texts: aPlanningTexts, children: ["node1_2"] }
             ];
 
-            // Pending Open Nodes (3 Levels)
-            [1, 2, 3].forEach(function (lvl) {
-                var info = getLevelNodeInfo("OPEN", lvl, state1);
+            // Pending Open Nodes (Only Lv2 and Lv3 — Lv1 is now the sender)
+            [2, 3].forEach(function (lvl) {
+                var backendLvl = lvl - 1; // Backend workflow levels are 1 and 2 for open approval
+                var info = getLevelNodeInfo("OPEN", backendLvl, state1);
                 var nextNodeId = lvl === 3 ? "node2" : "node1_" + (lvl + 1);
                 aNodes.push({
                     id: "node1_" + lvl,

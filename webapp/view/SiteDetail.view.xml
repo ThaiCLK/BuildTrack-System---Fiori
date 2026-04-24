@@ -14,7 +14,7 @@
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBS" type="XML" />
                     </IconTabFilter>
 
-                    <IconTabFilter icon="sap-icon://complete" text="{i18n>sitePendingApprovalTab}" visible="{= ${userModel>/userId} !== 'LEARN-549' }">
+                    <IconTabFilter icon="sap-icon://complete" text="{i18n>sitePendingApprovalTab}" visible="{= ${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0 }">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBSPendingApproval" type="XML" />
                     </IconTabFilter>
                 </items>
