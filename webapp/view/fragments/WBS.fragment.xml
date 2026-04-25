@@ -13,7 +13,7 @@
             icon="sap-icon://sys-enter-2"
             type="Accept"
             press=".onSubmitOpenWbsApproval"
-            visible="{= ${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0 }"
+            visible="{= ${userModel>/authLevel} === '1' || ${userModel>/authLevel} === 1 }"
             tooltip="{i18n>submitOpenApprovalTooltip}"/>
         <Button
             id="btnSubmitCloseWbs"
@@ -29,7 +29,7 @@
             icon="sap-icon://play"
             type="Emphasized"
             press=".onRunWbs"
-            visible="{= ${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0 }"
+            visible="{= ${userModel>/authLevel} === '1' || ${userModel>/authLevel} === 1 }"
             tooltip="{i18n>runWbsTooltip}"/>
         <Button
             id="btnAddWbs"

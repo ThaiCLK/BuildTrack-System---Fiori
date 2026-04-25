@@ -16,7 +16,6 @@
 
                 <HBox wrap="Wrap" class="sapUiTinyMarginBottom">
                     <Button text="{i18n>assistantQuick1}" type="Transparent" press=".onAssistantSuggestionPress" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
-                    <Button text="{i18n>assistantQuick2}" type="Transparent" press=".onAssistantSuggestionPress" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
                     <Button text="{i18n>assistantQuick3}" type="Transparent" press=".onAssistantSuggestionPress" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
                 </HBox>
 

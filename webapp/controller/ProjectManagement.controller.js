@@ -52,7 +52,6 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({
                 projectCodeItems: [],
                 projectNameItems: [],
-                statusItems: [],
                 typeItems: []
             }), "vh");
             this.getView().setModel(new JSONModel({
@@ -134,22 +133,17 @@ sap.ui.define([
 
                     var mCodes = Object.create(null);
                     var mNames = Object.create(null);
-                    var mStatuses = Object.create(null);
                     var mTypes = Object.create(null);
 
                     aResults.forEach(function (oRow) {
                         var sCode = (oRow.ProjectCode || oRow.project_code || "").toString().trim();
                         var sName = (oRow.ProjectName || oRow.project_name || "").toString().trim();
-                        var sStatus = (oRow.Status || oRow.status || "").toString().trim();
                         var sType = (oRow.ProjectType || oRow.project_type || "").toString().trim();
                         if (sCode) {
                             mCodes[sCode] = sName;
                         }
                         if (sName) {
                             mNames[sName] = sCode;
-                        }
-                        if (sStatus) {
-                            mStatuses[sStatus] = true;
                         }
                         if (sType) {
                             mTypes[sType] = true;
@@ -158,7 +152,6 @@ sap.ui.define([
 
                     var aCodeKeys = Object.keys(mCodes).sort();
                     var aNameKeys = Object.keys(mNames).sort();
-                    var aStatusKeys = Object.keys(mStatuses).sort();
                     var aTypeKeys = Object.keys(mTypes).sort();
 
                     oVhModel.setProperty("/projectCodeItems", aCodeKeys.map(function (sKey) {
@@ -167,9 +160,6 @@ sap.ui.define([
                     oVhModel.setProperty("/projectNameItems", aNameKeys.map(function (sKey) {
                         return { key: sKey, text: sKey, additionalText: mNames[sKey] || "" };
                     }));
-                    oVhModel.setProperty("/statusItems", aStatusKeys.map(function (sKey) {
-                        return { key: sKey, text: sKey };
-                    }));
                     oVhModel.setProperty("/typeItems", aTypeKeys.map(function (sKey) {
                         return { key: sKey, text: sKey };
                     }));
@@ -177,7 +167,6 @@ sap.ui.define([
                 error: function () {
                     oVhModel.setProperty("/projectCodeItems", []);
                     oVhModel.setProperty("/projectNameItems", []);
-                    oVhModel.setProperty("/statusItems", []);
                     oVhModel.setProperty("/typeItems", []);
                 }
             });
@@ -333,18 +322,6 @@ sap.ui.define([
                 enablePatternFilter: true,
                 showSecondary: true,
                 secondaryLabel: oBundle.getText("projectCode")
-            });
-        },
-
-        onValueHelpStatusRequest: function () {
-            var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            this._openSimpleValueHelpDialog({
-                inputId: "fbStatus",
-                title: oBundle.getText("status"),
-                itemsPath: "/statusItems",
-                primaryLabel: oBundle.getText("status"),
-                showSecondary: false,
-                secondaryLabel: ""
             });
         },
 
@@ -677,7 +654,7 @@ sap.ui.define([
         onFilterSearch: function () {
             var sProjectCode = (this.byId("fbProjectCode").getValue() || "").trim();
             var sProjectName = (this.byId("fbProjectName").getValue() || "").trim();
-            var sStatus = (this.byId("fbStatus").getValue() || "").trim();
+            var sStatus = (this.byId("fbStatus").getSelectedKey() || "").trim();
             var sType = (this.byId("fbType").getValue() || "").trim();
             // Map localized text or common labels to standard keys for precise OData filtering
             var sTypeUpper = sType.toUpperCase();
@@ -719,7 +696,7 @@ sap.ui.define([
         onFilterClear: function () {
             this.byId("fbProjectCode").setValue("");
             this.byId("fbProjectName").setValue("");
-            this.byId("fbStatus").setValue("");
+            this.byId("fbStatus").setSelectedKey("");
             this.byId("fbType").setValue("");
             this.byId("fbStartDate").setValue("");
             this.byId("fbEndDate").setValue("");
