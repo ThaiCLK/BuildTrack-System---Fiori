@@ -127,10 +127,15 @@
                             <Panel headerText="Tiến độ Dự án" class="sapUiSmallMarginBottom">
                                 <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
                                     <HBox justifyContent="SpaceBetween" width="100%">
-                                        <Label text="Tiến độ hoàn thành" design="Bold"/>
+                                        <Label text="Tiến độ thực tế" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectProgressStr}" />
                                     </HBox>
                                     <ProgressIndicator percentValue="{projectSummaryModel>/ProjectProgress}" showValue="false" state="{projectSummaryModel>/ProjectProgressState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+                                    <HBox justifyContent="SpaceBetween" width="100%" class="sapUiTinyMarginTop">
+                                        <Label text="Tiến độ kế hoạch" design="Bold"/>
+                                        <Text text="{projectSummaryModel>/ProjectPlanProgressStr}" />
+                                    </HBox>
+                                    <ProgressIndicator percentValue="{projectSummaryModel>/ProjectPlanProgress}" showValue="false" state="Success" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
                                     <HBox justifyContent="SpaceBetween" width="100%" class="sapUiTinyMarginTop">
                                         <Label text="Tiêu hao Thời gian" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectTimeStr}" />
@@ -155,7 +160,10 @@
                                             <Text text="Tên Công trường" />
                                         </Column>
                                         <Column>
-                                            <Text text="Tiến độ" />
+                                            <Text text="Tiến độ TT" />
+                                        </Column>
+                                        <Column>
+                                            <Text text="Tiến độ KH" />
                                         </Column>
                                         <Column>
                                             <Text text="Thời gian" />
@@ -178,6 +186,7 @@
                                                     <Text text="{projectSummaryModel>SiteCode}" />
                                                 </VBox>
                                                 <Text text="{projectSummaryModel>ProgressStr}" />
+                                                <Text text="{projectSummaryModel>PlanProgressStr}" />
                                                 <Text text="{projectSummaryModel>TimeStr}" />
                                                 <Text text="{projectSummaryModel>ContributionStr}" />
                                                 <ObjectStatus

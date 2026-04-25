@@ -472,18 +472,26 @@ sap.ui.define([
             });
 
             // 2. Recursive Roll-up Function
+            var fnGetDaysDiff = function (d1, d2) {
+                if (!d1 || !d2) return 0;
+                var t1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+                var t2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+                return Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
+            };
+
+            var dToday = new Date(); 
+            dToday.setHours(0, 0, 0, 0);
+
             var fnCalculateProgress = function (oNode) {
                 var dStart = oNode.StartDate ? new Date(oNode.StartDate) : null;
                 var dEnd = oNode.EndDate ? new Date(oNode.EndDate) : null;
                 var iDuration = 0;
                 if (dStart && dEnd) {
-                    dStart.setHours(0, 0, 0, 0);
-                    dEnd.setHours(0, 0, 0, 0);
-                    iDuration = Math.round((dEnd.getTime() - dStart.getTime()) / (1000 * 3600 * 24)) + 1;
+                    iDuration = fnGetDaysDiff(dStart, dEnd) + 1;
                 }
                 if (iDuration < 0) iDuration = 0;
 
-                oNode._duration = iDuration;
+                oNode._calendarDuration = iDuration;
 
                 // Leaf Node
                 if (oNode._children.length === 0) {
@@ -491,15 +499,27 @@ sap.ui.define([
                     var fDone = parseFloat(oNode.TotalQuantityDone) || 0;
                     var sStatus = (oNode.Status || "").toUpperCase();
                     var fProgress = 0;
+                    var fPlanProgress = 0;
 
                     if (sStatus === "CLOSED") {
                         fProgress = 100;
-                    } else if (sStatus === "IN_PROGRESS" || fDone > 0) {
+                    } else if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
+                        fProgress = 0;
+                    } else {
                         fProgress = fQty > 0 ? (fDone / fQty) * 100 : 0;
-                        if (fProgress < 0) fProgress = 0;
+                        if (fProgress > 100) fProgress = 100;
+                    }
+
+                    if (dStart && dEnd) {
+                        if (iDuration > 0) {
+                            var usedDays = fnGetDaysDiff(dStart, dToday) + 1;
+                            fPlanProgress = Math.min(Math.max(usedDays / iDuration, 0), 1) * 100;
+                        }
                     }
 
                     oNode._progress = fProgress;
+                    oNode._planProgress = fPlanProgress;
+                    oNode._leafWeight = iDuration;
 
                     var oStartActual = oNode.StartActual ? new Date(oNode.StartActual) : null;
                     var oEndActual = oNode.EndActual ? new Date(oNode.EndActual) : null;
@@ -509,8 +529,9 @@ sap.ui.define([
                 }
                 // Parent Node
                 else {
-                    var fTotalWeight = 0;
+                    var fTotalLeafWeight = 0;
                     var fWeightedProgressSum = 0;
+                    var fWeightedPlanProgressSum = 0;
                     var oMinStart = null;
                     var oMaxEnd = null;
                     var bAllClosed = true;
@@ -518,18 +539,21 @@ sap.ui.define([
                     oNode._children.forEach(function (child) {
                         fnCalculateProgress(child);
 
-                        // Weights
-                        var fChildWeight = child._duration > 0 ? child._duration : 1;
-                        fTotalWeight += fChildWeight;
-                        var fChildRollupProgress = child._progress > 100 ? 100 : child._progress;
-                        fWeightedProgressSum += (fChildRollupProgress * fChildWeight);
+                        var sChildStatus = (child.Status || "").toUpperCase();
+                        var bIsExcluded = (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED" || sChildStatus === "OPENED");
 
-                        // Min Start Actual
+                        var fChildWeight = child._leafWeight > 0 ? child._leafWeight : 0;
+                        
+                        if (!bIsExcluded) {
+                            fTotalLeafWeight += fChildWeight;
+                            fWeightedProgressSum += ((child._progress > 100 ? 100 : child._progress) * fChildWeight);
+                            fWeightedPlanProgressSum += ((child._planProgress || 0) * fChildWeight);
+                        }
+
                         if (child._computedStartActual) {
                             if (!oMinStart || child._computedStartActual < oMinStart) oMinStart = child._computedStartActual;
                         }
 
-                        // Max End Actual
                         if (child._computedEndActual) {
                             if (!oMaxEnd || child._computedEndActual > oMaxEnd) oMaxEnd = child._computedEndActual;
                         }
@@ -539,7 +563,17 @@ sap.ui.define([
                         }
                     });
 
-                    oNode._progress = fTotalWeight > 0 ? (fWeightedProgressSum / fTotalWeight) : 0;
+                    var sStatus = (oNode.Status || "").toUpperCase();
+                    if (sStatus === "CLOSED") {
+                        oNode._progress = 100;
+                    } else if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
+                        oNode._progress = 0;
+                    } else {
+                        oNode._progress = fTotalLeafWeight > 0 ? (fWeightedProgressSum / fTotalLeafWeight) : 0;
+                    }
+
+                    oNode._planProgress = fTotalLeafWeight > 0 ? (fWeightedPlanProgressSum / fTotalLeafWeight) : 0;
+                    oNode._leafWeight = fTotalLeafWeight;
                     oNode._computedStartActual = oMinStart;
                     oNode._computedEndActual = bAllClosed ? oMaxEnd : null;
                     oNode._isAllClosed = bAllClosed;
@@ -549,6 +583,7 @@ sap.ui.define([
             // 3. Roll-up Sites & Project
             var fProjectTotalWeight = 0;
             var fProjectWeightedProgressSum = 0;
+            var fProjectWeightedPlanProgressSum = 0;
             var oProjectStartActual = null;
             var oProjectEndActual = null;
             var bProjectAllClosed = true;
@@ -558,9 +593,16 @@ sap.ui.define([
                 fnCalculateProgress(root);
                 mSiteRootMap[root.SiteId] = root;
 
-                var fSiteWeight = root._duration > 0 ? root._duration : 1;
-                fProjectTotalWeight += fSiteWeight;
-                fProjectWeightedProgressSum += (root._progress * fSiteWeight);
+                var sRootStatus = (root.Status || "").toUpperCase();
+                var bIsExcluded = (sRootStatus === "PLANNING" || sRootStatus === "PENDING_OPEN" || sRootStatus === "OPEN_REJECTED" || sRootStatus === "OPENED");
+
+                var fSiteWeight = root._leafWeight > 0 ? root._leafWeight : 0;
+                
+                if (!bIsExcluded) {
+                    fProjectTotalWeight += fSiteWeight;
+                    fProjectWeightedProgressSum += (root._progress * fSiteWeight);
+                    fProjectWeightedPlanProgressSum += ((root._planProgress || 0) * fSiteWeight);
+                }
 
                 if (root._computedStartActual) {
                     if (!oProjectStartActual || root._computedStartActual < oProjectStartActual) oProjectStartActual = root._computedStartActual;
@@ -574,6 +616,7 @@ sap.ui.define([
             });
 
             var fProjectProgress = fProjectTotalWeight > 0 ? (fProjectWeightedProgressSum / fProjectTotalWeight) : 0;
+            var fProjectPlanProgress = fProjectTotalWeight > 0 ? (fProjectWeightedPlanProgressSum / fProjectTotalWeight) : 0;
 
             // Tính Thời gian tiêu hao của Dự án từ ProjectObj
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
@@ -583,12 +626,10 @@ sap.ui.define([
             var iProjectUsedDays = 0;
             var fProjectTimePct = 0;
             if (dProjStart && dProjEnd) {
-                dProjStart.setHours(0, 0, 0, 0); dProjEnd.setHours(23, 59, 59, 999);
-                iProjectPlanDays = Math.round((dProjEnd - dProjStart) / (1000 * 3600 * 24)) + 1;
+                iProjectPlanDays = fnGetDaysDiff(dProjStart, dProjEnd) + 1;
             }
-            var dToday = new Date(); dToday.setHours(0, 0, 0, 0);
             if (dProjStart && iProjectPlanDays > 0) {
-                iProjectUsedDays = Math.round((dToday - dProjStart) / (1000 * 3600 * 24)) + 1;
+                iProjectUsedDays = fnGetDaysDiff(dProjStart, dToday) + 1;
                 if (iProjectUsedDays < 0) iProjectUsedDays = 0;
                 if (bProjectAllClosed) iProjectUsedDays = Math.min(iProjectUsedDays, iProjectPlanDays);
                 fProjectTimePct = Math.min((iProjectUsedDays / iProjectPlanDays) * 100, 100);
@@ -599,17 +640,16 @@ sap.ui.define([
             aSites.forEach(function (site) {
                 var oRoot = mSiteRootMap[site.SiteId];
                 var fProgress = oRoot ? oRoot._progress : 0;
-                var fWeight = oRoot && oRoot._duration > 0 ? oRoot._duration : 1;
+                var fWeight = oRoot && oRoot._leafWeight > 0 ? oRoot._leafWeight : 0;
                 var fContribution = fProjectTotalWeight > 0 ? (fWeight / fProjectTotalWeight) * 100 : 0;
 
                 // Thời gian tiêu hao của Site (dựa vào StartDate/EndDate của Root WBS)
-                var iSitePlanDays = oRoot ? oRoot._duration : 0;
+                var iSitePlanDays = oRoot ? oRoot._calendarDuration : 0;
                 var iSiteUsedDays = 0;
                 var fSiteTimePct = 0;
                 var dRootStart = oRoot && oRoot.StartDate ? new Date(oRoot.StartDate) : null;
                 if (dRootStart && iSitePlanDays > 0) {
-                    dRootStart.setHours(0, 0, 0, 0);
-                    iSiteUsedDays = Math.round((dToday - dRootStart) / (1000 * 3600 * 24)) + 1;
+                    iSiteUsedDays = fnGetDaysDiff(dRootStart, dToday) + 1;
                     if (iSiteUsedDays < 0) iSiteUsedDays = 0;
                     var bSiteClosed = oRoot && oRoot._isAllClosed;
                     if (bSiteClosed) iSiteUsedDays = Math.min(iSiteUsedDays, iSitePlanDays);
@@ -623,12 +663,16 @@ sap.ui.define([
                 if (sSiteStatus === "CLOSED" || (oRoot && oRoot._isAllClosed)) {
                     sAssessmentText = "Hoàn thành";
                     sAssessmentState = "Success";
-                } else if (sSiteStatus === "PLANNING") {
+                } else if (sSiteStatus === "PLANNING" || sSiteStatus === "PENDING_OPEN" || sSiteStatus === "OPEN_REJECTED" || sSiteStatus === "OPENED") {
                     sAssessmentText = "Chưa thi công";
                     sAssessmentState = "None";
                 } else {
-                    var fDiff = fSiteTimePct - fProgress;
-                    if (fDiff > 0) {
+                    var fPlanProg = oRoot && oRoot._planProgress ? oRoot._planProgress : 0;
+                    var fDiff = fPlanProg - fProgress;
+                    if (fDiff > 10) {
+                        sAssessmentText = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentState = "Error";
+                    } else if (fDiff > 0) {
                         sAssessmentText = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
                         sAssessmentState = "Warning";
                     } else if (fDiff < 0) {
@@ -647,6 +691,8 @@ sap.ui.define([
                     Status: site.Status,
                     Progress: fProgress,
                     ProgressStr: fProgress.toFixed(2) + "%",
+                    PlanProgress: oRoot && oRoot._planProgress ? oRoot._planProgress : 0,
+                    PlanProgressStr: (oRoot && oRoot._planProgress ? oRoot._planProgress : 0).toFixed(2) + "%",
                     ContributionStr: fContribution.toFixed(2) + "%",
                     TimeStr: sTimeStr,
                     TimePct: fSiteTimePct,
@@ -676,13 +722,15 @@ sap.ui.define([
             if (fProjectProgress >= 100) {
                 sProjectProgressState = "Success";
             } else {
-                var fProjDiff = fProjectTimePct - fProjectProgress;
+                var fProjDiff = fProjectPlanProgress - fProjectProgress;
                 if (fProjDiff > 10) sProjectProgressState = "Error";
                 else if (fProjDiff > 0) sProjectProgressState = "Warning";
                 else sProjectProgressState = "Success";
             }
 
             oSummaryModel.setProperty("/ProjectProgressState", sProjectProgressState);
+            oSummaryModel.setProperty("/ProjectPlanProgress", fProjectPlanProgress);
+            oSummaryModel.setProperty("/ProjectPlanProgressStr", fProjectPlanProgress.toFixed(2) + "%");
             oSummaryModel.setProperty("/ProjectTimePct", fProjectTimePct);
             oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePct) + "%)");
             oSummaryModel.setProperty("/ProjectTimeState", sProjectTimeState);

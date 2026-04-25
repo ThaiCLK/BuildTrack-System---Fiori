@@ -57,10 +57,16 @@
             <Panel headerText="Tiến độ Tổng hợp" class="sapUiSmallMarginBottom" visible="{workSummaryModel>/IsParentNode}">
                 <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
                     <HBox justifyContent="SpaceBetween" width="100%">
-                        <Label text="Tiến độ hoàn thành" design="Bold"/>
+                        <Label text="Tiến độ thực tế" design="Bold"/>
                         <Text text="{workSummaryModel>/ParentWeightedProgressStr}" />
                     </HBox>
                     <ProgressIndicator percentValue="{workSummaryModel>/ParentWeightedProgress}" showValue="false" state="{workSummaryModel>/ParentProgressState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+
+                    <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
+                        <Label text="Tiến độ kế hoạch" design="Bold"/>
+                        <Text text="{workSummaryModel>/ParentWeightedPlanProgressStr}" />
+                    </HBox>
+                    <ProgressIndicator percentValue="{workSummaryModel>/ParentWeightedPlanProgress}" showValue="false" state="Success" height="1.2rem" width="100%"/>
 
                     <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
                         <Label text="Tiêu hao Thời gian" design="Bold"/>
@@ -75,13 +81,13 @@
                     <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
 
                         <HBox justifyContent="SpaceBetween" width="100%">
-                            <Label text="Khối lượng thực tế" design="Bold"/>
+                            <Label text="Tiến độ thực tế" design="Bold"/>
                             <Text text="{parts: [{path: 'Status'}, {path: 'workSummaryModel>/TotalQtyDone'}], formatter: '.formatQtyProgressDisplay'}" />
                         </HBox>
                         <ProgressIndicator percentValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressPercent'}" displayValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyPercentageStr'}" showValue="true" state="{parts: [{path: 'Status'}, {path: 'workSummaryModel>/TotalQtyDone'}], formatter: '.formatQtyProgressState'}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
 
                         <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
-                            <Label text="Khối lượng kế hoạch" design="Bold"/>
+                            <Label text="Tiến độ kế hoạch" design="Bold"/>
                             <Text text="{path: 'Status', formatter: '.formatPlanQtyDisplay'}" />
                         </HBox>
                         <ProgressIndicator percentValue="{path: 'Status', formatter: '.formatPlanQtyPercent'}" displayValue="{path: 'Status', formatter: '.formatPlanQtyPercentStr'}" showValue="true" state="Success" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
@@ -475,7 +481,7 @@
                 <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
                     <columns>
                         <Column>
-                            <Text text="{i18n>itemName}" />
+                            <Text text="Mã hạng mục" />
                         </Column>
                         <Column>
                             <Text text="Tiến độ" />
@@ -496,7 +502,7 @@
                     <items>
                         <ColumnListItem type="Navigation" press=".onPressChildWbs">
                             <cells>
-                                <Text text="{workSummaryModel>WbsName}" wrapping="true" />
+                                <Text text="{workSummaryModel>WbsCode}" wrapping="true" />
 
                                 <Text text="{workSummaryModel>QuantityProgressStr}" />
 

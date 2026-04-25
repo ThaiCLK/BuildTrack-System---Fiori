@@ -134,7 +134,7 @@ sap.ui.define([
             });
         },
 
-        _calculateWbsProgressRecursive: function (oWbsNode, oTreeMap, aAllLogs) {
+        _calculateWbsProgressRecursive: function (oWbsNode, oTreeMap, aAllLogs, dServerDateObj) {
             var sWbsId = oWbsNode.WbsId.toLowerCase().replace(/-/g, "");
             var aChildren = oTreeMap[sWbsId] || [];
 
@@ -175,7 +175,22 @@ sap.ui.define([
 
                 oWbsNode.CalculatedProgress = fProgress;
                 var fRollupProgress = fProgress > 100 ? 100 : fProgress;
-                return { progress: fRollupProgress, plannedDays: iPlannedDays, logs: aLogs };
+
+                var fPlanProgress = 0;
+                if (dStart && dEnd) {
+                    var dS = new Date(dStart); dS.setHours(0, 0, 0, 0);
+                    var dE = new Date(dEnd); dE.setHours(0, 0, 0, 0);
+                    var planDays = WorkSummaryDelegate._getDaysDiff(dS, dE) + 1;
+                    if (planDays > 0 && dServerDateObj) {
+                        var dRef = new Date(dServerDateObj); dRef.setHours(0, 0, 0, 0);
+                        var usedDays = WorkSummaryDelegate._getDaysDiff(dS, dRef) + 1;
+                        fPlanProgress = Math.min(Math.max(usedDays / planDays, 0), 1) * 100;
+                    }
+                }
+
+                oWbsNode.CalculatedPlanProgress = fPlanProgress;
+
+                return { progress: fRollupProgress, planProgress: fPlanProgress, plannedDays: iPlannedDays, logs: aLogs };
             } else {
                 // Parent Node
                 var iTotalPlannedDays = 0;
@@ -183,19 +198,31 @@ sap.ui.define([
                 var aChildResults = [];
 
                 aChildren.forEach(function (oChild) {
-                    var oResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oChild, oTreeMap, aAllLogs);
-                    iTotalPlannedDays += oResult.plannedDays;
+                    var oResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oChild, oTreeMap, aAllLogs, dServerDateObj);
+                    var sChildStatus = oChild.Status;
+                    var bIsExcluded = (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED");
+                    
+                    if (!bIsExcluded) {
+                        iTotalPlannedDays += oResult.plannedDays;
+                    }
                     aAllChildLogs = aAllChildLogs.concat(oResult.logs);
-                    aChildResults.push({ child: oChild, result: oResult });
+                    aChildResults.push({ child: oChild, result: oResult, isExcluded: bIsExcluded });
                 });
 
                 var fWeightedProgress = 0;
+                var fWeightedPlanProgress = 0;
                 aChildResults.forEach(function (item) {
                     var oChild = item.child;
                     var oResult = item.result;
-                    var fContribution = iTotalPlannedDays > 0 ? (oResult.plannedDays / iTotalPlannedDays) : 0;
+                    var bIsExcluded = item.isExcluded;
+                    
+                    var fContribution = 0;
+                    if (!bIsExcluded && iTotalPlannedDays > 0) {
+                        fContribution = (oResult.plannedDays / iTotalPlannedDays);
+                    }
                     oChild.ContributionPercent = fContribution * 100;
                     fWeightedProgress += (oResult.progress * fContribution);
+                    fWeightedPlanProgress += ((oResult.planProgress || 0) * fContribution);
                 });
 
                 var sStatus = oWbsNode.Status;
@@ -203,10 +230,11 @@ sap.ui.define([
                 else if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") fWeightedProgress = 0;
 
                 oWbsNode.CalculatedProgress = fWeightedProgress;
+                oWbsNode.CalculatedPlanProgress = fWeightedPlanProgress;
                 oWbsNode.DailyLogs = aAllChildLogs;
                 oWbsNode.TotalQtyDone = "0";
 
-                return { progress: fWeightedProgress, plannedDays: iPlannedDays, logs: aAllChildLogs };
+                return { progress: fWeightedProgress, planProgress: fWeightedPlanProgress, plannedDays: iTotalPlannedDays, logs: aAllChildLogs };
             }
         },
 
@@ -222,14 +250,15 @@ sap.ui.define([
                 return;
             }
 
-            var oParentResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oWbs, oTreeMap, aAllLogs);
+            var oParentResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oWbs, oTreeMap, aAllLogs, dServerDateObj);
             var fParentWeightedProgress = oParentResult.progress;
+            var fParentWeightedPlanProgress = oParentResult.planProgress || 0;
             var aParentLogs = oParentResult.logs;
 
             aChildren.forEach(function (c) {
                 c.ContributionStr = oQtyFmt.format(c.ContributionPercent) + "%";
 
-                var dStartActual = c.StartActual ? new Date(c.StartActual) : null;
+                var dStartDate = c.StartDate ? new Date(c.StartDate) : null;
                 var dEndActual = c.EndActual ? new Date(c.EndActual) : null;
                 var sStatus = c.Status;
 
@@ -237,16 +266,12 @@ sap.ui.define([
                 if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
                     iElapsedDays = 0;
                 } else if (sStatus === "CLOSED") {
-                    if (dStartActual && dEndActual && !isNaN(dStartActual) && !isNaN(dEndActual)) {
-                        iElapsedDays = Math.round((dEndActual - dStartActual) / (1000 * 60 * 60 * 24)) + 1;
+                    if (dStartDate && dEndActual && !isNaN(dStartDate) && !isNaN(dEndActual)) {
+                        iElapsedDays = WorkSummaryDelegate._getDaysDiff(dStartDate, dEndActual) + 1;
                     }
                 } else {
-                    if (dStartActual && !isNaN(dStartActual)) {
-                        var dTarget = new Date(dServerDateObj.getTime());
-                        dTarget.setHours(0, 0, 0, 0);
-                        var dStartOnly = new Date(dStartActual.getTime());
-                        dStartOnly.setHours(0, 0, 0, 0);
-                        iElapsedDays = Math.round((dTarget - dStartOnly) / (1000 * 60 * 60 * 24)) + 1;
+                    if (dStartDate && !isNaN(dStartDate)) {
+                        iElapsedDays = WorkSummaryDelegate._getDaysDiff(dStartDate, dServerDateObj) + 1;
                     }
                 }
                 if (iElapsedDays < 0) iElapsedDays = 0;
@@ -280,17 +305,22 @@ sap.ui.define([
                     c.AssessmentText = "Chưa thi công";
                     c.AssessmentState = "None";
                 } else {
-                    // fTimePct đã tính bên trên (raw float, chưa làm tròn)
-                    var fDiff = fTimePct - c.CalculatedProgress;
+                    var fPlanProg = c.CalculatedPlanProgress || 0;
+                    var fActualProg = c.CalculatedProgress || 0;
+                    var fDiff = fPlanProg - fActualProg;
+                    
                     c.AssessmentDiff = fDiff;
-                    if (fDiff > 0) {
+                    if (fDiff > 10) {
+                        c.AssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
+                        c.AssessmentState = "Error";
+                    } else if (fDiff > 0) {
                         c.AssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
                         c.AssessmentState = "Warning";
                     } else if (fDiff < 0) {
                         c.AssessmentText = "Vượt (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
                         c.AssessmentState = "Success";
                     } else {
-                        c.AssessmentText = "Đủ";
+                        c.AssessmentText = "Đúng tiến độ";
                         c.AssessmentState = "Success";
                     }
                 }
@@ -299,22 +329,18 @@ sap.ui.define([
             var iParentPlannedDays = oWbs.PlannedDays;
             var iParentElapsedDays = 0;
             var sParentStatus = oWbs.Status;
-            var dParentStartActual = oWbs.StartActual ? new Date(oWbs.StartActual) : null;
+            var dParentStartDate = oWbs.StartDate ? new Date(oWbs.StartDate) : null;
             var dParentEndActual = oWbs.EndActual ? new Date(oWbs.EndActual) : null;
 
             if (sParentStatus === "PLANNING" || sParentStatus === "PENDING_OPEN" || sParentStatus === "OPEN_REJECTED" || sParentStatus === "OPENED") {
                 iParentElapsedDays = 0;
             } else if (sParentStatus === "CLOSED") {
-                if (dParentStartActual && dParentEndActual && !isNaN(dParentStartActual) && !isNaN(dParentEndActual)) {
-                    iParentElapsedDays = Math.round((dParentEndActual - dParentStartActual) / (1000 * 60 * 60 * 24)) + 1;
+                if (dParentStartDate && dParentEndActual && !isNaN(dParentStartDate) && !isNaN(dParentEndActual)) {
+                    iParentElapsedDays = WorkSummaryDelegate._getDaysDiff(dParentStartDate, dParentEndActual) + 1;
                 }
             } else {
-                if (dParentStartActual && !isNaN(dParentStartActual)) {
-                    var dTarget = new Date(dServerDateObj.getTime());
-                    dTarget.setHours(0, 0, 0, 0);
-                    var dStartOnly = new Date(dParentStartActual.getTime());
-                    dStartOnly.setHours(0, 0, 0, 0);
-                    iParentElapsedDays = Math.round((dTarget - dStartOnly) / (1000 * 60 * 60 * 24)) + 1;
+                if (dParentStartDate && !isNaN(dParentStartDate)) {
+                    iParentElapsedDays = WorkSummaryDelegate._getDaysDiff(dParentStartDate, dServerDateObj) + 1;
                 }
             }
             if (iParentElapsedDays < 0) iParentElapsedDays = 0;
@@ -330,7 +356,7 @@ sap.ui.define([
             if (fParentWeightedProgress >= 100) {
                 sParentProgressState = "Success";
             } else {
-                var fDiff = fParentTimeElapsedPercent - fParentWeightedProgress;
+                var fDiff = fParentWeightedPlanProgress - fParentWeightedProgress;
                 if (fDiff > 10) sParentProgressState = "Error";
                 else if (fDiff > 0) sParentProgressState = "Warning";
                 else sParentProgressState = "Success";
@@ -338,6 +364,8 @@ sap.ui.define([
 
             oWSModel.setProperty("/ParentWeightedProgress", fParentWeightedProgress);
             oWSModel.setProperty("/ParentWeightedProgressStr", oQtyFmt.format(fParentWeightedProgress) + "%");
+            oWSModel.setProperty("/ParentWeightedPlanProgress", fParentWeightedPlanProgress);
+            oWSModel.setProperty("/ParentWeightedPlanProgressStr", oQtyFmt.format(fParentWeightedPlanProgress) + "%");
             oWSModel.setProperty("/ParentProgressState", sParentProgressState);
             oWSModel.setProperty("/ParentTimeElapsedPercent", fParentTimeElapsedPercent);
             oWSModel.setProperty("/ParentTimeElapsedStr", oIntFmt.format(iParentElapsedDays) + " / " + oIntFmt.format(iParentPlannedDays) + " Ngày (" + oQtyFmt.format(fParentTimeElapsedPercent) + "%)");
@@ -996,7 +1024,7 @@ sap.ui.define([
             var dBufferDay = new Date(dChartStart.getTime());
             dBufferDay.setDate(dBufferDay.getDate() - 1);
             aChartData.push({
-                Date: "Bắt đầu",
+                Date: "",
                 Planned: Math.round(fQuantity * 100) / 100,
                 Actual: Math.round(fQuantity * 100) / 100
             });
@@ -1493,14 +1521,17 @@ sap.ui.define([
 
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
             var oTime = WorkSummaryDelegate._calculateTimeElapsed(oCtx, dServerDateObj);
-            var iUsedDays = oTime.used;
+            var iUsedDays = parseFloat(oTime.used) || 0;
 
-            var fAvgProd = 0;
-            if (iUsedDays > 0) {
-                fAvgProd = fTotalQty / iUsedDays;
+            if (iUsedDays === 0) {
+                return "0 " + sUnit + " / Ngày";
             }
 
-            return parseFloat(fAvgProd.toFixed(2)) + " " + sUnit + " / Ngày";
+            // Tính toán giữ nguyên độ chính xác, chỉ làm tròn ở bước hiển thị
+            var fAvgProd = fTotalQty / iUsedDays;
+            var sDisplay = parseFloat(fAvgProd.toFixed(2)).toString();
+
+            return sDisplay + " " + sUnit + " / Ngày";
         },
 
         _calculateScheduleVariance: function (oCtx, dServerDateObj, sTotalQtyDone) {
@@ -1508,15 +1539,15 @@ sap.ui.define([
             var fTotalQtyDone = parseFloat(sTotalQtyDone) || 0;
             var oTime = WorkSummaryDelegate._calculateTimeElapsed(oCtx, dServerDateObj);
 
-            if (fQuantity === 0 || oTime.plan === 0) {
+            if (fQuantity === 0) {
                 return { percent: 0, qty: 0 };
             }
 
-            var fTimeElapsedPct = (oTime.used / oTime.plan) * 100;
+            var fPlanPct = WorkSummaryDelegate._calcPlanTimePct(oCtx, dServerDateObj) * 100;
             var fActualQtyPct = (fTotalQtyDone / fQuantity) * 100;
 
-            // user formula: % thời gian - % khối lượng
-            var fVariancePct = fTimeElapsedPct - fActualQtyPct;
+            // user formula: % kế hoạch - % khối lượng thực tế
+            var fVariancePct = fPlanPct - fActualQtyPct;
 
             // khối lượng chênh lệch = % chênh lệch * Quantity
             var fVarianceQty = (fVariancePct / 100) * fQuantity;
