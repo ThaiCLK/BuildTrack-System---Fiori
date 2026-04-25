@@ -71,14 +71,21 @@
             </Panel>
 
             <VBox visible="{workSummaryModel>/IsLeafNode}">
-                <Panel headerText="Đánh giá Hiệu suất" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                <Panel headerText="Đánh giá Hiệu suất" class="sapUiSmallMarginBottom" visible="true">
                     <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
 
                         <HBox justifyContent="SpaceBetween" width="100%">
-                            <Label text="Hoàn thành Khối lượng" design="Bold"/>
-                            <Text text="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressDisplay'}" />
+                            <Label text="Khối lượng thực tế" design="Bold"/>
+                            <Text text="{parts: [{path: 'Status'}, {path: 'workSummaryModel>/TotalQtyDone'}], formatter: '.formatQtyProgressDisplay'}" />
                         </HBox>
-                        <ProgressIndicator percentValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressPercent'}" displayValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyPercentageStr'}" showValue="true" state="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressState'}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+                        <ProgressIndicator percentValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressPercent'}" displayValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyPercentageStr'}" showValue="true" state="{parts: [{path: 'Status'}, {path: 'workSummaryModel>/TotalQtyDone'}], formatter: '.formatQtyProgressState'}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+
+                        <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
+                            <Label text="Khối lượng kế hoạch" design="Bold"/>
+                            <Text text="{path: 'Status', formatter: '.formatPlanQtyDisplay'}" />
+                        </HBox>
+                        <ProgressIndicator percentValue="{path: 'Status', formatter: '.formatPlanQtyPercent'}" displayValue="{path: 'Status', formatter: '.formatPlanQtyPercentStr'}" showValue="true" state="Success" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
+
                         <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
                             <Label text="Tiêu hao Thời gian" design="Bold"/>
                             <Text text="{path: 'Status', formatter: '.formatTimeElapsedDisplay'}" />
@@ -294,8 +301,8 @@
                         </VBox>
                     </VBox>
                 </Panel>
-                <Panel headerText="Năng suất &amp; Dự báo" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
-                    <VBox visible="{= ${workSummaryModel>/IsLeafNode} &amp;&amp; ${workSummaryModel>/BurnDownHasData} }" class="sapUiSmallMarginTop">
+                <Panel headerText="Năng suất &amp; Dự báo" class="sapUiSmallMarginBottom" visible="true">
+                    <VBox visible="{workSummaryModel>/IsLeafNode}" class="sapUiSmallMarginTop">
                         <viz:VizFrame
                             id="chartWbsBurnDown"
                             vizType="line"
@@ -382,7 +389,7 @@
                         </l:content>
                     </l:Grid>
                 </Panel>
-                <Panel headerText="Thống kê Thời tiết &amp; Cảnh báo Rủi ro" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                <Panel headerText="Thống kê Thời tiết &amp; Cảnh báo Rủi ro" class="sapUiSmallMarginBottom" visible="true">
                     <l:Grid defaultSpan="L6 M6 S12" class="sapUiSmallMarginTopBottom">
                         <l:content>
 
@@ -427,7 +434,7 @@
                     </l:Grid>
                 </Panel>
 
-                <Panel headerText="Dự báo Nguồn lực" class="sapUiSmallMarginBottom" visible="{path: 'Status', formatter: '.formatPerformancePanelVisible'}">
+                <Panel headerText="Dự báo Nguồn lực" class="sapUiSmallMarginBottom" visible="true">
                     <VBox class="sapUiSmallMargin">
                         <Label text="Dự toán phần công việc còn lại ({workSummaryModel>/RemainingQtyText})" design="Bold" class="sapUiSmallMarginBottom"/>
                         <Table showSeparators="Inner" noDataText="Chưa có dữ liệu" items="{workSummaryModel>/ResourceForecasting}">

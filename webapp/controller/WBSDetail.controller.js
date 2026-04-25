@@ -953,7 +953,10 @@ sap.ui.define([
         onPressViewFullLogHistory: WorkSummaryDelegate.onPressViewFullLogHistory,
         onSearchFullLogHistory: WorkSummaryDelegate.onSearchFullLogHistory,
         onCloseFullLogHistory: WorkSummaryDelegate.onCloseFullLogHistory,
-        onPressChildWbs: WorkSummaryDelegate.onPressChildWbs
+        onPressChildWbs: WorkSummaryDelegate.onPressChildWbs,
+        formatPlanQtyDisplay: WorkSummaryDelegate.formatPlanQtyDisplay,
+        formatPlanQtyPercent: WorkSummaryDelegate.formatPlanQtyPercent,
+        formatPlanQtyPercentStr: WorkSummaryDelegate.formatPlanQtyPercentStr
     });
 
     // Mix in ApprovalLogDelegate functions to the controller prototype

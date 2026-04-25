@@ -43,6 +43,11 @@ sap.ui.define([
             // WBS Leaf Burn Down Chart
             oController._buildWbsBurnDownChart = WorkSummaryDelegate._buildWbsBurnDownChart;
             oController._applyWbsBurnDownVizProperties = WorkSummaryDelegate._applyWbsBurnDownVizProperties.bind(oController);
+
+            // Planned Quantity formatters
+            oController.formatPlanQtyDisplay = this.formatPlanQtyDisplay.bind(oController);
+            oController.formatPlanQtyPercent = this.formatPlanQtyPercent.bind(oController);
+            oController.formatPlanQtyPercentStr = this.formatPlanQtyPercentStr.bind(oController);
         },
 
         /**
@@ -650,25 +655,16 @@ sap.ui.define([
             if (!oWbs) { fnSetProps(); return; }
 
             var sStatus = oWbs.Status;
-            if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1) {
-                fnSetProps(); return;
-            }
-
-            var dStartActual = (oWbs.StartActual instanceof Date) ? oWbs.StartActual : (oWbs.StartActual ? new Date(oWbs.StartActual) : null);
             var dEndActual = (oWbs.EndActual instanceof Date) ? oWbs.EndActual : (oWbs.EndActual ? new Date(oWbs.EndActual) : null);
-
-            var dEnd = null, dStart = null;
             var bIsClosed = (sStatus === "CLOSED");
-            // Bug 2 fix: nếu CLOSED nhưng EndActual null → fallback về SystemDate
-            dEnd = bIsClosed ? (dEndActual || dServerDateObj) : dServerDateObj;
 
-            if (!dEnd || !dStartActual) { fnSetProps(); return; }
+            // TH1: Chưa CLOSED → End = hôm nay
+            // TH2: CLOSED      → End = EndActual (fallback: hôm nay)
+            var dEnd = bIsClosed ? (dEndActual || dServerDateObj) : dServerDateObj;
+            var dEnd_clone = new Date(dEnd); dEnd_clone.setHours(0, 0, 0, 0);
 
-            var dEnd_clone = new Date(dEnd.getTime()); dEnd_clone.setHours(0, 0, 0, 0);
-            var dStartActual_clone = new Date(dStartActual.getTime()); dStartActual_clone.setHours(0, 0, 0, 0);
-
-            var dSystemMinus13 = new Date(dEnd_clone.getTime() - 13 * 24 * 60 * 60 * 1000);
-            dStart = (dStartActual_clone > dSystemMinus13) ? dStartActual_clone : dSystemMinus13;
+            // Start luôn = End - 13 ngày → luôn đủ 14 cột
+            var dStart = new Date(dEnd_clone.getTime() - 13 * 24 * 60 * 60 * 1000);
 
             var aCalculatedDates = [];
             var dCurrent = new Date(dStart.getTime());
@@ -676,6 +672,24 @@ sap.ui.define([
                 aCalculatedDates.push(new Date(dCurrent.getTime()));
                 dCurrent.setDate(dCurrent.getDate() + 1);
             }
+
+            // Luôn điền ngày — dòng Ngày không dùng "-"
+            for (var d = 0; d < aCalculatedDates.length && d < 14; d++) {
+                var dDateD = aCalculatedDates[d];
+                var sDateTextD = ("0" + dDateD.getDate()).slice(-2) + "/" + ("0" + (dDateD.getMonth() + 1)).slice(-2);
+                // Cột cuối (thứ 14): khác CLOSED → "H.Nay"; CLOSED → DD/MM bình thường
+                if (d === 13 && !bIsClosed) { sDateTextD = "H.Nay"; }
+                aDates[d] = sDateTextD;
+            }
+
+            // Các trạng thái chưa khởi công (Bao gồm cả OPENED): chỉ hiện ngày, phần còn lại giữ "-"
+            if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1) {
+                fnSetProps(); return;
+            }
+
+            var dStartActual = (oWbs.StartActual instanceof Date) ? oWbs.StartActual : (oWbs.StartActual ? new Date(oWbs.StartActual) : new Date(dServerDateObj));
+            var dStartActual_clone = new Date(dStartActual);
+            dStartActual_clone.setHours(0, 0, 0, 0);
 
             var fnGetLogsForDate = function (dTarget) {
                 return aLogs.filter(function (l) {
@@ -696,24 +710,22 @@ sap.ui.define([
 
             for (var j = 0; j < aCalculatedDates.length && j < 14; j++) {
                 var dDate = aCalculatedDates[j];
-                var sDateText = ("0" + dDate.getDate()).slice(-2) + "/" + ("0" + (dDate.getMonth() + 1)).slice(-2);
-                if (!bIsClosed && j === aCalculatedDates.length - 1) { sDateText = "H.Nay"; }
-                aDates[j] = sDateText;
-
                 var aDayLogs = fnGetLogsForDate(dDate);
+
                 if (aDayLogs.length > 0) {
+                    // Lớp 1: Có nhật ký → Xanh ✅
                     aLogIcons[j] = "sap-icon://sys-enter-2";
                     aLogColors[j] = "Positive";
                     aLogTexts[j] = "";
 
-                    var fDayQty = parseFloat(aDayLogs[0].QuantityDone) || 0;
-                    aQtys[j] = Math.round(fDayQty).toString();
-
+                    // SUM toàn bộ khối lượng các log trong ngày
+                    var fTotalQty = 0;
                     var bHasSafe = false, bHasContractor = false;
                     var iHighestWeatherRank = 0;
                     var sHighestWeatherIcon = "";
 
                     aDayLogs.forEach(function (l) {
+                        fTotalQty += parseFloat(l.QuantityDone) || 0;
                         if (l.SafeNote) bHasSafe = true;
                         if (l.ContractorNote) bHasContractor = true;
 
@@ -726,6 +738,8 @@ sap.ui.define([
                             }
                         });
                     });
+
+                    aQtys[j] = Math.round(fTotalQty).toString();
 
                     if (sHighestWeatherIcon) {
                         aWeathers[j] = sHighestWeatherIcon;
@@ -741,9 +755,14 @@ sap.ui.define([
                         aNoteTexts[j] = "";
                     }
                 } else {
-                    aLogIcons[j] = "sap-icon://error";
-                    aLogColors[j] = "Negative";
-                    aLogTexts[j] = "";
+                    // Lớp 2: Không log + Ngày >= StartActual → Đỏ ❌ (Phạt trốn báo cáo)
+                    if (dDate >= dStartActual_clone) {
+                        aLogIcons[j] = "sap-icon://error";
+                        aLogColors[j] = "Negative";
+                        aLogTexts[j] = "";
+                        aQtys[j] = "0";
+                    }
+                    // Lớp 3: Chưa tới ngày StartActual → giữ "-" (khởi tạo sẵn từ đầu)
                 }
             }
 
@@ -772,8 +791,8 @@ sap.ui.define([
                 return;
             }
 
-            // Determine start date
-            var dStartRaw = oWbs.StartActual || oWSModel.getProperty("/ActualStart") || oWbs.StartDate;
+            // CHỈ neo vào Actual Start
+            var dStartRaw = oWbs.StartActual || oWSModel.getProperty("/ActualStart");
             if (!dStartRaw) {
                 oWSModel.setProperty("/FullLogHistory", aFullHistory);
                 oWSModel.setProperty("/FullLogHistoryTotalQty", "0");
@@ -910,21 +929,18 @@ sap.ui.define([
             if (!oWbs) { return; }
 
             var sStatus = oWbs.Status || "";
-            // Only show for statuses that are visible in the Performance panel
-            var aVisibleStatuses = ["IN_PROGRESS", "PENDING_CLOSE", "CLOSE_REJECTED", "CLOSED"];
-            if (aVisibleStatuses.indexOf(sStatus) === -1) { return; }
 
             var fQuantity = parseFloat(oWbs.Quantity) || 0;
             if (fQuantity <= 0) { return; }
 
             // ── Determine chart boundaries ──────────────────────────────────────
-            var dStartDate   = oWbs.StartDate   ? new Date(oWbs.StartDate)   : null;
-            var dEndDate     = oWbs.EndDate     ? new Date(oWbs.EndDate)     : null;
+            var dStartDate = oWbs.StartDate ? new Date(oWbs.StartDate) : null;
+            var dEndDate = oWbs.EndDate ? new Date(oWbs.EndDate) : null;
             var dStartActual = oWbs.StartActual ? new Date(oWbs.StartActual) : null;
-            var dEndActual   = oWbs.EndActual   ? new Date(oWbs.EndActual)   : null;
+            var dEndActual = oWbs.EndActual ? new Date(oWbs.EndActual) : null;
 
             if (!dStartDate && !dStartActual) { return; }
-            if (!dEndDate   && !dEndActual)   { return; }
+            if (!dEndDate && !dEndActual) { return; }
 
             // Chart start = Min(StartDate, StartActual)
             var dChartStart = dStartDate || dStartActual;
@@ -947,7 +963,8 @@ sap.ui.define([
             var dPlanEnd = dEndDate ? new Date(dEndDate) : new Date(dChartEnd);
             dPlanEnd.setHours(0, 0, 0, 0);
 
-            var iPlanDays = Math.round((dPlanEnd - dPlanStart) / (1000 * 60 * 60 * 24));
+            // +1: cả StartDate lẫn EndDate đều là ngày thi công (inclusive)
+            var iPlanDays = Math.round((dPlanEnd - dPlanStart) / (1000 * 60 * 60 * 24)) + 1;
             if (iPlanDays <= 0) { iPlanDays = 1; } // avoid div/0
             var fDailyBurnRate = fQuantity / iPlanDays;
 
@@ -970,9 +987,19 @@ sap.ui.define([
 
             function fmtDate(d) {
                 return ("0" + d.getDate()).slice(-2) + "/" +
-                       ("0" + (d.getMonth() + 1)).slice(-2) + "/" +
-                       String(d.getFullYear()).slice(-2);
+                    ("0" + (d.getMonth() + 1)).slice(-2) + "/" +
+                    String(d.getFullYear()).slice(-2);
             }
+
+            // ── Ngày đệm (Buffer Day): 1 ngày trước ChartStart ──────────────────
+            // Đảm bảo biểu đồ luôn bắt đầu ở mốc Quantity (chưa đốt ngày nào)
+            var dBufferDay = new Date(dChartStart.getTime());
+            dBufferDay.setDate(dBufferDay.getDate() - 1);
+            aChartData.push({
+                Date: "Bắt đầu",
+                Planned: Math.round(fQuantity * 100) / 100,
+                Actual: Math.round(fQuantity * 100) / 100
+            });
 
             while (dCurrent <= dChartEnd) {
                 var sKey = dCurrent.getTime().toString();
@@ -980,8 +1007,9 @@ sap.ui.define([
 
                 // Planned remaining on this day
                 var fPlanned = null;
-                var iDaysFromPlanStart = Math.round((dCurrent - dPlanStart) / (1000 * 60 * 60 * 24));
-                if (iDaysFromPlanStart < 0) {
+                // +1: mô hình cuối-ngày — cuối ngày N đã đốt N*rate
+                var iDaysFromPlanStart = Math.round((dCurrent - dPlanStart) / (1000 * 60 * 60 * 24)) + 1;
+                if (iDaysFromPlanStart <= 0) {
                     // Before plan start — full quantity remains
                     fPlanned = fQuantity;
                 } else if (iDaysFromPlanStart >= iPlanDays) {
@@ -1165,40 +1193,87 @@ sap.ui.define([
             var fActual = parseFloat(this.getView().getModel("workSummaryModel").getProperty("/TotalQtyDone")) || 0;
             var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
             if (fTarget === 0) return 0;
-            var fPercent = (fActual / fTarget) * 100;
-            return Math.min(fPercent, 100);
+            return (fActual / fTarget) * 100;
         },
 
-        formatQtyProgressState: function (vDummy) {
+        formatQtyProgressState: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
-            if (!oCtx) return "Success";
+            if (!oCtx) return "None";
 
-            var sStatus = oCtx.getProperty("Status");
-            if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") return "Success";
-            if (sStatus === "CLOSED") return "Success";
-
-            var fActual = parseFloat(this.getView().getModel("workSummaryModel").getProperty("/TotalQtyDone")) || 0;
+            var fActual = parseFloat(sTotalQtyDone) || 0;
             var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
-            var fQtyPct = fTarget > 0 ? (fActual / fTarget) * 100 : 0;
-            if (fQtyPct >= 100) return "Success";
+            var fActualPct = fTarget > 0 ? (fActual / fTarget) * 100 : 0;
 
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
-            var oTime = WorkSummaryDelegate._calculateTimeElapsed(oCtx, dServerDateObj);
-            var fTimePct = oTime.plan > 0 ? (oTime.used / oTime.plan) * 100 : 0;
+            var fPlanPct = WorkSummaryDelegate._calcPlanTimePct(oCtx, dServerDateObj) * 100;
 
-            var fDiff = fTimePct - fQtyPct;
+            // So sánh % kế hoạch cần đạt vs % thực tế đã làm
+            var fDiff = fPlanPct - fActualPct;
             if (fDiff > 10) return "Error";
             if (fDiff > 0) return "Warning";
             return "Success";
         },
 
-        formatQtyProgressDisplay: function (vDummy) {
+        formatQtyProgressDisplay: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
             if (!oCtx) return "";
-            var fActual = parseFloat(this.getView().getModel("workSummaryModel").getProperty("/TotalQtyDone")) || 0;
+            var fActual = parseFloat(sTotalQtyDone) || 0;
             var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
             var sUnit = oCtx.getProperty("UnitCode") || "";
             return "Thực tế: " + fActual.toFixed(2).replace(/\.00$/, '') + " / Kế hoạch: " + fTarget.toFixed(2).replace(/\.00$/, '') + " " + sUnit;
+        },
+
+        /**
+         * Helper nội bộ: tính số ngày kế hoạch đã qua kể từ StartDate đến today.
+         * Không phụ thuộc vào Status. Kết quả trong [0, planDays].
+         */
+        _calcPlanTimePct: function (oCtx, dServerDateObj) {
+            if (!oCtx) return 0;
+            var dStart = oCtx.getProperty("StartDate");
+            var dEnd = oCtx.getProperty("EndDate");
+            if (!dStart || !dEnd) return 0;
+
+            var dS = new Date(dStart); dS.setHours(0, 0, 0, 0);
+            var dE = new Date(dEnd); dE.setHours(0, 0, 0, 0);
+
+            var planDays = WorkSummaryDelegate._getDaysDiff(dS, dE) + 1;
+            if (planDays <= 0) return 0;
+
+            var dRef = new Date(dServerDateObj); dRef.setHours(0, 0, 0, 0);
+            var usedDays = WorkSummaryDelegate._getDaysDiff(dS, dRef) + 1;
+            return Math.min(Math.max(usedDays / planDays, 0), 1);
+        },
+
+        /**
+         * Khối lượng kế hoạch đến hôm nay:
+         *   daily_rate = Quantity / plan_days
+         *   planned_today = min(elapsed_days_from_StartDate, plan_days) × daily_rate
+         * Tối đa bằng Quantity (100%). Áp dụng với mọi Status.
+         */
+        formatPlanQtyDisplay: function (vDummy) {
+            var oCtx = this.getView().getBindingContext();
+            if (!oCtx) return "";
+            var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
+            var fPct = WorkSummaryDelegate._calcPlanTimePct(oCtx, dServerDateObj);
+            var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
+            var sUnit = oCtx.getProperty("UnitCode") || "";
+            var fPlanQty = fPct * fTarget;
+            return "Cần đạt: " + fPlanQty.toFixed(2).replace(/\.00$/, '') + " / Kế hoạch: " + fTarget.toFixed(2).replace(/\.00$/, '') + " " + sUnit;
+        },
+
+        formatPlanQtyPercent: function (vDummy) {
+            var oCtx = this.getView().getBindingContext();
+            if (!oCtx) return 0;
+            var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
+            return WorkSummaryDelegate._calcPlanTimePct(oCtx, dServerDateObj) * 100;
+        },
+
+        formatPlanQtyPercentStr: function (vDummy) {
+            var oCtx = this.getView().getBindingContext();
+            if (!oCtx) return "0%";
+            var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
+            var fPct = WorkSummaryDelegate._calcPlanTimePct(oCtx, dServerDateObj) * 100;
+            return parseFloat(fPct.toFixed(1)) + "%";
         },
 
         formatTotalQty: function (sActual) {
@@ -1356,34 +1431,27 @@ sap.ui.define([
 
             var dStart = oCtx.getProperty("StartDate");
             var dEnd = oCtx.getProperty("EndDate");
-            var dStartActual = oCtx.getProperty("StartActual");
             var dEndActual = oCtx.getProperty("EndActual");
             var sStatus = oCtx.getProperty("Status");
 
+            // plan = EndDate - StartDate + 1
             var planDays = 0;
             if (dStart && dEnd) {
                 planDays = WorkSummaryDelegate._getDaysDiff(dStart, dEnd) + 1;
             }
 
+            // used:
+            //   CLOSED  → max(EndActual - StartDate + 1, 0)
+            //   Còn lại → max(today - StartDate + 1, 0)
             var usedDays = 0;
-            if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
-                usedDays = 0;
-            } else if (sStatus === "IN_PROGRESS" || sStatus === "PENDING_CLOSE" || sStatus === "CLOSE_REJECTED") {
-                if (dStartActual) {
-                    usedDays = WorkSummaryDelegate._getDaysDiff(dStartActual, dServerDateObj) + 1;
-                }
-            } else if (sStatus === "CLOSED") {
-                if (dStartActual && dEndActual) {
-                    usedDays = WorkSummaryDelegate._getDaysDiff(dStartActual, dEndActual) + 1;
+            if (dStart) {
+                if (sStatus === "CLOSED" && dEndActual) {
+                    usedDays = WorkSummaryDelegate._getDaysDiff(dStart, dEndActual) + 1;
+                } else {
+                    usedDays = WorkSummaryDelegate._getDaysDiff(dStart, dServerDateObj) + 1;
                 }
             }
-
             usedDays = Math.max(0, usedDays);
-            // Bug 4 fix: CLOSED xong thì usedDays không được vượt quá planDays
-            // để tránh % thời gian > 100% gây state Error sai
-            if (sStatus === "CLOSED" && planDays > 0) {
-                usedDays = Math.min(usedDays, planDays);
-            }
 
             return { used: usedDays, plan: planDays };
         },
