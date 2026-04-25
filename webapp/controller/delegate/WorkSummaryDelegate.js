@@ -142,7 +142,7 @@ sap.ui.define([
             var dEnd = oWbsNode.EndDate ? new Date(oWbsNode.EndDate) : null;
             var iPlannedDays = 0;
             if (dStart && dEnd && !isNaN(dStart) && !isNaN(dEnd)) {
-                iPlannedDays = Math.round((dEnd - dStart) / (1000 * 60 * 60 * 24)) + 1;
+                iPlannedDays = WorkSummaryDelegate._getDaysDiff(dStart, dEnd) + 1;
             }
             if (iPlannedDays < 0) iPlannedDays = 0;
             oWbsNode.PlannedDays = iPlannedDays;
@@ -201,7 +201,7 @@ sap.ui.define([
                     var oResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oChild, oTreeMap, aAllLogs, dServerDateObj);
                     var sChildStatus = oChild.Status;
                     var bIsExcluded = (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED");
-                    
+
                     if (!bIsExcluded) {
                         iTotalPlannedDays += oResult.plannedDays;
                     }
@@ -215,7 +215,7 @@ sap.ui.define([
                     var oChild = item.child;
                     var oResult = item.result;
                     var bIsExcluded = item.isExcluded;
-                    
+
                     var fContribution = 0;
                     if (!bIsExcluded && iTotalPlannedDays > 0) {
                         fContribution = (oResult.plannedDays / iTotalPlannedDays);
@@ -308,7 +308,7 @@ sap.ui.define([
                     var fPlanProg = c.CalculatedPlanProgress || 0;
                     var fActualProg = c.CalculatedProgress || 0;
                     var fDiff = fPlanProg - fActualProg;
-                    
+
                     c.AssessmentDiff = fDiff;
                     if (fDiff > 10) {
                         c.AssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
@@ -427,7 +427,7 @@ sap.ui.define([
                     WorkSummaryDelegate._buildFullLogHistory(oWbs, aLogs, oWSModel, dServerDateObj);
 
                     // Build WBS Leaf Burn Down Chart data
-                    WorkSummaryDelegate._buildWbsBurnDownChart(oWbs, aLogs, oWSModel);
+                    WorkSummaryDelegate._buildWbsBurnDownChart(oWbs, aLogs, oWSModel, dServerDateObj);
                     // Apply VizFrame properties after data is ready (slight delay to allow binding)
                     setTimeout(function () {
                         WorkSummaryDelegate._applyWbsBurnDownVizProperties.call(that);
@@ -949,7 +949,7 @@ sap.ui.define([
          *   Actual   — Quantity minus cumulative QuantityDone logged up to that day
          *              (only plotted up to today).
          */
-        _buildWbsBurnDownChart: function (oWbs, aLogs, oWSModel) {
+        _buildWbsBurnDownChart: function (oWbs, aLogs, oWSModel, dServerDateObj) {
             // Clear previous data
             oWSModel.setProperty("/BurnDownData", []);
             oWSModel.setProperty("/BurnDownHasData", false);
@@ -975,8 +975,8 @@ sap.ui.define([
             if (dStartActual && dStartActual < dChartStart) { dChartStart = dStartActual; }
             dChartStart = new Date(dChartStart); dChartStart.setHours(0, 0, 0, 0);
 
-            // Chart end = Max(EndDate, EndActual); extend to today for active WBS
-            var dToday = new Date(); dToday.setHours(0, 0, 0, 0);
+            var dToday = dServerDateObj ? new Date(dServerDateObj) : new Date();
+            dToday.setHours(0, 0, 0, 0);
             var dChartEnd = dEndDate || dEndActual;
             if (dEndActual && dEndActual > dChartEnd) { dChartEnd = dEndActual; }
             // If WBS still active and today is beyond planned end, extend axis to today
@@ -992,7 +992,7 @@ sap.ui.define([
             dPlanEnd.setHours(0, 0, 0, 0);
 
             // +1: cả StartDate lẫn EndDate đều là ngày thi công (inclusive)
-            var iPlanDays = Math.round((dPlanEnd - dPlanStart) / (1000 * 60 * 60 * 24)) + 1;
+            var iPlanDays = WorkSummaryDelegate._getDaysDiff(dPlanStart, dPlanEnd) + 1;
             if (iPlanDays <= 0) { iPlanDays = 1; } // avoid div/0
             var fDailyBurnRate = fQuantity / iPlanDays;
 
@@ -1019,56 +1019,90 @@ sap.ui.define([
                     String(d.getFullYear()).slice(-2);
             }
 
+            // ── Lưới thời gian tĩnh (Stepped Interval) ─────────────────────────
+            var iChartDays = WorkSummaryDelegate._getDaysDiff(dChartStart, dChartEnd) + 1;
+            var iStep = Math.ceil(iChartDays / 30);
+            if (iStep < 1) iStep = 1;
+
+            var aUniqueDates = [];
+            var dTemp = new Date(dChartStart);
+            while (dTemp <= dChartEnd) {
+                aUniqueDates.push(new Date(dTemp));
+                dTemp.setDate(dTemp.getDate() + iStep);
+            }
+            if (dEndDate) {
+                var dED = new Date(dEndDate); dED.setHours(0, 0, 0, 0);
+                var bHasED = aUniqueDates.some(function (d) { return d.getTime() === dED.getTime(); });
+                if (!bHasED && dED >= dChartStart && dED <= dChartEnd) {
+                    aUniqueDates.push(new Date(dED));
+                }
+            }
+            var bHasCE = aUniqueDates.some(function (d) { return d.getTime() === dChartEnd.getTime(); });
+            if (!bHasCE) {
+                aUniqueDates.push(new Date(dChartEnd));
+            }
+            aUniqueDates.sort(function (a, b) { return a.getTime() - b.getTime(); });
+
+            var mDatesToPlot = {};
+            aUniqueDates.forEach(function (d) {
+                mDatesToPlot[d.getTime()] = true;
+            });
+
             // ── Ngày đệm (Buffer Day): 1 ngày trước ChartStart ──────────────────
             // Đảm bảo biểu đồ luôn bắt đầu ở mốc Quantity (chưa đốt ngày nào)
             var dBufferDay = new Date(dChartStart.getTime());
             dBufferDay.setDate(dBufferDay.getDate() - 1);
             aChartData.push({
-                Date: "",
+                Date: "0h " + fmtDate(dChartStart),
                 Planned: Math.round(fQuantity * 100) / 100,
                 Actual: Math.round(fQuantity * 100) / 100
             });
 
             while (dCurrent <= dChartEnd) {
                 var sKey = dCurrent.getTime().toString();
-                var sDateStr = fmtDate(dCurrent);
 
-                // Planned remaining on this day
-                var fPlanned = null;
-                // +1: mô hình cuối-ngày — cuối ngày N đã đốt N*rate
-                var iDaysFromPlanStart = Math.round((dCurrent - dPlanStart) / (1000 * 60 * 60 * 24)) + 1;
-                if (iDaysFromPlanStart <= 0) {
-                    // Before plan start — full quantity remains
-                    fPlanned = fQuantity;
-                } else if (iDaysFromPlanStart >= iPlanDays) {
-                    // On or after plan end — 0
-                    fPlanned = 0;
-                } else {
-                    fPlanned = Math.max(0, fQuantity - (fDailyBurnRate * iDaysFromPlanStart));
-                }
-                fPlanned = Math.round(fPlanned * 100) / 100;
-
-                // Actual remaining — only up to today
-                var fActual = null;
+                // Luôn cộng dồn Actual theo từng ngày thực tế
                 if (dCurrent <= dToday) {
                     if (mLogsByDate[sKey]) {
                         fCumActual += mLogsByDate[sKey];
                     }
-                    fActual = Math.max(0, Math.round((fQuantity - fCumActual) * 100) / 100);
                 }
 
-                // Mark deadline day
-                var sLabel = sDateStr;
-                if (dEndDate) {
-                    var dED = new Date(dEndDate); dED.setHours(0, 0, 0, 0);
-                    if (dCurrent.getTime() === dED.getTime()) { sLabel += " 🚩"; }
-                }
+                // Chỉ plot ra chart nếu ngày này nằm trong mDatesToPlot
+                if (mDatesToPlot[dCurrent.getTime()]) {
+                    var sDateStr = fmtDate(dCurrent);
 
-                aChartData.push({
-                    Date: sLabel,
-                    Planned: fPlanned,
-                    Actual: fActual
-                });
+                    // Planned remaining on this day
+                    var fPlanned = null;
+                    var iDaysFromPlanStart = WorkSummaryDelegate._getDaysDiff(dPlanStart, dCurrent) + 1;
+                    if (iDaysFromPlanStart <= 0) {
+                        fPlanned = fQuantity;
+                    } else if (iDaysFromPlanStart >= iPlanDays) {
+                        fPlanned = 0;
+                    } else {
+                        fPlanned = Math.max(0, fQuantity - (fDailyBurnRate * iDaysFromPlanStart));
+                    }
+                    fPlanned = Math.round(fPlanned * 100) / 100;
+
+                    // Actual remaining — only up to today
+                    var fActual = null;
+                    if (dCurrent <= dToday) {
+                        fActual = Math.max(0, Math.round((fQuantity - fCumActual) * 100) / 100);
+                    }
+
+                    // Mark deadline day
+                    var sLabel = sDateStr;
+                    if (dEndDate) {
+                        var dED = new Date(dEndDate); dED.setHours(0, 0, 0, 0);
+                        if (dCurrent.getTime() === dED.getTime()) { sLabel += " 🚩"; }
+                    }
+
+                    aChartData.push({
+                        Date: sLabel,
+                        Planned: fPlanned,
+                        Actual: fActual
+                    });
+                }
 
                 dCurrent.setDate(dCurrent.getDate() + 1);
             }

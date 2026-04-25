@@ -284,38 +284,52 @@ sap.ui.define([
             var oProjectStart = new Date(oProjectObj.StartDate);
             oProjectStart.setHours(0, 0, 0, 0);
             var oProjectEnd = new Date(oProjectObj.EndDate);
-            oProjectEnd.setHours(23, 59, 59, 999);
+            oProjectEnd.setHours(0, 0, 0, 0);
 
             if (oProjectEnd < oProjectStart) {
                 oChartModel.setProperty("/hasData", false);
                 return;
             }
 
-            // --- Xác định biên mở rộng của Chart (MIN/MAX Dates) ---
-            var oChartStartDate = new Date(oProjectStart);
-            var oChartEndDate = new Date(oProjectEnd);
+            // --- Xác định Min/Max từ các Leaf WBS ---
+            var dMinLeafStart = null;
+            var dMaxLeafEnd = null;
 
             aWbs.forEach(function (w) {
                 if (w.StartDate) {
-                    var d = new Date(w.StartDate); d.setHours(0, 0, 0, 0);
-                    if (d < oChartStartDate) oChartStartDate = d;
+                    var dS = new Date(w.StartDate); dS.setHours(0, 0, 0, 0);
+                    if (!dMinLeafStart || dS < dMinLeafStart) dMinLeafStart = dS;
                 }
+                if (w.EndDate) {
+                    var dE = new Date(w.EndDate); dE.setHours(0, 0, 0, 0);
+                    if (!dMaxLeafEnd || dE > dMaxLeafEnd) dMaxLeafEnd = dE;
+                }
+            });
+
+            // Nếu không có Leaf nào có ngày, fallback về Project
+            var oIdealStart = dMinLeafStart ? new Date(dMinLeafStart) : new Date(oProjectStart);
+            var oIdealEnd = dMaxLeafEnd ? new Date(dMaxLeafEnd) : new Date(oProjectEnd);
+
+            // --- Xác định biên mở rộng của Chart (MIN/MAX Dates) ---
+            var oChartStartDate = new Date(oIdealStart);
+            var oChartEndDate = new Date(oIdealEnd);
+
+            aWbs.forEach(function (w) {
                 if (w.StartActual) {
                     var d = new Date(w.StartActual); d.setHours(0, 0, 0, 0);
                     if (d < oChartStartDate) oChartStartDate = d;
                 }
-                if (w.EndDate) {
-                    var d = new Date(w.EndDate); d.setHours(23, 59, 59, 999);
-                    if (d > oChartEndDate) oChartEndDate = d;
-                }
                 if (w.EndActual) {
-                    var d = new Date(w.EndActual); d.setHours(23, 59, 59, 999);
+                    var d = new Date(w.EndActual); d.setHours(0, 0, 0, 0);
                     if (d > oChartEndDate) oChartEndDate = d;
                 }
             });
 
-            var oToday = new Date();
-            oToday.setHours(23, 59, 59, 999);
+            var oViewData = this.getView().getModel("viewData");
+            var oToday = oViewData ? (oViewData.getProperty("/ServerDateObj") || new Date()) : new Date();
+            oToday = new Date(oToday);
+            oToday.setHours(0, 0, 0, 0);
+
             // Nếu hôm nay vượt quá Chart End Date nhưng dự án chưa xong, kéo dài trục X tới hôm nay
             if (oToday > oChartEndDate) {
                 var iClosed = aWbs.filter(function (w) { return (w.Status || "").toUpperCase() === "CLOSED"; }).length;
@@ -324,39 +338,47 @@ sap.ui.define([
                 }
             }
 
-            // 1. Gather all significant dates (Event-driven)
-            var mUniqueDates = {};
-
-            function addDate(d) {
-                if (!d) return;
-                var dt = new Date(d);
-                dt.setHours(23, 59, 59, 999);
-                if (dt >= oChartStartDate && dt <= oChartEndDate) {
-                    mUniqueDates[dt.getTime()] = dt;
-                }
+            // Đảm bảo Chart End Date tối thiểu phải chạm mốc Deadline dự án
+            if (oProjectEnd > oChartEndDate) {
+                oChartEndDate = new Date(oProjectEnd);
             }
 
-            // Always add project boundaries and today (if within range)
-            addDate(oProjectStart);
-            addDate(oProjectEnd);
-            if (oToday >= oChartStartDate && oToday <= oChartEndDate) {
-                addDate(oToday);
+            var fnGetDaysDiff = function (d1, d2) {
+                if (!d1 || !d2) return 0;
+                var t1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+                var t2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+                return Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
+            };
+
+            var iChartDays = fnGetDaysDiff(oChartStartDate, oChartEndDate) + 1;
+            var iStep = Math.ceil(iChartDays / 30);
+            if (iStep < 1) iStep = 1;
+
+            var iProjectPlanDays = fnGetDaysDiff(oIdealStart, oIdealEnd) + 1;
+            if (iProjectPlanDays <= 0) iProjectPlanDays = 1;
+            var fDailyBurnRate = iTotalWbs / iProjectPlanDays;
+
+            // 1. Generate stepped dates
+            var aUniqueDates = [];
+            var dTemp = new Date(oChartStartDate);
+            while (dTemp <= oChartEndDate) {
+                aUniqueDates.push(new Date(dTemp));
+                dTemp.setDate(dTemp.getDate() + iStep);
             }
 
-            // Add all WBS dates
-            aWbs.forEach(function (w) {
-                if (w.StartDate) addDate(w.StartDate);
-                if (w.EndDate) addDate(w.EndDate);
-                if (w.EndActual) addDate(w.EndActual);
-                if (w.StartActual) addDate(w.StartActual);
-            });
+            // Đảm bảo có Project End (Deadline)
+            var bHasProjectEnd = aUniqueDates.some(function (d) { return d.getTime() === oProjectEnd.getTime(); });
+            if (!bHasProjectEnd && oProjectEnd >= oChartStartDate && oProjectEnd <= oChartEndDate) {
+                aUniqueDates.push(new Date(oProjectEnd));
+            }
 
-            // Convert map to sorted array
-            var aSortedDates = Object.keys(mUniqueDates).map(function (k) {
-                return mUniqueDates[k];
-            }).sort(function (a, b) {
-                return a.getTime() - b.getTime();
-            });
+            // Đảm bảo có Chart End
+            var bHasChartEnd = aUniqueDates.some(function (d) { return d.getTime() === oChartEndDate.getTime(); });
+            if (!bHasChartEnd) {
+                aUniqueDates.push(new Date(oChartEndDate));
+            }
+
+            aUniqueDates.sort(function (a, b) { return a.getTime() - b.getTime(); });
 
             function fmtDate(d) {
                 return String(d.getDate()).padStart(2, '0') + "/" +
@@ -366,57 +388,64 @@ sap.ui.define([
 
             var aChartData = [];
 
-            var sDeadlineDateStr = fmtDate(oProjectEnd);
+            // Ngày đệm (Buffer Day)
+            var dBufferDay = new Date(oChartStartDate.getTime());
+            dBufferDay.setDate(dBufferDay.getDate() - 1);
+            aChartData.push({
+                Date: "0h " + fmtDate(oChartStartDate),
+                Planned: iTotalWbs,
+                Actual: iTotalWbs
+            });
 
-            aSortedDates.forEach(function (oDate) {
-                // Planned: how many tasks are planned to finish AFTER this date
-                var iPlannedRemaining = 0;
-                aWbs.forEach(function (w) {
-                    var oEnd = w.EndDate ? new Date(w.EndDate) : new Date(oProjectEnd);
-                    oEnd.setHours(23, 59, 59, 999);
-                    if (oEnd.getTime() > oDate.getTime()) {
-                        iPlannedRemaining++;
-                    }
-                });
+            aUniqueDates.forEach(function (oDate) {
+                var sDateStr = fmtDate(oDate);
 
-                // Actual: how many tasks were NOT YET closed by this date
-                var vActual = null;
+                // Planned: Ideal Line
+                var fPlanned = null;
+                var iDaysFromPlanStart = fnGetDaysDiff(oIdealStart, oDate) + 1;
+
+                if (iDaysFromPlanStart <= 0) {
+                    fPlanned = iTotalWbs;
+                } else if (iDaysFromPlanStart >= iProjectPlanDays) {
+                    fPlanned = 0;
+                } else {
+                    fPlanned = Math.max(0, iTotalWbs - (fDailyBurnRate * iDaysFromPlanStart));
+                }
+                fPlanned = Math.round(fPlanned * 100) / 100;
+
+                // Actual: WBS NOT YET closed
+                var fActual = null;
                 if (oDate.getTime() <= oToday.getTime()) {
                     var iClosed = 0;
                     aWbs.forEach(function (w) {
                         if ((w.Status || "").toUpperCase() === "CLOSED") {
                             var oCloseDate = w.EndActual ? new Date(w.EndActual) : null;
                             if (oCloseDate) {
-                                oCloseDate.setHours(23, 59, 59, 999);
+                                oCloseDate.setHours(0, 0, 0, 0);
                                 if (oCloseDate.getTime() <= oDate.getTime()) {
                                     iClosed++;
                                 }
                             }
                         }
                     });
-                    vActual = iTotalWbs - iClosed;
+                    fActual = iTotalWbs - iClosed;
                 }
 
-                var sDateStr = fmtDate(oDate);
-                if (sDateStr === sDeadlineDateStr) {
-                    sDateStr += "🚩";
+                if (oDate.getTime() === oProjectEnd.getTime()) {
+                    sDateStr += " 🚩";
                 }
 
                 aChartData.push({
                     Date: sDateStr,
-                    Planned: iPlannedRemaining,
-                    Actual: vActual
+                    Planned: fPlanned,
+                    Actual: fActual
                 });
             });
-
-
 
             oChartModel.setProperty("/chartData", aChartData);
             oChartModel.setProperty("/hasData", true);
 
             // Apply vizProperties programmatically
-            var sPlanLabel = oBundle.getText("startDate") ? "Kế hoạch" : "Planned";
-            var sActualLabel = oBundle.getText("endDate") ? "Thực tế" : "Actual";
             var oViz = this.byId("chartBurnDown");
             if (oViz) {
                 oViz.setVizProperties({
@@ -425,7 +454,7 @@ sap.ui.define([
                     plotArea: {
                         dataLabel: { visible: false },
                         colorPalette: ["#5899DA", "#E8743B"],
-                        line: { marker: { visible: true, size: 5 } }
+                        line: { marker: { visible: true, size: 4 } }
                     },
                     categoryAxis: {
                         title: { visible: false },
@@ -435,7 +464,6 @@ sap.ui.define([
                         title: { visible: false },
                         label: { formatString: "0" },
                         axisTick: { shortTickVisible: false },
-                        // Ensure max value is at least 4 so VizFrame generates integer gridlines (0, 1, 2, 3, 4)
                         scale: { fixedRange: true, minValue: 0, maxValue: Math.max(iTotalWbs, 4) }
                     },
                     interaction: {
@@ -477,7 +505,9 @@ sap.ui.define([
                 return Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
             };
 
-            var dToday = new Date(); 
+            var oViewData = this.getView().getModel("viewData");
+            var dToday = oViewData ? (oViewData.getProperty("/ServerDateObj") || new Date()) : new Date();
+            dToday = new Date(dToday);
             dToday.setHours(0, 0, 0, 0);
 
             var fnCalculateProgress = function (oNode) {
@@ -538,10 +568,10 @@ sap.ui.define([
                         fnCalculateProgress(child);
 
                         var sChildStatus = (child.Status || "").toUpperCase();
-                        var bIsExcluded = (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED" || sChildStatus === "OPENED");
+                        var bIsExcluded = (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED");
 
                         var fChildWeight = child._leafWeight > 0 ? child._leafWeight : 0;
-                        
+
                         if (!bIsExcluded) {
                             fTotalLeafWeight += fChildWeight;
                             fWeightedProgressSum += ((child._progress > 100 ? 100 : child._progress) * fChildWeight);
@@ -592,10 +622,10 @@ sap.ui.define([
                 mSiteRootMap[root.SiteId] = root;
 
                 var sRootStatus = (root.Status || "").toUpperCase();
-                var bIsExcluded = (sRootStatus === "PLANNING" || sRootStatus === "PENDING_OPEN" || sRootStatus === "OPEN_REJECTED" || sRootStatus === "OPENED");
+                var bIsExcluded = (sRootStatus === "PLANNING" || sRootStatus === "PENDING_OPEN" || sRootStatus === "OPEN_REJECTED");
 
                 var fSiteWeight = root._leafWeight > 0 ? root._leafWeight : 0;
-                
+
                 if (!bIsExcluded) {
                     fProjectTotalWeight += fSiteWeight;
                     fProjectWeightedProgressSum += (root._progress * fSiteWeight);
