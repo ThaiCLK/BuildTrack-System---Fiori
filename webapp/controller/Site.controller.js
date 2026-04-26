@@ -1427,7 +1427,7 @@ sap.ui.define([
         onEditSite: function (oEvent) {
             oEvent.cancelBubble && oEvent.cancelBubble();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            
+
             // 1. Check Project Status
             var oCtx = this.getView().getBindingContext();
             var sProjectStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
@@ -1442,9 +1442,9 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("createSitePermissionError"));
                 return;
             }
-            
+
             var oContext = oEvent.getSource().getBindingContext();
-            
+
             // 3. Check Site Status
             var sSiteStatus = (oContext.getProperty("Status") || "").toUpperCase();
             if (sSiteStatus === "CLOSED") {
@@ -1495,7 +1495,7 @@ sap.ui.define([
                                             MessageToast.show(oBundle.getText("siteDeletedSuccess"));
                                             that._refreshSiteAfterMutation();
                                         },
-                                        error: function (oErr) { 
+                                        error: function (oErr) {
                                             sap.ui.core.BusyIndicator.hide();
                                             var sMsg = oBundle.getText("siteDeleteError");
                                             try {
