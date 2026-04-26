@@ -320,7 +320,7 @@ sap.ui.define([
 
                 // Đánh giá: dựa trên trạng thái WBS
                 var sChildStatus = (c.Status || "").toUpperCase();
-                var bHasWork = c.PlannedDays > 0 && (bIsLeaf ? parseFloat(c.Quantity) > 0 : oParentResult.plannedDays > 0);
+                var bHasWork = c.PlannedDays > 0 && (bIsLeaf ? parseFloat(c.Quantity) > 0 : true);
 
                 if (sChildStatus === "CLOSED") {
                     c.AssessmentDiff = 0;
