@@ -648,19 +648,20 @@ sap.ui.define([
 
             // Tính Thời gian tiêu hao của Dự án từ ProjectObj
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
-            var dProjStart = oProjectObj.StartDate ? new Date(oProjectObj.StartDate) : null;
-            var dProjEnd = oProjectObj.EndDate ? new Date(oProjectObj.EndDate) : null;
-            var iProjectPlanDays = 0;
-            var iProjectUsedDays = 0;
+            var fProjectTimePctUncapped = 0;
             var fProjectTimePct = 0;
             if (dProjStart && dProjEnd) {
                 iProjectPlanDays = fnGetDaysDiff(dProjStart, dProjEnd) + 1;
             }
             if (dProjStart && iProjectPlanDays > 0) {
-                iProjectUsedDays = fnGetDaysDiff(dProjStart, dToday) + 1;
+                if (bProjectAllClosed && oProjectEndActual) {
+                    iProjectUsedDays = fnGetDaysDiff(dProjStart, oProjectEndActual) + 1;
+                } else {
+                    iProjectUsedDays = fnGetDaysDiff(dProjStart, dToday) + 1;
+                }
                 if (iProjectUsedDays < 0) iProjectUsedDays = 0;
-                if (bProjectAllClosed) iProjectUsedDays = Math.min(iProjectUsedDays, iProjectPlanDays);
-                fProjectTimePct = Math.min((iProjectUsedDays / iProjectPlanDays) * 100, 100);
+                fProjectTimePctUncapped = (iProjectUsedDays / iProjectPlanDays) * 100;
+                fProjectTimePct = Math.min(fProjectTimePctUncapped, 100);
             }
 
             // Map to Sites Array for UI
@@ -673,17 +674,21 @@ sap.ui.define([
 
                 // Thời gian tiêu hao của Site (dựa vào StartDate/EndDate của Root WBS)
                 var iSitePlanDays = oRoot ? oRoot._calendarDuration : 0;
-                var iSiteUsedDays = 0;
+                var fSiteTimePctUncapped = 0;
                 var fSiteTimePct = 0;
                 var dRootStart = oRoot && oRoot.StartDate ? new Date(oRoot.StartDate) : null;
                 if (dRootStart && iSitePlanDays > 0) {
-                    iSiteUsedDays = fnGetDaysDiff(dRootStart, dToday) + 1;
-                    if (iSiteUsedDays < 0) iSiteUsedDays = 0;
                     var bSiteClosed = oRoot && oRoot._isAllClosed;
-                    if (bSiteClosed) iSiteUsedDays = Math.min(iSiteUsedDays, iSitePlanDays);
-                    fSiteTimePct = Math.min((iSiteUsedDays / iSitePlanDays) * 100, 100);
+                    if (bSiteClosed && oRoot._computedEndActual) {
+                        iSiteUsedDays = fnGetDaysDiff(dRootStart, oRoot._computedEndActual) + 1;
+                    } else {
+                        iSiteUsedDays = fnGetDaysDiff(dRootStart, dToday) + 1;
+                    }
+                    if (iSiteUsedDays < 0) iSiteUsedDays = 0;
+                    fSiteTimePctUncapped = (iSiteUsedDays / iSitePlanDays) * 100;
+                    fSiteTimePct = Math.min(fSiteTimePctUncapped, 100);
                 }
-                var sTimeStr = iSiteUsedDays + " / " + iSitePlanDays + " Ngày (" + oQtyFmt.format(fSiteTimePct) + "%)";
+                var sTimeStr = iSiteUsedDays + " / " + iSitePlanDays + " Ngày (" + oQtyFmt.format(fSiteTimePctUncapped) + "%)";
 
                 // Đánh giá
                 var sSiteStatus = (site.Status || "").toUpperCase();
@@ -743,8 +748,8 @@ sap.ui.define([
             oSummaryModel.setProperty("/ProjectProgressStr", fProjectProgress.toFixed(2) + "%");
             // --- State dong bo voi WorkSummaryDelegate ---
             var sProjectTimeState = "Success";
-            if (fProjectTimePct > 100) sProjectTimeState = "Error";
-            else if (fProjectTimePct > 80) sProjectTimeState = "Warning";
+            if (fProjectTimePctUncapped > 100) sProjectTimeState = "Error";
+            else if (fProjectTimePctUncapped > 80) sProjectTimeState = "Warning";
 
             var sProjectProgressState;
             if (fProjectProgress >= 100) {
@@ -760,7 +765,7 @@ sap.ui.define([
             oSummaryModel.setProperty("/ProjectPlanProgress", fProjectPlanProgress);
             oSummaryModel.setProperty("/ProjectPlanProgressStr", fProjectPlanProgress.toFixed(2) + "%");
             oSummaryModel.setProperty("/ProjectTimePct", fProjectTimePct);
-            oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePct) + "%)");
+            oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePctUncapped) + "%)");
             oSummaryModel.setProperty("/ProjectTimeState", sProjectTimeState);
             oSummaryModel.setProperty("/ProjectActualStartStr", fnFormatDate(oProjectStartActual));
             oSummaryModel.setProperty("/ProjectActualEndStr", bProjectAllClosed ? fnFormatDate(oProjectEndActual) : "---");

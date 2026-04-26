@@ -278,8 +278,9 @@ sap.ui.define([
 
                 c.ElapsedDays = iElapsedDays;
                 var fTimePct = c.PlannedDays > 0 ? (iElapsedDays / c.PlannedDays) * 100 : 0;
+                var fTimePctUncapped = fTimePct;
                 if (fTimePct > 100) fTimePct = 100;
-                c.TimeProgressStr = oIntFmt.format(iElapsedDays) + " / " + oIntFmt.format(c.PlannedDays) + " Ngày (" + oQtyFmt.format(fTimePct) + "%)";
+                c.TimeProgressStr = oIntFmt.format(iElapsedDays) + " / " + oIntFmt.format(c.PlannedDays) + " Ngày (" + oQtyFmt.format(fTimePctUncapped) + "%)";
 
                 var sNormId = c.WbsId.toLowerCase().replace(/-/g, "");
                 var bIsLeaf = !(oTreeMap[sNormId] && oTreeMap[sNormId].length > 0);
@@ -345,12 +346,12 @@ sap.ui.define([
             }
             if (iParentElapsedDays < 0) iParentElapsedDays = 0;
 
-            var fParentTimeElapsedPercent = iParentPlannedDays > 0 ? (iParentElapsedDays / iParentPlannedDays) * 100 : 0;
-            if (fParentTimeElapsedPercent > 100) fParentTimeElapsedPercent = 100;
+            var fParentTimeElapsedPercentUncapped = iParentPlannedDays > 0 ? (iParentElapsedDays / iParentPlannedDays) * 100 : 0;
+            var fParentTimeElapsedPercent = fParentTimeElapsedPercentUncapped > 100 ? 100 : fParentTimeElapsedPercentUncapped;
 
             var sParentTimeState = "Success";
-            if (fParentTimeElapsedPercent > 100) sParentTimeState = "Error";
-            else if (fParentTimeElapsedPercent > 80) sParentTimeState = "Warning";
+            if (fParentTimeElapsedPercentUncapped > 100) sParentTimeState = "Error";
+            else if (fParentTimeElapsedPercentUncapped > 80) sParentTimeState = "Warning";
 
             var sParentProgressState = "Success";
             if (fParentWeightedProgress >= 100) {
@@ -368,7 +369,7 @@ sap.ui.define([
             oWSModel.setProperty("/ParentWeightedPlanProgressStr", oQtyFmt.format(fParentWeightedPlanProgress) + "%");
             oWSModel.setProperty("/ParentProgressState", sParentProgressState);
             oWSModel.setProperty("/ParentTimeElapsedPercent", fParentTimeElapsedPercent);
-            oWSModel.setProperty("/ParentTimeElapsedStr", oIntFmt.format(iParentElapsedDays) + " / " + oIntFmt.format(iParentPlannedDays) + " Ngày (" + oQtyFmt.format(fParentTimeElapsedPercent) + "%)");
+            oWSModel.setProperty("/ParentTimeElapsedStr", oIntFmt.format(iParentElapsedDays) + " / " + oIntFmt.format(iParentPlannedDays) + " Ngày (" + oQtyFmt.format(fParentTimeElapsedPercentUncapped) + "%)");
             oWSModel.setProperty("/ParentTimeState", sParentTimeState);
 
             oWSModel.setProperty("/Children", aChildren);
