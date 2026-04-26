@@ -484,7 +484,10 @@
                             <Text text="Mã hạng mục" />
                         </Column>
                         <Column>
-                            <Text text="Tiến độ" />
+                            <Text text="Tiến độ TT" />
+                        </Column>
+                        <Column>
+                            <Text text="Tiến độ KH" />
                         </Column>
                         <Column>
                             <Text text="Thời gian" />
@@ -492,7 +495,7 @@
                         <Column hAlign="Begin">
                             <Text text="Trọng số" />
                         </Column>
-                        <Column minWidth="180" demandPopin="false">
+                        <Column>
                             <Text text="Đánh giá" />
                         </Column>
                         <Column>
@@ -505,6 +508,8 @@
                                 <Text text="{workSummaryModel>WbsCode}" wrapping="true" />
 
                                 <Text text="{workSummaryModel>QuantityProgressStr}" />
+
+                                <Text text="{workSummaryModel>PlanProgressStr}" />
 
                                 <Text text="{workSummaryModel>TimeProgressStr}" />
 
