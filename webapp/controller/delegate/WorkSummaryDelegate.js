@@ -893,8 +893,8 @@ sap.ui.define([
                     WeatherAmTooltip: "",
                     WeatherPmIcon: "-",
                     WeatherPmTooltip: "",
-                    SafeNoteIcon: "",
-                    ContractorNoteIcon: ""
+                    SafeNoteIcon: undefined,
+                    ContractorNoteIcon: undefined
                 };
 
                 // Filter logs for this day

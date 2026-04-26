@@ -775,6 +775,7 @@ sap.ui.define([
         },
 
         formatWbsStatusIcon: function (sStatus) {
+            if (!sStatus) { return null; }
             switch (sStatus) {
                 case "PLANNING": return "sap-icon://status-in-process";
                 case "PENDING_OPEN": return "sap-icon://paper-plane";

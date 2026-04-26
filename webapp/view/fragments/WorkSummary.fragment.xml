@@ -145,60 +145,60 @@
                                             <cells>
                                                 <Label text="Nhật ký" design="Bold" />
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/0}" color="{workSummaryModel>/HistoryLogColors/0}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/0} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/0}" visible="{= ${workSummaryModel>/HistoryLogIcons/0} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/0} ? ${workSummaryModel>/HistoryLogIcons/0} : null }" color="{workSummaryModel>/HistoryLogColors/0}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/0} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/0}" visible="{= !${workSummaryModel>/HistoryLogIcons/0} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/1}" color="{workSummaryModel>/HistoryLogColors/1}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/1} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/1}" visible="{= ${workSummaryModel>/HistoryLogIcons/1} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/1} ? ${workSummaryModel>/HistoryLogIcons/1} : null }" color="{workSummaryModel>/HistoryLogColors/1}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/1} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/1}" visible="{= !${workSummaryModel>/HistoryLogIcons/1} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/2}" color="{workSummaryModel>/HistoryLogColors/2}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/2} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/2}" visible="{= ${workSummaryModel>/HistoryLogIcons/2} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/2} ? ${workSummaryModel>/HistoryLogIcons/2} : null }" color="{workSummaryModel>/HistoryLogColors/2}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/2} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/2}" visible="{= !${workSummaryModel>/HistoryLogIcons/2} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/3}" color="{workSummaryModel>/HistoryLogColors/3}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/3} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/3}" visible="{= ${workSummaryModel>/HistoryLogIcons/3} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/3} ? ${workSummaryModel>/HistoryLogIcons/3} : null }" color="{workSummaryModel>/HistoryLogColors/3}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/3} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/3}" visible="{= !${workSummaryModel>/HistoryLogIcons/3} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/4}" color="{workSummaryModel>/HistoryLogColors/4}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/4} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/4}" visible="{= ${workSummaryModel>/HistoryLogIcons/4} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/4} ? ${workSummaryModel>/HistoryLogIcons/4} : null }" color="{workSummaryModel>/HistoryLogColors/4}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/4} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/4}" visible="{= !${workSummaryModel>/HistoryLogIcons/4} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/5}" color="{workSummaryModel>/HistoryLogColors/5}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/5} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/5}" visible="{= ${workSummaryModel>/HistoryLogIcons/5} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/5} ? ${workSummaryModel>/HistoryLogIcons/5} : null }" color="{workSummaryModel>/HistoryLogColors/5}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/5} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/5}" visible="{= !${workSummaryModel>/HistoryLogIcons/5} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/6}" color="{workSummaryModel>/HistoryLogColors/6}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/6} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/6}" visible="{= ${workSummaryModel>/HistoryLogIcons/6} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/6} ? ${workSummaryModel>/HistoryLogIcons/6} : null }" color="{workSummaryModel>/HistoryLogColors/6}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/6} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/6}" visible="{= !${workSummaryModel>/HistoryLogIcons/6} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/7}" color="{workSummaryModel>/HistoryLogColors/7}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/7} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/7}" visible="{= ${workSummaryModel>/HistoryLogIcons/7} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/7} ? ${workSummaryModel>/HistoryLogIcons/7} : null }" color="{workSummaryModel>/HistoryLogColors/7}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/7} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/7}" visible="{= !${workSummaryModel>/HistoryLogIcons/7} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/8}" color="{workSummaryModel>/HistoryLogColors/8}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/8} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/8}" visible="{= ${workSummaryModel>/HistoryLogIcons/8} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/8} ? ${workSummaryModel>/HistoryLogIcons/8} : null }" color="{workSummaryModel>/HistoryLogColors/8}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/8} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/8}" visible="{= !${workSummaryModel>/HistoryLogIcons/8} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/9}" color="{workSummaryModel>/HistoryLogColors/9}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/9} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/9}" visible="{= ${workSummaryModel>/HistoryLogIcons/9} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/9} ? ${workSummaryModel>/HistoryLogIcons/9} : null }" color="{workSummaryModel>/HistoryLogColors/9}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/9} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/9}" visible="{= !${workSummaryModel>/HistoryLogIcons/9} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/10}" color="{workSummaryModel>/HistoryLogColors/10}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/10} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/10}" visible="{= ${workSummaryModel>/HistoryLogIcons/10} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/10} ? ${workSummaryModel>/HistoryLogIcons/10} : null }" color="{workSummaryModel>/HistoryLogColors/10}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/10} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/10}" visible="{= !${workSummaryModel>/HistoryLogIcons/10} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/11}" color="{workSummaryModel>/HistoryLogColors/11}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/11} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/11}" visible="{= ${workSummaryModel>/HistoryLogIcons/11} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/11} ? ${workSummaryModel>/HistoryLogIcons/11} : null }" color="{workSummaryModel>/HistoryLogColors/11}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/11} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/11}" visible="{= !${workSummaryModel>/HistoryLogIcons/11} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/12}" color="{workSummaryModel>/HistoryLogColors/12}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/12} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/12}" visible="{= ${workSummaryModel>/HistoryLogIcons/12} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/12} ? ${workSummaryModel>/HistoryLogIcons/12} : null }" color="{workSummaryModel>/HistoryLogColors/12}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/12} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/12}" visible="{= !${workSummaryModel>/HistoryLogIcons/12} }"/>
                                                 </VBox>
                                                 <VBox alignItems="Center">
-                                                    <core:Icon src="{workSummaryModel>/HistoryLogIcons/13}" color="{workSummaryModel>/HistoryLogColors/13}" size="1.2rem" visible="{= ${workSummaryModel>/HistoryLogIcons/13} !== '' }"/>
-                                                    <Text text="{workSummaryModel>/HistoryLogTexts/13}" visible="{= ${workSummaryModel>/HistoryLogIcons/13} === '' }"/>
+                                                    <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/13} ? ${workSummaryModel>/HistoryLogIcons/13} : null }" color="{workSummaryModel>/HistoryLogColors/13}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/13} }"/>
+                                                    <Text text="{workSummaryModel>/HistoryLogTexts/13}" visible="{= !${workSummaryModel>/HistoryLogIcons/13} }"/>
                                                 </VBox>
                                             </cells>
                                         </ColumnListItem>
