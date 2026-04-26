@@ -252,7 +252,9 @@ sap.ui.define([
                             var aLeafWbs = aProjectWbs.filter(function (w) {
                                 var sNormId = String(w.WbsId).toLowerCase();
                                 var sNormPid = w.ParentId ? String(w.ParentId).toLowerCase() : "";
-                                return !mParentIds[sNormId] && !mRootIds[sNormPid];
+                                var sStatus = (w.Status || "").toUpperCase();
+                                var bIsExcluded = (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED");
+                                return !mParentIds[sNormId] && !mRootIds[sNormPid] && !bIsExcluded;
                             });
 
                             console.log("[CHART] Sites:", aSites.length, "All WBS:", aAllWbs.length, "Project WBS:", aProjectWbs.length, "Leaf:", aLeafWbs.length);
@@ -388,14 +390,7 @@ sap.ui.define([
 
             var aChartData = [];
 
-            // Ngày đệm (Buffer Day)
-            var dBufferDay = new Date(oChartStartDate.getTime());
-            dBufferDay.setDate(dBufferDay.getDate() - 1);
-            aChartData.push({
-                Date: "0h " + fmtDate(oChartStartDate),
-                Planned: iTotalWbs,
-                Actual: iTotalWbs
-            });
+
 
             aUniqueDates.forEach(function (oDate) {
                 var sDateStr = fmtDate(oDate);
@@ -484,9 +479,14 @@ sap.ui.define([
             // 1. Build a Tree Map of WBS
             var mWbsMap = {};
             var aRootWbs = [];
+            var mRootIds = {};
             aAllWbs.forEach(function (w) {
                 w._children = [];
                 mWbsMap[w.WbsId] = w;
+                var sPid = w.ParentId ? String(w.ParentId).replace(/-/g, "") : "";
+                if (!sPid || /^0+$/.test(sPid)) {
+                    mRootIds[String(w.WbsId).toLowerCase()] = true;
+                }
             });
 
             aAllWbs.forEach(function (w) {
@@ -521,8 +521,13 @@ sap.ui.define([
 
                 oNode._calendarDuration = iDuration;
 
-                // Leaf Node
-                if (oNode._children.length === 0) {
+                var sNormId = String(oNode.WbsId).toLowerCase();
+                var sNormPid = oNode.ParentId ? String(oNode.ParentId).toLowerCase() : "";
+                var bIsRoot = mRootIds[sNormId];
+                var bParentIsRoot = mRootIds[sNormPid];
+
+                // Leaf Node: no children AND not a root AND parent is not a root
+                if (oNode._children.length === 0 && !bIsRoot && !bParentIsRoot) {
                     var fQty = parseFloat(oNode.Quantity) || 0;
                     var fDone = parseFloat(oNode.TotalQuantityDone) || 0;
                     var sStatus = (oNode.Status || "").toUpperCase();
@@ -562,7 +567,9 @@ sap.ui.define([
                     var fWeightedPlanProgressSum = 0;
                     var oMinStart = null;
                     var oMaxEnd = null;
-                    var bAllClosed = true;
+                    // Start as false: only set true when there are actual leaf tasks AND all are closed
+                    var bAllClosed = false;
+                    var bHasLeafTasks = false;
 
                     oNode._children.forEach(function (child) {
                         fnCalculateProgress(child);
@@ -576,6 +583,8 @@ sap.ui.define([
                             fTotalLeafWeight += fChildWeight;
                             fWeightedProgressSum += ((child._progress > 100 ? 100 : child._progress) * fChildWeight);
                             fWeightedPlanProgressSum += ((child._planProgress || 0) * fChildWeight);
+                            // Track if there are real leaf tasks contributing
+                            if (fChildWeight > 0) { bHasLeafTasks = true; }
                         }
 
                         if (child._computedStartActual) {
@@ -586,10 +595,16 @@ sap.ui.define([
                             if (!oMaxEnd || child._computedEndActual > oMaxEnd) oMaxEnd = child._computedEndActual;
                         }
 
-                        if (!child._isAllClosed) {
+                        if (child._isAllClosed && fChildWeight > 0) {
+                            bHasLeafTasks = true;
+                            bAllClosed = true;
+                        } else if (!child._isAllClosed && fChildWeight > 0) {
                             bAllClosed = false;
                         }
                     });
+
+                    // If no children contributed any leaf weight, ensure bAllClosed stays false
+                    if (!bHasLeafTasks) { bAllClosed = false; }
 
                     var sStatus = (oNode.Status || "").toUpperCase();
                     if (sStatus === "CLOSED") {
@@ -703,10 +718,11 @@ sap.ui.define([
                 // Đánh giá
                 var sSiteStatus = (site.Status || "").toUpperCase();
                 var sAssessmentText, sAssessmentState;
-                if (sSiteStatus === "CLOSED" || (oRoot && oRoot._isAllClosed)) {
+                var bHasWork = oRoot && oRoot._leafWeight > 0;
+                if (sSiteStatus === "CLOSED" || (bHasWork && oRoot._isAllClosed)) {
                     sAssessmentText = "Hoàn thành";
                     sAssessmentState = "Success";
-                } else if (sSiteStatus === "PLANNING" || sSiteStatus === "PENDING_OPEN" || sSiteStatus === "OPEN_REJECTED" || sSiteStatus === "OPENED") {
+                } else if (!bHasWork || sSiteStatus === "PLANNING" || sSiteStatus === "PENDING_OPEN" || sSiteStatus === "OPEN_REJECTED" || sSiteStatus === "OPENED") {
                     sAssessmentText = "Chưa thi công";
                     sAssessmentState = "None";
                 } else {

@@ -93,8 +93,13 @@ sap.ui.define([
                             var aAllWbs = oWbsData.results || [];
                             // Build Tree: map of ParentId -> Array of Children
                             var oTreeMap = {};
+                            var mRootIds = {};
                             aAllWbs.forEach(function (w) {
-                                var sPid = w.ParentId ? w.ParentId.toLowerCase().replace(/-/g, "") : "root";
+                                var sPid = w.ParentId ? w.ParentId.toLowerCase().replace(/-/g, "") : "";
+                                if (!sPid || /^0+$/.test(sPid)) {
+                                    mRootIds[w.WbsId.toLowerCase().replace(/-/g, "")] = true;
+                                    sPid = "root";
+                                }
                                 if (!oTreeMap[sPid]) oTreeMap[sPid] = [];
                                 oTreeMap[sPid].push(w);
                             });
@@ -103,8 +108,14 @@ sap.ui.define([
                             var aDirectChildren = oTreeMap[sNormWbsId] || [];
 
                             var bIsParent = aDirectChildren.length > 0;
-                            oWSModel.setProperty("/IsParentNode", bIsParent);
-                            oWSModel.setProperty("/IsLeafNode", !bIsParent);
+                            // Wait, if it's an empty Root/Category, it shouldn't be a leaf either, but for UI, if it has no children, it's considered not a parent.
+                            var bIsRoot = mRootIds[sNormWbsId];
+                            var sNormPid = oWbs.ParentId ? oWbs.ParentId.toLowerCase().replace(/-/g, "") : "";
+                            var bParentIsRoot = mRootIds[sNormPid];
+                            var bIsTrueLeaf = (aDirectChildren.length === 0 && !bIsRoot && !bParentIsRoot);
+
+                            oWSModel.setProperty("/IsParentNode", !bIsTrueLeaf);
+                            oWSModel.setProperty("/IsLeafNode", bIsTrueLeaf);
 
                             // Fetch ALL Daily Logs
                             oModel.read("/DailyLogSet", {
@@ -112,8 +123,8 @@ sap.ui.define([
                                     if (that._sWorkSummaryToken !== sWbsId) { return; }
                                     var aAllLogs = oLogData.results || [];
 
-                                    if (bIsParent) {
-                                        WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oWbs, aDirectChildren, oTreeMap, aAllLogs);
+                                    if (!bIsTrueLeaf) {
+                                        WorkSummaryDelegate._loadParentAggregation.call(that, sWbsId, oWSModel, oWbs, aDirectChildren, oTreeMap, aAllLogs, mRootIds);
                                     } else {
                                         WorkSummaryDelegate._loadLeafNodeAggregation.call(that, sWbsId, oWSModel, oModel, oWbs);
                                     }
@@ -134,7 +145,7 @@ sap.ui.define([
             });
         },
 
-        _calculateWbsProgressRecursive: function (oWbsNode, oTreeMap, aAllLogs, dServerDateObj) {
+        _calculateWbsProgressRecursive: function (oWbsNode, oTreeMap, aAllLogs, dServerDateObj, mRootIds) {
             var sWbsId = oWbsNode.WbsId.toLowerCase().replace(/-/g, "");
             var aChildren = oTreeMap[sWbsId] || [];
 
@@ -147,8 +158,12 @@ sap.ui.define([
             if (iPlannedDays < 0) iPlannedDays = 0;
             oWbsNode.PlannedDays = iPlannedDays;
 
-            if (aChildren.length === 0) {
-                // Leaf Node
+            var sNormPid = oWbsNode.ParentId ? oWbsNode.ParentId.toLowerCase().replace(/-/g, "") : "";
+            var bIsRoot = mRootIds && mRootIds[sWbsId];
+            var bParentIsRoot = mRootIds && mRootIds[sNormPid];
+
+            if (aChildren.length === 0 && !bIsRoot && !bParentIsRoot) {
+                // TRUE Leaf Node
                 var fSum = 0;
                 var aLogs = [];
                 aAllLogs.forEach(function (l) {
@@ -192,13 +207,13 @@ sap.ui.define([
 
                 return { progress: fRollupProgress, planProgress: fPlanProgress, plannedDays: iPlannedDays, logs: aLogs };
             } else {
-                // Parent Node
+                // Parent Node (or empty Category/Root)
                 var iTotalPlannedDays = 0;
                 var aAllChildLogs = [];
                 var aChildResults = [];
 
                 aChildren.forEach(function (oChild) {
-                    var oResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oChild, oTreeMap, aAllLogs, dServerDateObj);
+                    var oResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oChild, oTreeMap, aAllLogs, dServerDateObj, mRootIds);
                     var sChildStatus = oChild.Status;
                     var bIsExcluded = (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED");
 
@@ -238,7 +253,7 @@ sap.ui.define([
             }
         },
 
-        _loadParentAggregation: function (sWbsId, oWSModel, oWbs, aChildren, oTreeMap, aAllLogs) {
+        _loadParentAggregation: function (sWbsId, oWSModel, oWbs, aChildren, oTreeMap, aAllLogs, mRootIds) {
             var that = this;
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
             var oIntFmt = sap.ui.core.format.NumberFormat.getIntegerInstance({ groupingEnabled: true });
@@ -250,7 +265,7 @@ sap.ui.define([
                 return;
             }
 
-            var oParentResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oWbs, oTreeMap, aAllLogs, dServerDateObj);
+            var oParentResult = WorkSummaryDelegate._calculateWbsProgressRecursive(oWbs, oTreeMap, aAllLogs, dServerDateObj, mRootIds);
             var fParentWeightedProgress = oParentResult.progress;
             var fParentWeightedPlanProgress = oParentResult.planProgress || 0;
             var aParentLogs = oParentResult.logs;
@@ -281,7 +296,12 @@ sap.ui.define([
                 c.TimeProgressStr = oIntFmt.format(iElapsedDays) + " / " + oIntFmt.format(c.PlannedDays) + " Ngày (" + oQtyFmt.format(fTimePctUncapped) + "%)";
 
                 var sNormId = c.WbsId.toLowerCase().replace(/-/g, "");
-                var bIsLeaf = !(oTreeMap[sNormId] && oTreeMap[sNormId].length > 0);
+                var sNormPidC = c.ParentId ? c.ParentId.toLowerCase().replace(/-/g, "") : "";
+                var bCIsRoot = mRootIds && mRootIds[sNormId];
+                var bCParentIsRoot = mRootIds && mRootIds[sNormPidC];
+                var bHasChildNodes = (oTreeMap[sNormId] && oTreeMap[sNormId].length > 0);
+                // TRUE Leaf: has no children AND is not a Root AND its parent is not a Root
+                var bIsLeaf = !bHasChildNodes && !bCIsRoot && !bCParentIsRoot;
 
                 c.IsLeaf = bIsLeaf;
                 if (bIsLeaf && parseFloat(c.Quantity) > 0) {
@@ -298,13 +318,15 @@ sap.ui.define([
                     c.PlanProgressStr = oQtyFmt.format(c.CalculatedPlanProgress || 0) + "%";
                 }
 
-                // Đánh giá: chỉ áp dụng cho node đang thi công
+                // Đánh giá: dựa trên trạng thái WBS
                 var sChildStatus = (c.Status || "").toUpperCase();
+                var bHasWork = c.PlannedDays > 0 && (bIsLeaf ? parseFloat(c.Quantity) > 0 : oParentResult.plannedDays > 0);
+
                 if (sChildStatus === "CLOSED") {
                     c.AssessmentDiff = 0;
                     c.AssessmentText = "Hoàn thành";
                     c.AssessmentState = "Success";
-                } else if (sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED" || sChildStatus === "OPENED") {
+                } else if (!bHasWork || sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED" || sChildStatus === "OPENED") {
                     c.AssessmentDiff = 0;
                     c.AssessmentText = "Chưa thi công";
                     c.AssessmentState = "None";
@@ -1050,15 +1072,7 @@ sap.ui.define([
                 mDatesToPlot[d.getTime()] = true;
             });
 
-            // ── Ngày đệm (Buffer Day): 1 ngày trước ChartStart ──────────────────
-            // Đảm bảo biểu đồ luôn bắt đầu ở mốc Quantity (chưa đốt ngày nào)
-            var dBufferDay = new Date(dChartStart.getTime());
-            dBufferDay.setDate(dBufferDay.getDate() - 1);
-            aChartData.push({
-                Date: "0h " + fmtDate(dChartStart),
-                Planned: Math.round(fQuantity * 100) / 100,
-                Actual: Math.round(fQuantity * 100) / 100
-            });
+
 
             while (dCurrent <= dChartEnd) {
                 var sKey = dCurrent.getTime().toString();
