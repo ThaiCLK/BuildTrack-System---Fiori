@@ -284,13 +284,18 @@ sap.ui.define([
                 var bIsLeaf = !(oTreeMap[sNormId] && oTreeMap[sNormId].length > 0);
 
                 c.IsLeaf = bIsLeaf;
-                if (bIsLeaf) {
+                if (bIsLeaf && parseFloat(c.Quantity) > 0) {
                     var fChildQtyDone = parseFloat(c.TotalQtyDone) || 0;
                     var fChildQty = parseFloat(c.Quantity) || 0;
                     var sUnit = c.UnitCode || "";
                     c.QuantityProgressStr = oQtyFmt.format(fChildQtyDone) + " / " + oQtyFmt.format(fChildQty) + " " + sUnit + " (" + oQtyFmt.format(c.CalculatedProgress) + "%)";
+
+                    var fPlanProg = c.CalculatedPlanProgress || 0;
+                    var fPlanQty = fChildQty > 0 ? (fPlanProg * fChildQty) / 100 : 0;
+                    c.PlanProgressStr = oQtyFmt.format(fPlanQty) + " / " + oQtyFmt.format(fChildQty) + " " + sUnit + " (" + oQtyFmt.format(fPlanProg) + "%)";
                 } else {
                     c.QuantityProgressStr = oQtyFmt.format(c.CalculatedProgress) + "%";
+                    c.PlanProgressStr = oQtyFmt.format(c.CalculatedPlanProgress || 0) + "%";
                 }
 
                 // Đánh giá: chỉ áp dụng cho node đang thi công

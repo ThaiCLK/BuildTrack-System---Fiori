@@ -713,13 +713,13 @@ sap.ui.define([
                     var fPlanProg = oRoot && oRoot._planProgress ? oRoot._planProgress : 0;
                     var fDiff = fPlanProg - fProgress;
                     if (fDiff > 10) {
-                        sAssessmentText = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
                         sAssessmentState = "Error";
                     } else if (fDiff > 0) {
-                        sAssessmentText = "Chậm tiến độ (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
                         sAssessmentState = "Warning";
                     } else if (fDiff < 0) {
-                        sAssessmentText = "Vượt tiến độ (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
+                        sAssessmentText = "Vượt (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
                         sAssessmentState = "Success";
                     } else {
                         sAssessmentText = "Đúng tiến độ";
