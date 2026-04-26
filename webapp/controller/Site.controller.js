@@ -650,6 +650,15 @@ sap.ui.define([
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
             var fProjectTimePctUncapped = 0;
             var fProjectTimePct = 0;
+
+            var dProjStart = oProjectObj && oProjectObj.StartDate ? new Date(oProjectObj.StartDate) : null;
+            if (dProjStart) dProjStart.setHours(0, 0, 0, 0);
+            var dProjEnd = oProjectObj && oProjectObj.EndDate ? new Date(oProjectObj.EndDate) : null;
+            if (dProjEnd) dProjEnd.setHours(0, 0, 0, 0);
+
+            var iProjectPlanDays = 0;
+            var iProjectUsedDays = 0;
+
             if (dProjStart && dProjEnd) {
                 iProjectPlanDays = fnGetDaysDiff(dProjStart, dProjEnd) + 1;
             }
@@ -676,6 +685,7 @@ sap.ui.define([
                 var iSitePlanDays = oRoot ? oRoot._calendarDuration : 0;
                 var fSiteTimePctUncapped = 0;
                 var fSiteTimePct = 0;
+                var iSiteUsedDays = 0;
                 var dRootStart = oRoot && oRoot.StartDate ? new Date(oRoot.StartDate) : null;
                 if (dRootStart && iSitePlanDays > 0) {
                     var bSiteClosed = oRoot && oRoot._isAllClosed;
