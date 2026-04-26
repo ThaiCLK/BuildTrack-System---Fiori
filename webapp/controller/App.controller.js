@@ -97,7 +97,7 @@ sap.ui.define([
                 this._oAssistantDialog.open();
                 return;
             }
-  
+
             Fragment.load({
                 // Do not pass a fixed id here to avoid global ID collisions in app-preview reload cycles.
                 name: "z.bts.buildtrack551.view.fragments.AssistantDialog",
@@ -136,16 +136,16 @@ sap.ui.define([
         _sendAssistantQuestion: async function (sQuestion) {
             var oModel = this._getAssistantModel();
             var sText = (sQuestion || "").trim();
-  
+
             if (!sText || oModel.getProperty("/isBusy")) {
                 return;
             }
-  
+
             var aCurrentMessages = oModel.getProperty("/messages") || [];
             oModel.setProperty("/isBusy", true);
             oModel.setProperty("/draft", "");
             this._appendMessage("user", sText, []);
-  
+
             try {
                 var response = await fetch(this._getRagApiUrl("/rag/api/chat"), {
                     method: "POST",
@@ -157,12 +157,12 @@ sap.ui.define([
                         history: this._buildChatHistory(aCurrentMessages)
                     })
                 });
-  
+
                 var data = await response.json();
                 if (!response.ok || !data.ok) {
                     throw new Error(data.error || "RAG server error");
                 }
-  
+
                 this._appendMessage(
                     "assistant",
                     this._formatAssistantText(data.answer, data.citations),
@@ -193,16 +193,16 @@ sap.ui.define([
             if (oModel.getProperty("/isBusy")) {
                 return;
             }
-  
+
             oModel.setProperty("/isBusy", true);
             try {
                 var response = await fetch(this._getRagApiUrl("/rag/api/reindex"), { method: "POST" });
                 var data = await response.json();
-  
+
                 if (!response.ok || !data.ok) {
                     throw new Error(data.error || "Reindex failed");
                 }
-  
+
                 MessageToast.show("Đã cập nhật tri thức BuildTrack");
             } catch (error) {
                 MessageToast.show(error.message);
@@ -244,7 +244,7 @@ sap.ui.define([
                 (typeof oEvent === "string" ? oEvent : null);
 
             var oUserModel = this.getView().getModel("userModel");
-            if (!sId && oUserModel && oUserModel.getProperty("/authLevel") !== 99) {
+            if (!sId && oUserModel) {
                 sId = oUserModel.getProperty("/userId");
             }
 
