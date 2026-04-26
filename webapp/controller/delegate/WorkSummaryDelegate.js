@@ -263,9 +263,7 @@ sap.ui.define([
                 var sStatus = c.Status;
 
                 var iElapsedDays = 0;
-                if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
-                    iElapsedDays = 0;
-                } else if (sStatus === "CLOSED") {
+                if (sStatus === "CLOSED") {
                     if (dStartDate && dEndActual && !isNaN(dStartDate) && !isNaN(dEndActual)) {
                         iElapsedDays = WorkSummaryDelegate._getDaysDiff(dStartDate, dEndActual) + 1;
                     }
@@ -333,9 +331,7 @@ sap.ui.define([
             var dParentStartDate = oWbs.StartDate ? new Date(oWbs.StartDate) : null;
             var dParentEndActual = oWbs.EndActual ? new Date(oWbs.EndActual) : null;
 
-            if (sParentStatus === "PLANNING" || sParentStatus === "PENDING_OPEN" || sParentStatus === "OPEN_REJECTED" || sParentStatus === "OPENED") {
-                iParentElapsedDays = 0;
-            } else if (sParentStatus === "CLOSED") {
+            if (sParentStatus === "CLOSED") {
                 if (dParentStartDate && dParentEndActual && !isNaN(dParentStartDate) && !isNaN(dParentEndActual)) {
                     iParentElapsedDays = WorkSummaryDelegate._getDaysDiff(dParentStartDate, dParentEndActual) + 1;
                 }

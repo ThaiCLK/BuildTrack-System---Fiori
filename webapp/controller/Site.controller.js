@@ -650,6 +650,15 @@ sap.ui.define([
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
             var fProjectTimePctUncapped = 0;
             var fProjectTimePct = 0;
+
+            var dProjStart = oProjectObj && oProjectObj.StartDate ? new Date(oProjectObj.StartDate) : null;
+            if (dProjStart) dProjStart.setHours(0, 0, 0, 0);
+            var dProjEnd = oProjectObj && oProjectObj.EndDate ? new Date(oProjectObj.EndDate) : null;
+            if (dProjEnd) dProjEnd.setHours(0, 0, 0, 0);
+
+            var iProjectPlanDays = 0;
+            var iProjectUsedDays = 0;
+
             if (dProjStart && dProjEnd) {
                 iProjectPlanDays = fnGetDaysDiff(dProjStart, dProjEnd) + 1;
             }
@@ -676,6 +685,7 @@ sap.ui.define([
                 var iSitePlanDays = oRoot ? oRoot._calendarDuration : 0;
                 var fSiteTimePctUncapped = 0;
                 var fSiteTimePct = 0;
+                var iSiteUsedDays = 0;
                 var dRootStart = oRoot && oRoot.StartDate ? new Date(oRoot.StartDate) : null;
                 if (dRootStart && iSitePlanDays > 0) {
                     var bSiteClosed = oRoot && oRoot._isAllClosed;
@@ -1417,7 +1427,7 @@ sap.ui.define([
         onEditSite: function (oEvent) {
             oEvent.cancelBubble && oEvent.cancelBubble();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            
+
             // 1. Check Project Status
             var oCtx = this.getView().getBindingContext();
             var sProjectStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
@@ -1432,9 +1442,9 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("createSitePermissionError"));
                 return;
             }
-            
+
             var oContext = oEvent.getSource().getBindingContext();
-            
+
             // 3. Check Site Status
             var sSiteStatus = (oContext.getProperty("Status") || "").toUpperCase();
             if (sSiteStatus === "CLOSED") {
@@ -1485,7 +1495,7 @@ sap.ui.define([
                                             MessageToast.show(oBundle.getText("siteDeletedSuccess"));
                                             that._refreshSiteAfterMutation();
                                         },
-                                        error: function (oErr) { 
+                                        error: function (oErr) {
                                             sap.ui.core.BusyIndicator.hide();
                                             var sMsg = oBundle.getText("siteDeleteError");
                                             try {
