@@ -476,7 +476,7 @@ sap.ui.define([
                 aNodes.push({
                     id: "node1_" + lvl,
                     lane: "lane1",
-                    title: oBundle.getText("nodeApprovedLevel", [lvl]),
+                    title: oBundle.getText("nodeApprovedLevel", [backendLvl]),
                     state: info.state,
                     stateText: info.text,
                     texts: info.texts,
