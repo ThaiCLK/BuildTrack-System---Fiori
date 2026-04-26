@@ -1427,19 +1427,31 @@ sap.ui.define([
         onEditSite: function (oEvent) {
             oEvent.cancelBubble && oEvent.cancelBubble();
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            var oCtx = this.getView().getBindingContext();
-            var sStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
 
-            if (sStatus === "CLOSED") {
+            // 1. Check Project Status
+            var oCtx = this.getView().getBindingContext();
+            var sProjectStatus = (oCtx ? oCtx.getProperty("Status") : "").toUpperCase();
+
+            if (sProjectStatus === "CLOSED") {
                 MessageBox.error(oBundle.getText("projectClosedSiteError"));
                 return;
             }
 
+            // 2. Check Permission
             if (!this._checkSiteActionPermission()) {
                 MessageBox.error(oBundle.getText("createSitePermissionError"));
                 return;
             }
+
             var oContext = oEvent.getSource().getBindingContext();
+
+            // 3. Check Site Status
+            var sSiteStatus = (oContext.getProperty("Status") || "").toUpperCase();
+            if (sSiteStatus === "CLOSED") {
+                MessageBox.error("Không thể chỉnh sửa thông tin khi Công trường đã đóng.");
+                return;
+            }
+
             this._openSiteDialog(oContext);
         },
 
@@ -1447,6 +1459,7 @@ sap.ui.define([
             oEvent.cancelBubble && oEvent.cancelBubble();
             var oContext = oEvent.getSource().getBindingContext();
             var sName = oContext.getProperty("SiteName");
+            var sSiteId = oContext.getProperty("SiteId");
             var sPath = oContext.getPath();
             var oModel = this.getOwnerComponent().getModel();
             var that = this;
@@ -1468,12 +1481,40 @@ sap.ui.define([
                 title: oBundle.getText("confirmDelete"),
                 onClose: function (sAction) {
                     if (sAction === MessageBox.Action.OK) {
-                        oModel.remove(sPath, {
-                            success: function () {
-                                MessageToast.show(oBundle.getText("siteDeletedSuccess"));
-                                that._refreshSiteAfterMutation();
+                        sap.ui.core.BusyIndicator.show(0);
+                        oModel.read("/SiteSet(guid'" + sSiteId + "')/ToWbs", {
+                            urlParameters: { "$top": 1, "$select": "WbsId" },
+                            success: function (oData) {
+                                if (oData.results && oData.results.length > 0) {
+                                    sap.ui.core.BusyIndicator.hide();
+                                    MessageBox.error("Không thể xóa vì đã có hạng mục công việc thuộc Công trường này.");
+                                } else {
+                                    oModel.remove(sPath, {
+                                        success: function () {
+                                            sap.ui.core.BusyIndicator.hide();
+                                            MessageToast.show(oBundle.getText("siteDeletedSuccess"));
+                                            that._refreshSiteAfterMutation();
+                                        },
+                                        error: function (oErr) {
+                                            sap.ui.core.BusyIndicator.hide();
+                                            var sMsg = oBundle.getText("siteDeleteError");
+                                            try {
+                                                var oResp = JSON.parse(oErr.responseText);
+                                                if (oResp && oResp.error && oResp.error.message) {
+                                                    sMsg = oResp.error.message.value || oResp.error.message;
+                                                }
+                                            } catch (e) {
+                                                sMsg = oErr.message || sMsg;
+                                            }
+                                            MessageBox.error(sMsg);
+                                        }
+                                    });
+                                }
                             },
-                            error: function () { MessageBox.error(oBundle.getText("siteDeleteError")); }
+                            error: function () {
+                                sap.ui.core.BusyIndicator.hide();
+                                MessageBox.error("Lỗi khi kiểm tra dữ liệu hạng mục liên kết.");
+                            }
                         });
                     }
                 }

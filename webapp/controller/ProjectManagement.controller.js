@@ -802,7 +802,7 @@ sap.ui.define([
                         } else if (!sPath) {
                             aFailReasons.push(oBundle.getText("deleteProjectODataPathError", [sName]));
                         } else {
-                            aToDelete.push({ path: sPath, name: sName });
+                            aToDelete.push({ path: sPath, name: sName, id: oCtx.getProperty("ProjectId") });
                         }
                     });
 
@@ -812,37 +812,68 @@ sap.ui.define([
                         return;
                     }
 
-                    var aPromises = aToDelete.map(function (item) {
+                    var aChecks = aToDelete.map(function (item) {
                         return new Promise(function (resolve) {
-                            oModel.remove(item.path, {
-                                success: function () {
-                                    iSuccessCount++;
-                                    resolve();
+                            oModel.read("/ProjectSet(guid'" + item.id + "')/ToSites", {
+                                urlParameters: { "$top": 1, "$select": "SiteId" },
+                                success: function (oData) {
+                                    if (oData.results && oData.results.length > 0) {
+                                        aFailReasons.push("❌ " + item.name + ": Không thể xóa Dự án vì đã có Công trường liên kết bên trong.");
+                                        resolve(null);
+                                    } else {
+                                        resolve(item);
+                                    }
                                 },
-                                error: function (oErr) {
-                                    var sMsg = oBundle.getText("serverError");
-                                    try { sMsg = JSON.parse(oErr.responseText).error.message.value; } catch (e) { sMsg = oErr.message || sMsg; }
-                                    aFailReasons.push("❌ " + item.name + ": " + sMsg);
-                                    resolve();
+                                error: function () {
+                                    aFailReasons.push("❌ " + item.name + ": Lỗi khi kiểm tra dữ liệu công trường liên kết.");
+                                    resolve(null);
                                 }
                             });
                         });
                     });
 
-                    Promise.all(aPromises).then(function () {
-                        sap.ui.core.BusyIndicator.hide();
-                        oTable.removeSelections();
-                        that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
-                        that._readProjects("");
-                        that._loadProjectValueHelps();
+                    Promise.all(aChecks).then(function (aValidItems) {
+                        var aValidToDelete = aValidItems.filter(Boolean);
 
-                        var sSummary = oBundle.getText("deleteProjectSuccessSummary", [iSuccessCount, iTotal]);
-                        if (aFailReasons.length > 0) {
-                            sSummary += oBundle.getText("deleteProjectFailSummary", [aFailReasons.length, aFailReasons.join("\n")]);
-                            MessageBox.warning(sSummary);
-                        } else {
-                            MessageToast.show(sSummary);
+                        if (aValidToDelete.length === 0) {
+                            sap.ui.core.BusyIndicator.hide();
+                            MessageBox.warning(oBundle.getText("deleteProjectTotalFail", [aFailReasons.join("\n")]));
+                            return;
                         }
+
+                        var aPromises = aValidToDelete.map(function (item, index) {
+                            return new Promise(function (resolve) {
+                                oModel.remove(item.path, {
+                                    changeSetId: "deleteProject_" + index,
+                                    success: function () {
+                                        iSuccessCount++;
+                                        resolve();
+                                    },
+                                    error: function (oErr) {
+                                        var sMsg = oBundle.getText("serverError");
+                                        try { sMsg = JSON.parse(oErr.responseText).error.message.value; } catch (e) { sMsg = oErr.message || sMsg; }
+                                        aFailReasons.push("❌ " + item.name + ": " + sMsg);
+                                        resolve();
+                                    }
+                                });
+                            });
+                        });
+
+                        Promise.all(aPromises).then(function () {
+                            sap.ui.core.BusyIndicator.hide();
+                            oTable.removeSelections();
+                            that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                            that._readProjects("");
+                            that._loadProjectValueHelps();
+
+                            var sSummary = oBundle.getText("deleteProjectSuccessSummary", [iSuccessCount, iTotal]);
+                            if (aFailReasons.length > 0) {
+                                sSummary += oBundle.getText("deleteProjectFailSummary", [aFailReasons.length, aFailReasons.join("\n")]);
+                                MessageBox.warning(sSummary);
+                            } else {
+                                MessageToast.show(sSummary);
+                            }
+                        });
                     });
                 }
             });
@@ -921,10 +952,11 @@ sap.ui.define([
                             return;
                         }
 
-                        var aUpdates = aToClose.map(function (item) {
+                        var aUpdates = aToClose.map(function (item, index) {
                             return new Promise(function (resolve) {
                                 oModel.callFunction("/UpdateStatus", {
                                     method: "POST",
+                                    changeSetId: "closeProject_" + index,
                                     urlParameters: {
                                         ObjectType: "PROJECT",
                                         ObjectId: item.id,

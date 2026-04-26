@@ -942,14 +942,31 @@ sap.ui.define([
             var that = this;
             var oModel = this.getOwnerComponent().getModel();
 
-            // Collect all selected WBS details
-            var aSelectedItems = aIndices.map(function (iIdx) {
+            // Frontend Validation: Only allow deleting PLANNING or OPEN_REJECTED
+            var aInvalidItems = [];
+            var aSelectedItems = [];
+            
+            aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
-                return {
-                    id: oCtx.getProperty("WbsId"),
-                    name: oCtx.getProperty("WbsName")
-                };
+                var oData = oCtx.getObject();
+                if (oData.Status !== "PLANNING" && oData.Status !== "OPEN_REJECTED") {
+                    var sStatusText = oData.Status;
+                    if (oData.Status === "IN_PROGRESS") sStatusText = oBundle.getText("inProgressStatus") || "Đang thi công";
+                    else if (oData.Status === "CLOSED") sStatusText = oBundle.getText("closedStatus") || "Đã đóng";
+                    else if (oData.Status === "OPENED") sStatusText = oBundle.getText("openedStatus") || "Đã mở";
+                    aInvalidItems.push(oData.WbsName + " (Trạng thái: " + sStatusText + ")");
+                } else {
+                    aSelectedItems.push({
+                        id: oData.WbsId,
+                        name: oData.WbsName
+                    });
+                }
             });
+
+            if (aInvalidItems.length > 0) {
+                MessageBox.error("Chỉ được phép xóa Hạng mục công việc khi đang ở trạng thái Lập kế hoạch hoặc Bị từ chối mở.\n\nCác mục không hợp lệ:\n- " + aInvalidItems.join("\n- "));
+                return;
+            }
 
             var sConfirmMsg = aSelectedItems.length === 1 ?
                 oBundle.getText("deleteWbsConfirm", [aSelectedItems[0].name]) :
@@ -963,7 +980,7 @@ sap.ui.define([
 
                         var iCount = aSelectedItems.length;
                         var iSuccess = 0;
-                        var iError = 0;
+                        var aFailReasons = [];
 
                         // Function to perform deletion sequentially (one by one)
                         // This avoids "one operation per changeset" issues on the backend.
@@ -971,17 +988,18 @@ sap.ui.define([
                             if (iIndex >= iCount) {
                                 // All items processed
                                 that.getView().setBusy(false);
-                                if (iError === 0) {
+                                oTable.clearSelection();
+                                that._loadWbsData();
+                                
+                                if (aFailReasons.length === 0) {
                                     var sSuccessMsg = iCount === 1 ?
                                         oBundle.getText("wbsDeletedSuccess", [aSelectedItems[0].name]) :
                                         oBundle.getText("wbsMultipleDeletedSuccess", [iCount]);
                                     MessageToast.show(sSuccessMsg);
                                 } else {
-                                    // Use partial error message if some failed
-                                    MessageBox.error(oBundle.getText("submitPartialError", [iError]));
+                                    var sSummary = "Đã xóa thành công: " + iSuccess + "/" + iCount + " hạng mục.\n\nLỗi khi xóa " + aFailReasons.length + " hạng mục:\n" + aFailReasons.join("\n");
+                                    MessageBox.error(sSummary);
                                 }
-                                oTable.clearSelection();
-                                that._loadWbsData();
                                 return;
                             }
 
@@ -992,8 +1010,16 @@ sap.ui.define([
                                     fnDeleteNext(iIndex + 1);
                                 },
                                 error: function (oError) {
-                                    iError++;
-                                    console.error("Error deleting WBS: " + item.id, oError);
+                                    var sMsg = "Lỗi hệ thống";
+                                    try {
+                                        var oResp = JSON.parse(oError.responseText);
+                                        if (oResp && oResp.error && oResp.error.message) {
+                                            sMsg = oResp.error.message.value || oResp.error.message;
+                                        }
+                                    } catch (e) {
+                                        sMsg = oError.message || sMsg;
+                                    }
+                                    aFailReasons.push("❌ " + item.name + ": " + sMsg);
                                     fnDeleteNext(iIndex + 1);
                                 }
                             });
