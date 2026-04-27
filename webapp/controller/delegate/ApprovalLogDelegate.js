@@ -210,26 +210,12 @@ sap.ui.define([
                     // Show ALL logs regardless of User ID
                     aLogs = aGlobalLogs;
                     
-                    // Sort: Logs with notes first, then newest timestamp
+                    // Sort: Newest first (consistent with OData $orderby=CreatedTimestamp desc)
                     aLogs.sort(function(a, b) {
-                        var hasNoteA = !!a.ApprovalNote && String(a.ApprovalNote).trim() !== "";
-                        var hasNoteB = !!b.ApprovalNote && String(b.ApprovalNote).trim() !== "";
-                        
-                        if (hasNoteA && !hasNoteB) return -1;
-                        if (!hasNoteA && hasNoteB) return 1;
-                        
-                        // If same note status, sort by date
                         var dateA = a.CreatedTimestamp;
                         var dateB = b.CreatedTimestamp;
-                        
-                        // Safely get numeric timestamp
-                        var tA = (dateA instanceof Date) ? dateA.getTime() : 0;
-                        var tB = (dateB instanceof Date) ? dateB.getTime() : 0;
-                        
-                        // If one was not a Date, try constructor
-                        if (tA === 0 && dateA) tA = new Date(dateA).getTime() || 0;
-                        if (tB === 0 && dateB) tB = new Date(dateB).getTime() || 0;
-                        
+                        var tA = (dateA instanceof Date) ? dateA.getTime() : (dateA ? new Date(dateA).getTime() || 0 : 0);
+                        var tB = (dateB instanceof Date) ? dateB.getTime() : (dateB ? new Date(dateB).getTime() || 0 : 0);
                         return tB - tA; // Newest first
                     });
 
