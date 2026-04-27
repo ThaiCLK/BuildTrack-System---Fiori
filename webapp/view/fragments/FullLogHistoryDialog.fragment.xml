@@ -1,50 +1,50 @@
 <core:FragmentDefinition xmlns="sap.m"
     xmlns:core="sap.ui.core">
-    <Dialog title="Chi tiết Nhật ký Thi công (Toàn thời gian)" contentWidth="900px" contentHeight="600px" draggable="true" resizable="true">
+    <Dialog title="{i18n>fullLogHistoryDialogTitle}" contentWidth="900px" contentHeight="600px" draggable="true" resizable="true">
         <VBox>
             <Toolbar>
-                <SearchField placeholder="Tìm kiếm theo ngày, khối lượng..." width="100%" liveChange=".onSearchFullLogHistory"/>
+                <SearchField placeholder="{i18n>fullLogHistorySearchPlaceholder}" width="100%" liveChange=".onSearchFullLogHistory"/>
             </Toolbar>
 
             <Table id="idFullLogHistoryTable" sticky="HeaderToolbar,ColumnHeaders" items="{workSummaryModel>/FullLogHistory}">
                 <columns>
                     <Column width="15%">
-                        <Text text="Ngày" design="Bold" />
+                        <Text text="{i18n>fullLogHistoryDateCol}" design="Bold" />
                         <footer>
-                            <Text text="TỔNG CỘNG:" design="Bold" />
+                            <Text text="{i18n>fullLogHistoryTotalLabel}" design="Bold" />
                         </footer>
                     </Column>
 
                     <Column width="20%" hAlign="End">
-                        <Text text="Khối lượng" design="Bold" />
+                        <Text text="{i18n>fullLogHistoryQtyCol}" design="Bold" />
                         <footer>
                             <ObjectNumber number="{workSummaryModel>/FullLogHistoryTotalQty}" unit="{workSummaryModel>/FullLogHistoryUnitCode}" />
                         </footer>
                     </Column>
 
                     <Column width="15%" hAlign="Center">
-                        <Text text="Thời tiết Sáng" design="Bold" />
+                        <Text text="{i18n>fullLogHistoryWeatherAmCol}" design="Bold" />
                         <footer>
                             <Text text="-" />
                         </footer>
                     </Column>
 
                     <Column width="15%" hAlign="Center">
-                        <Text text="Thời tiết Chiều" design="Bold" />
+                        <Text text="{i18n>fullLogHistoryWeatherPmCol}" design="Bold" />
                         <footer>
                             <Text text="-" />
                         </footer>
                     </Column>
 
                     <Column width="15%" hAlign="Center">
-                        <Text text="Ghi chú An toàn" design="Bold" />
+                        <Text text="{i18n>fullLogHistorySafeNoteCol}" design="Bold" />
                         <footer>
                             <Text text="-" />
                         </footer>
                     </Column>
 
                     <Column width="15%" hAlign="Center">
-                        <Text text="Ghi chú Nhà thầu" design="Bold" />
+                        <Text text="{i18n>fullLogHistoryContractorNoteCol}" design="Bold" />
                         <footer>
                             <Text text="-" />
                         </footer>
@@ -59,11 +59,11 @@
                             <Text text="{workSummaryModel>WeatherAmIcon}" tooltip="{workSummaryModel>WeatherAmTooltip}" class="sapUiLargeText" />
                             <Text text="{workSummaryModel>WeatherPmIcon}" tooltip="{workSummaryModel>WeatherPmTooltip}" class="sapUiLargeText" />
                             <VBox alignItems="Center">
-                                <ObjectStatus icon="{workSummaryModel>SafeNoteIcon}" state="Warning" tooltip="Có ghi chú an toàn" visible="{= !!${workSummaryModel>SafeNoteIcon} }"/>
+                                <ObjectStatus icon="{workSummaryModel>SafeNoteIcon}" state="Warning" tooltip="{i18n>fullLogHistoryHasSafeNote}" visible="{= !!${workSummaryModel>SafeNoteIcon} }"/>
                                 <Text text="-" visible="{= !${workSummaryModel>SafeNoteIcon} }"/>
                             </VBox>
                             <VBox alignItems="Center">
-                                <ObjectStatus icon="{workSummaryModel>ContractorNoteIcon}" state="Warning" tooltip="Có ghi chú nhà thầu" visible="{= !!${workSummaryModel>ContractorNoteIcon} }"/>
+                                <ObjectStatus icon="{workSummaryModel>ContractorNoteIcon}" state="Warning" tooltip="{i18n>fullLogHistoryHasContractorNote}" visible="{= !!${workSummaryModel>ContractorNoteIcon} }"/>
                                 <Text text="-" visible="{= !${workSummaryModel>ContractorNoteIcon} }"/>
                             </VBox>
                         </cells>
@@ -73,7 +73,8 @@
         </VBox>
 
         <beginButton>
-            <Button text="Đóng" type="Reject" press=".onCloseFullLogHistory" />
+            <Button text="{i18n>fullLogHistoryClose}" type="Reject" press=".onCloseFullLogHistory" />
         </beginButton>
     </Dialog>
 </core:FragmentDefinition>
+

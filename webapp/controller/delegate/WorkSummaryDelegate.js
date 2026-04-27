@@ -588,6 +588,7 @@ sap.ui.define([
         },
 
         _loadResourceForecasting: function (aLogs, oWSModel, fTotalQtyDone, fQuantity) {
+            var oSelf = this;
             var oModel = this.getOwnerComponent().getModel();
             if (!aLogs || aLogs.length === 0) {
                 oWSModel.setProperty("/ResourceForecasting", []);
@@ -639,9 +640,11 @@ sap.ui.define([
                             }
                         });
 
+                        var oBundle = oSelf.getView ? oSelf.getView().getModel("i18n").getResourceBundle() : null;
+                        var fnText = function (sKey, sFallback) { return oBundle ? oBundle.getText(sKey) : sFallback; };
                         var aForecasting = [];
                         var fRemainingQty = Math.max(0, fQuantity - fTotalQtyDone);
-                        var sRemainingText = "Còn: " + Math.round(fRemainingQty);
+                        var sRemainingText = fnText("wsRemainingPrefix", "Còn:") + " " + Math.round(fRemainingQty);
                         oWSModel.setProperty("/RemainingQtyText", sRemainingText);
 
                         var oNumFormat = sap.ui.core.format.NumberFormat.getFloatInstance({ maxFractionDigits: 2, groupingEnabled: true });
@@ -652,7 +655,7 @@ sap.ui.define([
                             oItem.UsedQuantityFormatted = oNumFormat.format(oItem.UsedQuantity);
 
                             oItem.Norm = fTotalQtyDone > 0 ? (oItem.UsedQuantity / fTotalQtyDone) : 0;
-                            oItem.NormText = oNormFormat.format(oItem.Norm) + " / Khối lượng";
+                            oItem.NormText = oNormFormat.format(oItem.Norm) + " / " + fnText("wsNormPerQtyUnit", "Khối lượng");
 
                             var fEtc = oItem.Norm * fRemainingQty;
                             oItem.EtcQuantityRaw = fEtc;

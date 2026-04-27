@@ -419,7 +419,7 @@
                                 </HBox>
                             </VBox>
                             <VBox class="sapUiTinyMarginBottom">
-                                <Label text="Cảnh báo Rủi ro" design="Bold" class="sapUiMediumMarginBottom"/>
+                                <Label text="{i18n>wsRiskAlertLabel}" design="Bold" class="sapUiMediumMarginBottom"/>
 
                                 <HBox alignItems="Start" class="sapUiSmallMarginBottom">
                                     <core:Icon src="{workSummaryModel>/RiskStats/SafeIcon}" color="{workSummaryModel>/RiskStats/SafeState}" class="sapUiTinyMarginEnd sapUiTinyMarginTop" size="1.2rem"/>
@@ -440,32 +440,35 @@
                     </l:Grid>
                 </Panel>
 
-                <Panel headerText="Dự báo Nguồn lực" class="sapUiSmallMarginBottom" visible="true">
+                <Panel headerText="{i18n>wsResourceForecastPanel}" class="sapUiSmallMarginBottom" visible="true">
                     <VBox class="sapUiSmallMargin">
-                        <Label text="Dự toán phần công việc còn lại ({workSummaryModel>/RemainingQtyText})" design="Bold" class="sapUiSmallMarginBottom"/>
-                        <Table showSeparators="Inner" noDataText="Chưa có dữ liệu" items="{workSummaryModel>/ResourceForecasting}">
+                        <HBox alignItems="Center" class="sapUiSmallMarginBottom">
+                            <Label text="{i18n>wsResourceForecastLabel}" design="Bold"/>
+                            <Text text=" ({workSummaryModel>/RemainingQtyText})" class="sapUiTinyMarginBegin"/>
+                        </HBox>
+                        <Table showSeparators="Inner" noDataText="{i18n>wsResourceForecastNoData}" items="{workSummaryModel>/ResourceForecasting}">
                             <columns>
                                 <Column width="30%">
-                                    <Text text="Tên Nguồn Lực" class="sapMTextBold" />
+                                    <Text text="{i18n>wsResourceNameCol}" class="sapMTextBold" />
                                 </Column>
                                 <Column hAlign="Center">
-                                    <Text text="Loại Nguồn Lực" class="sapMTextBold" />
+                                    <Text text="{i18n>wsResourceTypeCol}" class="sapMTextBold" />
                                 </Column>
                                 <Column hAlign="End">
-                                    <Text text="Đã dùng" class="sapMTextBold" />
+                                    <Text text="{i18n>wsResourceUsedCol}" class="sapMTextBold" />
                                 </Column>
                                 <Column hAlign="Center">
-                                    <Text text="Định mức TT" class="sapMTextBold" tooltip="Tính bằng: Đã dùng / Khối lượng hoàn thành thực tế"/>
+                                    <Text text="{i18n>wsResourceNormCol}" class="sapMTextBold" tooltip="{i18n>wsResourceNormTooltip}"/>
                                 </Column>
                                 <Column hAlign="End">
-                                    <Text text="Cần thêm (ETC)" class="sapMTextBold" tooltip="Tính bằng: Định mức TT x Khối lượng còn lại (Làm tròn lên)"/>
+                                    <Text text="{i18n>wsResourceEtcCol}" class="sapMTextBold" tooltip="{i18n>wsResourceEtcTooltip}"/>
                                 </Column>
                             </columns>
                             <items>
                                 <ColumnListItem>
                                     <cells>
                                         <ObjectIdentifier title="{workSummaryModel>ResourceName}" text="{workSummaryModel>ResourceId}" />
-                                        <Text text="{workSummaryModel>ResourceType}" />
+                                        <ObjectStatus text="{= ${workSummaryModel>ResourceType} === 'MATERIAL' ? ${i18n>resourceTypeMaterial} : (${workSummaryModel>ResourceType} === 'EQUIPMENT' ? ${i18n>resourceTypeEquipment} : (${workSummaryModel>ResourceType} === 'LABOR' ? ${i18n>resourceTypeLabor} : ${workSummaryModel>ResourceType})) }" state="{= ${workSummaryModel>ResourceType} === 'MATERIAL' ? 'Indication05' : (${workSummaryModel>ResourceType} === 'EQUIPMENT' ? 'Indication08' : (${workSummaryModel>ResourceType} === 'LABOR' ? 'Indication06' : 'None')) }" icon="{= ${workSummaryModel>ResourceType} === 'MATERIAL' ? 'sap-icon://product' : (${workSummaryModel>ResourceType} === 'EQUIPMENT' ? 'sap-icon://shipping-status' : (${workSummaryModel>ResourceType} === 'LABOR' ? 'sap-icon://employee' : 'sap-icon://question-mark')) }"/>
                                         <Text text="{workSummaryModel>UsedQuantityFormatted} {workSummaryModel>UnitCode}" />
                                         <ObjectStatus text="{workSummaryModel>NormText}" state="None" />
                                         <ObjectNumber number="{workSummaryModel>EtcQuantity}" unit="{workSummaryModel>UnitCode}" state="{workSummaryModel>EtcState}" />
@@ -481,22 +484,22 @@
                 <Table items="{path: 'workSummaryModel>/Children', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%">
                     <columns>
                         <Column>
-                            <Text text="Mã hạng mục" />
+                            <Text text="{i18n>wsSubWbsCodeCol}" />
                         </Column>
                         <Column>
-                            <Text text="Tiến độ TT" />
+                            <Text text="{i18n>wsSubWbsActualProgressCol}" />
                         </Column>
                         <Column>
-                            <Text text="Tiến độ KH" />
+                            <Text text="{i18n>wsSubWbsPlanProgressCol}" />
                         </Column>
                         <Column>
-                            <Text text="Thời gian" />
+                            <Text text="{i18n>wsSubWbsTimeCol}" />
                         </Column>
                         <Column hAlign="Begin">
-                            <Text text="Trọng số" />
+                            <Text text="{i18n>wsSubWbsWeightCol}" />
                         </Column>
                         <Column>
-                            <Text text="Đánh giá" />
+                            <Text text="{i18n>wsSubWbsAssessmentCol}" />
                         </Column>
                         <Column>
                             <Text text="{i18n>status}" />

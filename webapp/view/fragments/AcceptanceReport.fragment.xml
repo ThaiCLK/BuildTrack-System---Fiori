@@ -12,11 +12,11 @@
             <VBox class="paperA4Dialog">
                 <!-- Header -->
                 <VBox class="acceptanceHeader">
-                    <Label text="{i18n>vietnamOfficialName}" class="signatureLabel" />
-                    <Label text="{i18n>vietnamMotto}" class="signatureLabel" />
+                    <Label text="CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" class="signatureLabel" />
+                    <Label text="Độc lập - Tự do - Hạnh phúc" class="signatureLabel" />
                     <VBox class="acceptanceHeaderLine" />
                     
-                    <Title text="{i18n>acceptanceReportHeader}" class="acceptanceTitle sapUiMediumMarginTop" />
+                    <Title text="BIÊN BẢN NGHIỆM THU KHỐI LƯỢNG" class="acceptanceTitle sapUiMediumMarginTop" />
                     <Text text="{parts: [{path: 'i18n>reportNo'}, {path: 'WbsCode'}], formatter: '.formatReportNo'}" class="infoTableValue" />
                     <Text text="{parts: [{path: 'i18n>periodLabel'}, {path: 'StartActual'}, {path: 'EndActual'}], formatter: '.formatPeriod'}" 
                             visible="{= ${StartActual} !== null || ${EndActual} !== null }"
@@ -28,26 +28,26 @@
 
                 <!-- Section I: Thông tin chung -->
                 <VBox class="sapUiMediumMarginTop">
-                    <Label text="{i18n>sectionIGeneralInfo}" class="signatureLabel sapUiSmallMarginBottom" />
+                    <Label text="I. THÔNG TIN CHUNG" class="signatureLabel sapUiSmallMarginBottom" />
                     <VBox class="sapUiSmallMarginBegin">
                         <HBox class="infoTableRow" width="100%">
-                            <Label text="{i18n>contractorLabel}" class="infoTableLabel" />
-                            <Text text="{i18n>defaultContractor}" class="infoTableValue" />
+                            <Label text="Nhà thầu:" class="infoTableLabel" />
+                            <Text text="Công ty Thành An 116" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow" width="100%">
-                            <Label text="{i18n>projectPackageLabel}" class="infoTableLabel" />
+                            <Label text="Dự án / Gói thầu:" class="infoTableLabel" />
                             <Text text="{projectModel>/ProjectName}" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow" width="100%">
-                            <Label text="{i18n>wbsItemLabel}" class="infoTableLabel" />
+                            <Label text="Hạng mục (Hạng mục):" class="infoTableLabel" />
                             <Text text="{WbsName} (Mã: {WbsCode})" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow" width="100%">
-                            <Label text="{i18n>siteLabel}" class="infoTableLabel" />
+                            <Label text="Phân khu:" class="infoTableLabel" />
                             <Text text="{projectModel>/SiteName}" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow" width="100%">
-                            <Label text="{i18n>locationLabel}" class="infoTableLabel" />
+                            <Label text="Vị trí:" class="infoTableLabel" />
                             <Text text="{locationModel>/LocationName}" class="infoTableValue" />
                         </HBox>
                     </VBox>
@@ -55,17 +55,17 @@
 
                 <!-- Section II: Nội dung nghiệm thu -->
                 <VBox class="sapUiMediumMarginTop">
-                    <Label text="{i18n>sectionIIAcceptanceContent}" class="signatureLabel sapUiSmallMarginBottom" />
+                    <Label text="II. NỘI DUNG NGHIỆM THU" class="signatureLabel sapUiSmallMarginBottom" />
                     
                     <!-- Simulated Table for 1 row to guarantee rendering on all devices -->
                     <VBox class="acceptanceTableWrapper sapUiTinyMarginTop" width="100%">
                         <!-- Header Row -->
                         <HBox class="acceptanceTableHeader" width="100%" renderType="Bare">
-                            <Text text="{i18n>workContent}" class="tableHeaderCell colMain" />
-                            <Text text="{i18n>planned}" class="tableHeaderCell col15 cellEnd" />
-                            <Text text="{i18n>actual}" class="tableHeaderCell col15 cellEnd" />
-                            <Text text="{i18n>unitShort}" class="tableHeaderCell col10 cellCenter" />
-                            <Text text="{i18n>evaluation}" class="tableHeaderCell col15 cellCenter" />
+                            <Text text="Nội dung công việc" class="tableHeaderCell colMain" />
+                            <Text text="Kế hoạch" class="tableHeaderCell col15 cellEnd" />
+                            <Text text="Thực tế" class="tableHeaderCell col15 cellEnd" />
+                            <Text text="ĐVT" class="tableHeaderCell col10 cellCenter" />
+                            <Text text="Đánh giá" class="tableHeaderCell col15 cellCenter" />
                         </HBox>
                         <!-- Data Row -->
                         <HBox class="acceptanceTableRow" width="100%" renderType="Bare">
@@ -75,7 +75,7 @@
                             <Text text="{UnitCode}" class="tableDataCell col10 cellCenter" />
                             <VBox class="tableDataCell col15 cellCenter">
                                 <ObjectStatus 
-                                    text="{= ${viewData>/evaluationResult} === '1' ? ${i18n>achieved} : (${viewData>/evaluationResult} === '2' ? ${i18n>notAchieved} : '') }"
+                                    text="{= ${viewData>/evaluationResult} === '1' ? 'Đạt' : (${viewData>/evaluationResult} === '2' ? 'Chưa Đạt' : '') }"
                                     state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '2' ? 'Error' : 'None') }" />
                             </VBox>
                         </HBox>
@@ -84,8 +84,8 @@
 
                 <!-- Section III: Kết luận -->
                 <VBox class="sapUiMediumMarginTop">
-                    <Label text="{i18n>sectionIIIConclusion}" class="signatureLabel sapUiTinyMarginBottom" />
-                    <Text text="{i18n>acceptanceConclusionText}" 
+                    <Label text="III. KẾT LUẬN" class="signatureLabel sapUiTinyMarginBottom" />
+                    <Text text="Các bên đồng ý nghiệm thu khối lượng công việc nêu trên theo ghi nhận tại thời điểm hiện tại. Đạt yêu cầu kỹ thuật để triển khai công việc tiếp theo." 
                             class="acceptanceConclusion" />
                 </VBox>
 
@@ -94,8 +94,8 @@
                     <l:content>
                         <!-- Kỹ sư phụ trách -->
                         <VBox alignItems="Center">
-                            <Label text="{i18n>engineerRole}" class="signatureLabel" />
-                            <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
+                            <Label text="KỸ SƯ PHỤ TRÁCH" class="signatureLabel" />
+                            <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
                             <VBox class="signatureBox" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level1/signatureUrl}" 
                                        height="60px" 
@@ -104,7 +104,7 @@
                                 <Text text="{viewData>/signStatus/level1/text}" 
                                       class="{= ${viewData>/signStatus/level1/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level1/signed}" />
-                                <Button text="{i18n>signApprove}"
+                                <Button text="Ký duyệt"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
                                         visible="{viewData>/canApproveLevel1}" />
@@ -113,8 +113,8 @@
 
                         <!-- Tư vấn giám sát -->
                         <VBox alignItems="Center">
-                            <Label text="{i18n>supervisorRole}" class="signatureLabel" />
-                            <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
+                            <Label text="TƯ VẤN GIÁM SÁT" class="signatureLabel" />
+                            <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
                             <VBox class="signatureBox" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level2/signatureUrl}" 
                                        height="60px" 
@@ -123,7 +123,7 @@
                                 <Text text="{viewData>/signStatus/level2/text}" 
                                       class="{= ${viewData>/signStatus/level2/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level2/signed}" />
-                                <Button text="{i18n>signApprove}"
+                                <Button text="Ký duyệt"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
                                         visible="{viewData>/canApproveLevel2}" />
@@ -132,8 +132,8 @@
 
                         <!-- Đại diện chủ đầu tư -->
                         <VBox alignItems="Center">
-                            <Label text="{i18n>investorRole}" class="signatureLabel" />
-                            <Label text="{i18n>signAndFullName}" class="signatureSubLabel" />
+                            <Label text="ĐẠI DIỆN CHỦ ĐẦU TƯ" class="signatureLabel" />
+                            <Label text="(Ký, ghi rõ họ tên)" class="signatureSubLabel" />
                             <VBox class="signatureBox" justifyContent="Center" alignItems="Center">
                                 <Image src="{viewData>/signStatus/level3/signatureUrl}" 
                                        height="60px" 
@@ -142,7 +142,7 @@
                                 <Text text="{viewData>/signStatus/level3/text}" 
                                       class="{= ${viewData>/signStatus/level3/signed} ? 'signatureStamp signed' : 'signatureStamp' }" 
                                       visible="{viewData>/signStatus/level3/signed}" />
-                                <Button text="{i18n>signApprove}"
+                                <Button text="Ký duyệt"
                                         type="Emphasized"
                                         press=".onApproveFromReport"
                                         visible="{viewData>/canApproveLevel3}" />
@@ -153,11 +153,12 @@
 
                 <!-- Footer Buttons placed inside the A4 Document -->
                 <HBox justifyContent="End" class="paperA4DialogFooter">
-                    <Button text="{i18n>submitForCloseApproval}" type="Accept" class="sapUiSmallMarginEnd" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
-                    <Button text="{i18n>reject}" type="Reject" class="sapUiSmallMarginEnd" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
-                    <Button text="{i18n>close}" press=".onCloseAcceptanceDialog" type="Default" />
+                    <Button text="Gửi duyệt Đóng" type="Accept" class="sapUiSmallMarginEnd" press=".onSubmitForApproval" visible="{= (${userModel>/authLevel} === '0' || ${userModel>/authLevel} === 0) &amp;&amp; (${Status} === 'IN_PROGRESS' || ${Status} === 'CLOSE_REJECTED') }" />
+                    <Button text="Từ chối" type="Reject" class="sapUiSmallMarginEnd" press=".onRejectFromReport" visible="{viewData>/canRejectFromReport}" />
+                    <Button text="Đóng" press=".onCloseAcceptanceDialog" type="Default" />
                 </HBox>
             </VBox>
         </content>
     </Dialog>
 </core:FragmentDefinition>
+
