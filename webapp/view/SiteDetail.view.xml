@@ -6,15 +6,15 @@
         <content>
             <IconTabBar id="idIconTabBar" class="sapUiResponsiveContentPadding" select=".onTabSelect">
                 <items>
-                    <IconTabFilter icon="sap-icon://hint" text="{i18n>siteInfoTab}">
+                    <IconTabFilter icon="sap-icon://hint" text="{i18n>siteInfoTab}" key="siteInfoTab">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.SiteGeneralInfo" type="XML" />
                     </IconTabFilter>
 
-                    <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="{i18n>siteWbsTab}">
+                    <IconTabFilter id="idSiteWbsTab" icon="sap-icon://Chart-Tree-Map" text="{i18n>siteWbsTab}" key="siteWbsTab">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBS" type="XML" />
                     </IconTabFilter>
 
-                    <IconTabFilter icon="sap-icon://complete" text="{i18n>sitePendingApprovalTab}" visible="{= ${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0 }">
+                    <IconTabFilter icon="sap-icon://complete" text="{i18n>sitePendingApprovalTab}" key="sitePendingApprovalTab" visible="{= ${userModel>/authLevel} !== '0' &amp;&amp; ${userModel>/authLevel} !== 0 }">
                         <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.WBSPendingApproval" type="XML" />
                     </IconTabFilter>
                 </items>

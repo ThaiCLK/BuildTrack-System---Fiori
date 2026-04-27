@@ -102,6 +102,8 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({}), "workSummaryModel");
             this.getView().setModel(new JSONModel({}), "projectModel");
             this.getView().setModel(new JSONModel({}), "editModel");
+            // Tab cache per site_id: remembers last selected tab for each site
+            this._mSiteTabCache = {};
             sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
@@ -439,6 +441,11 @@ sap.ui.define([
             var sKey = oEvent.getParameter("key");
             this.onCancelSite(); // Resets editMode and any pending OData model changes
 
+            // Cache selected tab per site_id for restoration on back-navigation
+            if (this._sCurrentSiteId && sKey) {
+                this._mSiteTabCache[this._sCurrentSiteId] = sKey;
+            }
+
             // Clear selections when switching tabs
             var oWbsTable = this.byId("wbsTreeTable");
             if (oWbsTable) { oWbsTable.clearSelection(); }
@@ -559,6 +566,13 @@ sap.ui.define([
             }
 
             this.onCancelSite();
+
+            // Restore cached tab for this site, or default to first tab
+            var oIconTabBar = this.byId("idIconTabBar");
+            if (oIconTabBar) {
+                var sCachedTab = this._mSiteTabCache[sSiteId];
+                oIconTabBar.setSelectedKey(sCachedTab || "siteInfoTab");
+            }
 
             // Clear selections on navigation
             var oWbsTable = this.byId("wbsTreeTable");
