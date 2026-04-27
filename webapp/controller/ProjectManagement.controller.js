@@ -528,6 +528,7 @@ sap.ui.define([
                     if (oTable) {
                         oTable.removeSelections();
                         that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                        that.getView().getModel("viewState").setProperty("/canCloseProject", false);
                     }
                     this._updatePagination(1);
                 }.bind(this),
@@ -709,6 +710,12 @@ sap.ui.define([
             var sProjectId = oContext.getProperty("ProjectId");
             var sProjectName = oContext.getProperty("ProjectName");
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (!sProjectId) {
+                MessageBox.error(oBundle.getText("deleteProjectODataPathError", [sProjectName || "Unknown"]));
+                return;
+            }
+
             this.getOwnerComponent().getRouter().navTo("Site", { project_id: sProjectId });
             MessageToast.show(oBundle.getText("openingProject", [sProjectName]));
         },
@@ -725,6 +732,7 @@ sap.ui.define([
             if (oTable) {
                 oTable.removeSelections();
                 this.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                this.getView().getModel("viewState").setProperty("/canCloseProject", false);
             }
             this._openProjectDialog(null);
         },
@@ -758,6 +766,7 @@ sap.ui.define([
             // Clear selections before opening edit dialog
             oTable.removeSelections();
             this.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+            this.getView().getModel("viewState").setProperty("/canCloseProject", false);
 
             this._openProjectDialog(oContext);
         },
@@ -863,6 +872,7 @@ sap.ui.define([
                             sap.ui.core.BusyIndicator.hide();
                             oTable.removeSelections();
                             that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                            that.getView().getModel("viewState").setProperty("/canCloseProject", false);
                             that._readProjects("");
                             that._loadProjectValueHelps();
 
@@ -921,8 +931,13 @@ sap.ui.define([
                                 resolve(null);
                                 return;
                             }
+                            if (!sPath) {
+                                aFailReasons.push(oBundle.getText("deleteProjectODataPathError", [sName]));
+                                resolve(null);
+                                return;
+                            }
 
-                            oModel.read("/ProjectSet(guid'" + sProjectId + "')/ToSites", {
+                            oModel.read(sPath + "/ToSites", {
                                 success: function (oData) {
                                     var aSites = oData.results || [];
                                     if (aSites.length > 0 && !aSites.every(function (s) { return s.Status === "CLOSED"; })) {
@@ -948,6 +963,7 @@ sap.ui.define([
                             sap.ui.core.BusyIndicator.hide();
                             oTable.removeSelections();
                             that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                            that.getView().getModel("viewState").setProperty("/canCloseProject", false);
                             MessageBox.error(oBundle.getText("closeProjectTotalFail", [iTotal, aFailReasons.join("\n")]));
                             return;
                         }
@@ -990,6 +1006,7 @@ sap.ui.define([
                             sap.ui.core.BusyIndicator.hide();
                             oTable.removeSelections();
                             that.getView().getModel("viewState").setProperty("/selectedProjectCount", 0);
+                            that.getView().getModel("viewState").setProperty("/canCloseProject", false);
                             that._readProjects("");
 
                             var sSummary = oBundle.getText("closeProjectSuccessSummary", [iSuccessCount, iTotal]);
