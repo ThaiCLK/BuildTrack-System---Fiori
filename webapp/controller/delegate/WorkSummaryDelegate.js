@@ -257,6 +257,7 @@ sap.ui.define([
             var that = this;
             var oQtyFmt = sap.ui.core.format.NumberFormat.getFloatInstance({ minFractionDigits: 2, maxFractionDigits: 2 });
             var oIntFmt = sap.ui.core.format.NumberFormat.getIntegerInstance({ groupingEnabled: true });
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
 
             if (!aChildren || aChildren.length === 0) {
@@ -293,7 +294,11 @@ sap.ui.define([
                 var fTimePct = c.PlannedDays > 0 ? (iElapsedDays / c.PlannedDays) * 100 : 0;
                 var fTimePctUncapped = fTimePct;
                 if (fTimePct > 100) fTimePct = 100;
-                c.TimeProgressStr = oIntFmt.format(iElapsedDays) + " / " + oIntFmt.format(c.PlannedDays) + " Ngày (" + oQtyFmt.format(fTimePctUncapped) + "%)";
+                c.TimeProgressStr = oBundle.getText("wsDaysUsageFormat", [
+                    oIntFmt.format(iElapsedDays),
+                    oIntFmt.format(c.PlannedDays),
+                    oQtyFmt.format(fTimePctUncapped)
+                ]);
 
                 var sNormId = c.WbsId.toLowerCase().replace(/-/g, "");
                 var sNormPidC = c.ParentId ? c.ParentId.toLowerCase().replace(/-/g, "") : "";
@@ -324,11 +329,11 @@ sap.ui.define([
 
                 if (sChildStatus === "CLOSED") {
                     c.AssessmentDiff = 0;
-                    c.AssessmentText = "Hoàn thành";
+                    c.AssessmentText = oBundle.getText("wsAssessmentCompleted");
                     c.AssessmentState = "Success";
                 } else if (!bHasWork || sChildStatus === "PLANNING" || sChildStatus === "PENDING_OPEN" || sChildStatus === "OPEN_REJECTED" || sChildStatus === "OPENED") {
                     c.AssessmentDiff = 0;
-                    c.AssessmentText = "Chưa thi công";
+                    c.AssessmentText = oBundle.getText("wsAssessmentNotStarted");
                     c.AssessmentState = "None";
                 } else {
                     var fPlanProg = c.CalculatedPlanProgress || 0;
@@ -337,16 +342,16 @@ sap.ui.define([
 
                     c.AssessmentDiff = fDiff;
                     if (fDiff > 10) {
-                        c.AssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
+                        c.AssessmentText = oBundle.getText("wsAssessmentDelayed", [oQtyFmt.format(fDiff)]);
                         c.AssessmentState = "Error";
                     } else if (fDiff > 0) {
-                        c.AssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
+                        c.AssessmentText = oBundle.getText("wsAssessmentDelayed", [oQtyFmt.format(fDiff)]);
                         c.AssessmentState = "Warning";
                     } else if (fDiff < 0) {
-                        c.AssessmentText = "Vượt (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
+                        c.AssessmentText = oBundle.getText("wsAssessmentAhead", [oQtyFmt.format(Math.abs(fDiff))]);
                         c.AssessmentState = "Success";
                     } else {
-                        c.AssessmentText = "Đúng tiến độ";
+                        c.AssessmentText = oBundle.getText("wsAssessmentOnTrack");
                         c.AssessmentState = "Success";
                     }
                 }
@@ -392,14 +397,18 @@ sap.ui.define([
             oWSModel.setProperty("/ParentWeightedPlanProgressStr", oQtyFmt.format(fParentWeightedPlanProgress) + "%");
             oWSModel.setProperty("/ParentProgressState", sParentProgressState);
             oWSModel.setProperty("/ParentTimeElapsedPercent", fParentTimeElapsedPercent);
-            oWSModel.setProperty("/ParentTimeElapsedStr", oIntFmt.format(iParentElapsedDays) + " / " + oIntFmt.format(iParentPlannedDays) + " Ngày (" + oQtyFmt.format(fParentTimeElapsedPercentUncapped) + "%)");
+            oWSModel.setProperty("/ParentTimeElapsedStr", oBundle.getText("wsDaysUsageFormat", [
+                oIntFmt.format(iParentElapsedDays),
+                oIntFmt.format(iParentPlannedDays),
+                oQtyFmt.format(fParentTimeElapsedPercentUncapped)
+            ]));
             oWSModel.setProperty("/ParentTimeState", sParentTimeState);
 
             oWSModel.setProperty("/Children", aChildren);
             oWSModel.setProperty("/TotalQtyDone", "0");
             oWSModel.setProperty("/DailyLogs", aParentLogs);
 
-            WorkSummaryDelegate._calculateWeatherAndRiskStats(aParentLogs, oWSModel);
+            WorkSummaryDelegate._calculateWeatherAndRiskStats.call(that, aParentLogs, oWSModel);
             WorkSummaryDelegate._loadResourceForecasting.call(that, aParentLogs, oWSModel, 0, 0);
 
             WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, aParentLogs, oWSModel, dServerDateObj);
@@ -443,7 +452,7 @@ sap.ui.define([
                     oWSModel.setProperty("/ActualEnd", dMaxLog);
                     oWSModel.setProperty("/DailyLogs", aLogs);
 
-                    WorkSummaryDelegate._calculateWeatherAndRiskStats(aLogs, oWSModel);
+                    WorkSummaryDelegate._calculateWeatherAndRiskStats.call(that, aLogs, oWSModel);
                     WorkSummaryDelegate._loadResourceForecasting.call(that, aLogs, oWSModel, fTotalQtyDone, parseFloat(oWbs.Quantity) || 0);
 
                     var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
@@ -468,21 +477,29 @@ sap.ui.define([
         },
 
         _calculateWeatherAndRiskStats: function (aLogs, oWSModel) {
+            var oBundle = (this && this.getView && this.getView().getModel("i18n")) ? this.getView().getModel("i18n").getResourceBundle() : null;
             var mDays = {};
             var iTotalDaysWithLog = 0;
             var weatherPriority = { "CLOUDY": 1, "SUNNY": 2, "RAINY": 3, "STORMY": 4 };
 
+            var fnText = function (sKey, aArgs, sFallback) {
+                if (oBundle) {
+                    return oBundle.getText(sKey, aArgs || []);
+                }
+                return sFallback || "";
+            };
+
             if (!aLogs || aLogs.length === 0) {
                 oWSModel.setProperty("/WeatherStats", {
-                    CloudyText: "0/0 ngày (0%)",
-                    SunnyText: "0/0 ngày (0%)",
-                    RainyText: "0/0 ngày (0%)",
-                    StormyText: "0/0 ngày (0%)"
+                    CloudyText: fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)"),
+                    SunnyText: fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)"),
+                    RainyText: fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)"),
+                    StormyText: fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)")
                 });
                 oWSModel.setProperty("/RiskStats", {
-                    SafeText: "An toàn lao động: 0 / 0 ngày (0%)",
-                    ContractorText: "Vận hành/Nhà thầu: 0 / 0 ngày (0%)",
-                    OverallLevel: "Rủi ro: Thấp",
+                    SafeText: fnText("wsSafeTextFormat", [fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)")], "Safety: 0/0 days (0%)"),
+                    ContractorText: fnText("wsContractorTextFormat", [fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)")], "Operations/Contractor: 0/0 days (0%)"),
+                    OverallLevel: fnText("wsRiskLevelFormat", [fnText("wsRiskLow", [], "Low")], "Risk: Low"),
                     OverallState: "Success"
                 });
                 return;
@@ -527,9 +544,9 @@ sap.ui.define([
             });
 
             var fnFormat = function (iCount) {
-                if (iTotalDaysWithLog === 0) return "0/0 ngày (0%)";
+                if (iTotalDaysWithLog === 0) return fnText("wsDayRatioFormat", [0, 0, 0], "0/0 days (0%)");
                 var pct = Math.round((iCount / iTotalDaysWithLog) * 100);
-                return iCount + "/" + iTotalDaysWithLog + " ngày (" + pct + "%)";
+                return fnText("wsDayRatioFormat", [iCount, iTotalDaysWithLog, pct], iCount + "/" + iTotalDaysWithLog + " days (" + pct + "%)");
             };
 
             oWSModel.setProperty("/WeatherStats", {
@@ -540,15 +557,15 @@ sap.ui.define([
             });
 
             var getSafeRiskState = function (pct) {
-                if (pct > 10) return { level: "Cao", state: "Negative", icon: "sap-icon://message-error" };
-                if (pct > 2) return { level: "Trung bình", state: "Critical", icon: "sap-icon://message-warning" };
-                return { level: "Thấp", state: "Positive", icon: "sap-icon://sys-enter-2" };
+                if (pct > 10) return { level: fnText("wsRiskHigh", [], "High"), state: "Negative", icon: "sap-icon://message-error" };
+                if (pct > 2) return { level: fnText("wsRiskMedium", [], "Medium"), state: "Critical", icon: "sap-icon://message-warning" };
+                return { level: fnText("wsRiskLow", [], "Low"), state: "Positive", icon: "sap-icon://sys-enter-2" };
             };
 
             var getContractorRiskState = function (pct) {
-                if (pct > 20) return { level: "Cao", state: "Negative", icon: "sap-icon://message-error" };
-                if (pct > 10) return { level: "Trung bình", state: "Critical", icon: "sap-icon://message-warning" };
-                return { level: "Thấp", state: "Positive", icon: "sap-icon://sys-enter-2" };
+                if (pct > 20) return { level: fnText("wsRiskHigh", [], "High"), state: "Negative", icon: "sap-icon://message-error" };
+                if (pct > 10) return { level: fnText("wsRiskMedium", [], "Medium"), state: "Critical", icon: "sap-icon://message-warning" };
+                return { level: fnText("wsRiskLow", [], "Low"), state: "Positive", icon: "sap-icon://sys-enter-2" };
             };
 
             var fSafePct = iTotalDaysWithLog > 0 ? (iSafe / iTotalDaysWithLog) * 100 : 0;
@@ -558,13 +575,13 @@ sap.ui.define([
             var oContractorRisk = getContractorRiskState(fContractorPct);
 
             oWSModel.setProperty("/RiskStats", {
-                SafeText: "An toàn lao động: " + fnFormat(iSafe),
-                SafeLevel: "Rủi ro: " + oSafeRisk.level,
+                SafeText: fnText("wsSafeTextFormat", [fnFormat(iSafe)], "Safety: " + fnFormat(iSafe)),
+                SafeLevel: fnText("wsRiskLevelFormat", [oSafeRisk.level], "Risk: " + oSafeRisk.level),
                 SafeState: oSafeRisk.state,
                 SafeIcon: oSafeRisk.icon,
 
-                ContractorText: "Vận hành thi công: " + fnFormat(iContractor),
-                ContractorLevel: "Rủi ro: " + oContractorRisk.level,
+                ContractorText: fnText("wsContractorTextFormat", [fnFormat(iContractor)], "Operations/Contractor: " + fnFormat(iContractor)),
+                ContractorLevel: fnText("wsRiskLevelFormat", [oContractorRisk.level], "Risk: " + oContractorRisk.level),
                 ContractorState: oContractorRisk.state,
                 ContractorIcon: oContractorRisk.icon
             });
@@ -1295,10 +1312,15 @@ sap.ui.define([
         formatQtyProgressDisplay: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
             if (!oCtx) return "";
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var fActual = parseFloat(sTotalQtyDone) || 0;
             var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
             var sUnit = oCtx.getProperty("UnitCode") || "";
-            return "Thực tế: " + fActual.toFixed(2).replace(/\.00$/, '') + " / Kế hoạch: " + fTarget.toFixed(2).replace(/\.00$/, '') + " " + sUnit;
+            return oBundle.getText("wsActualVsPlannedDisplay", [
+                fActual.toFixed(2).replace(/\.00$/, ''),
+                fTarget.toFixed(2).replace(/\.00$/, ''),
+                sUnit
+            ]);
         },
 
         /**
@@ -1331,12 +1353,17 @@ sap.ui.define([
         formatPlanQtyDisplay: function (vDummy) {
             var oCtx = this.getView().getBindingContext();
             if (!oCtx) return "";
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
             var fPct = WorkSummaryDelegate._calcPlanTimePct(oCtx, dServerDateObj);
             var fTarget = parseFloat(oCtx.getProperty("Quantity")) || 0;
             var sUnit = oCtx.getProperty("UnitCode") || "";
             var fPlanQty = fPct * fTarget;
-            return "Cần đạt: " + fPlanQty.toFixed(2).replace(/\.00$/, '') + " / Kế hoạch: " + fTarget.toFixed(2).replace(/\.00$/, '') + " " + sUnit;
+            return oBundle.getText("wsPlanQtyDisplay", [
+                fPlanQty.toFixed(2).replace(/\.00$/, ''),
+                fTarget.toFixed(2).replace(/\.00$/, ''),
+                sUnit
+            ]);
         },
 
         formatPlanQtyPercent: function (vDummy) {
@@ -1410,16 +1437,18 @@ sap.ui.define([
 
         formatPlanDuration: function (vDummy) {
             var oCtx = this.getView().getBindingContext();
-            if (!oCtx) return "(Quỹ thời gian: —)";
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (!oCtx) return oBundle.getText("wsPlanDurationUnknown");
             var dStart = oCtx.getProperty("StartDate");
             var dEnd = oCtx.getProperty("EndDate");
-            if (!dStart || !dEnd) return "(Quỹ thời gian: —)";
+            if (!dStart || !dEnd) return oBundle.getText("wsPlanDurationUnknown");
             var iDays = WorkSummaryDelegate._getDaysDiff(dStart, dEnd) + 1;
-            return "(Quỹ thời gian: " + iDays + " ngày)";
+            return oBundle.getText("wsPlanDurationDays", [iDays]);
         },
 
         formatActualDateRange: function (sStatus) {
             var oCtx = this.getView().getBindingContext();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!oCtx || !sStatus) return "—";
             var dStartActual = oCtx.getProperty("StartActual");
             var dEndActual = oCtx.getProperty("EndActual");
@@ -1427,13 +1456,13 @@ sap.ui.define([
             var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
 
             if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
-                return "Chưa bắt đầu";
+                return oBundle.getText("wsStatusNotStarted");
             }
             if (sStatus === "IN_PROGRESS" || sStatus === "PENDING_CLOSE" || sStatus === "CLOSE_REJECTED") {
                 var sActualStartStr = dStartActual ? oDateFormat.format(dStartActual) : "—";
                 var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
                 var sServerDateStr = oDateFormat.format(dServerDateObj);
-                return sActualStartStr + " - " + sServerDateStr + " (Hiện tại)";
+                return oBundle.getText("wsActualDateRangeCurrent", [sActualStartStr, sServerDateStr]);
             }
             if (sStatus === "CLOSED") {
                 var sActualStartStr = dStartActual ? oDateFormat.format(dStartActual) : "—";
@@ -1446,6 +1475,7 @@ sap.ui.define([
         formatActualDuration: function (sStatus) {
             var oCtx = this.getView().getBindingContext();
             if (!oCtx || !sStatus) return "";
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var dStart = oCtx.getProperty("StartDate");
             var dStartActual = oCtx.getProperty("StartActual");
             var dEndActual = oCtx.getProperty("EndActual");
@@ -1455,22 +1485,22 @@ sap.ui.define([
             if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") {
                 if (!dStart || !dServerDateObj) return "";
                 var x = WorkSummaryDelegate._getDaysDiff(dStart, dServerDateObj);
-                if (x < 0) return "(Khởi công sau " + Math.abs(x) + " ngày)";
-                if (x === 0) return "(Dự kiến khởi công hôm nay)";
-                if (x > 0) return "(Chậm khởi công " + x + " ngày)";
+                if (x < 0) return oBundle.getText("wsActualDurationStartIn", [Math.abs(x)]);
+                if (x === 0) return oBundle.getText("wsActualDurationStartToday");
+                if (x > 0) return oBundle.getText("wsActualDurationLateStart", [x]);
             }
             if (sStatus === "IN_PROGRESS" || sStatus === "PENDING_CLOSE" || sStatus === "CLOSE_REJECTED") {
-                if (!dStartActual || !dServerDateObj) return "(Đã thi công: —)";
+                if (!dStartActual || !dServerDateObj) return oBundle.getText("wsActualDurationWorkedUnknown");
                 var iDays = WorkSummaryDelegate._getDaysDiff(dStartActual, dServerDateObj) + 1;
-                return "(Đã thi công: " + iDays + " ngày)";
+                return oBundle.getText("wsActualDurationWorkedDays", [iDays]);
             }
             if (sStatus === "CLOSED") {
                 if (!dStartActual || !dEndActual || !dEnd) return "";
                 var x = WorkSummaryDelegate._getDaysDiff(dEnd, dEndActual);
 
-                if (x > 0) return "(Hoàn thành muộn " + x + " ngày)";
-                if (x < 0) return "(Hoàn thành sớm " + Math.abs(x) + " ngày)";
-                if (x === 0) return "(Hoàn thành đúng hạn)";
+                if (x > 0) return oBundle.getText("wsActualDurationCompleteLate", [x]);
+                if (x < 0) return oBundle.getText("wsActualDurationCompleteEarly", [Math.abs(x)]);
+                if (x === 0) return oBundle.getText("wsActualDurationCompleteOnTime");
             }
             return "";
         },
@@ -1536,9 +1566,10 @@ sap.ui.define([
 
         formatTimeElapsedDisplay: function (vDummy) {
             var oCtx = this.getView().getBindingContext();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
             var oTime = WorkSummaryDelegate._calculateTimeElapsed(oCtx, dServerDateObj);
-            return "Đã dùng: " + oTime.used + " / Kế hoạch: " + oTime.plan + " Ngày";
+            return oBundle.getText("wsTimeElapsedDisplay", [oTime.used, oTime.plan]);
         },
 
         formatTimeElapsedPercent: function (vDummy) {
@@ -1560,13 +1591,14 @@ sap.ui.define([
 
         formatAverageProductivity: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
-            if (!oCtx) return "0 / Ngày";
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+            if (!oCtx) return oBundle.getText("wsAverageProductivityEmpty");
 
             var fTotalQty = parseFloat(sTotalQtyDone) || 0;
             var sUnit = oCtx.getProperty("UnitCode") || "";
 
             if (fTotalQty === 0) {
-                return "0 " + sUnit + " / Ngày";
+                return oBundle.getText("wsAverageProductivityFormat", [0, sUnit]);
             }
 
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
@@ -1574,14 +1606,14 @@ sap.ui.define([
             var iUsedDays = parseFloat(oTime.used) || 0;
 
             if (iUsedDays === 0) {
-                return "0 " + sUnit + " / Ngày";
+                return oBundle.getText("wsAverageProductivityFormat", [0, sUnit]);
             }
 
             // Tính toán giữ nguyên độ chính xác, chỉ làm tròn ở bước hiển thị
             var fAvgProd = fTotalQty / iUsedDays;
             var sDisplay = parseFloat(fAvgProd.toFixed(2)).toString();
 
-            return sDisplay + " " + sUnit + " / Ngày";
+            return oBundle.getText("wsAverageProductivityFormat", [sDisplay, sUnit]);
         },
 
         _calculateScheduleVariance: function (oCtx, dServerDateObj, sTotalQtyDone) {
@@ -1607,8 +1639,9 @@ sap.ui.define([
 
         formatScheduleVarianceText: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!oCtx) return "";
-            if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") return "Chưa bắt đầu";
+            if (sStatus === "PLANNING" || sStatus === "PENDING_OPEN" || sStatus === "OPEN_REJECTED" || sStatus === "OPENED") return oBundle.getText("wsStatusNotStarted");
 
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
             var oVariance = WorkSummaryDelegate._calculateScheduleVariance(oCtx, dServerDateObj, sTotalQtyDone);
@@ -1622,13 +1655,13 @@ sap.ui.define([
 
             // Nếu % Thời gian > % Khối lượng -> Chậm
             if (oVariance.percent > 0.01) {
-                return "Chậm " + sPctStr + " (" + sQtyStr + ")";
+                return oBundle.getText("wsVarianceDelayed", [sPctStr, sQtyStr]);
             }
             // Nếu % Thời gian < % Khối lượng -> Vượt
             else if (oVariance.percent < -0.01) {
-                return "Vượt " + sPctStr + " (" + sQtyStr + ")";
+                return oBundle.getText("wsVarianceAhead", [sPctStr, sQtyStr]);
             } else {
-                return "Đúng tiến độ";
+                return oBundle.getText("wsAssessmentOnTrack");
             }
         },
 
@@ -1711,15 +1744,16 @@ sap.ui.define([
 
         formatForecastDateText: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!oCtx) return "—";
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
             var oForecast = WorkSummaryDelegate._calculateForecast(oCtx, dServerDateObj, sTotalQtyDone, sStatus);
 
             switch (oForecast.status) {
-                case "NOT_STARTED": return "Chưa bắt đầu";
-                case "COMPLETED": return "Đã hoàn thành";
-                case "INSUFFICIENT_DATA": return "Chưa đủ dữ liệu";
-                case "ALMOST_DONE": return "Sắp hoàn thành";
+                case "NOT_STARTED": return oBundle.getText("wsStatusNotStarted");
+                case "COMPLETED": return oBundle.getText("wsStatusCompleted");
+                case "INSUFFICIENT_DATA": return oBundle.getText("wsStatusInsufficientData");
+                case "ALMOST_DONE": return oBundle.getText("wsStatusAlmostDone");
                 case "FORECASTED":
                     var oDateFormat = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
                     return oDateFormat.format(oForecast.forecastDate);
@@ -1729,22 +1763,23 @@ sap.ui.define([
 
         formatRiskAssessmentText: function (sStatus, sTotalQtyDone) {
             var oCtx = this.getView().getBindingContext();
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!oCtx) return "—";
             var dServerDateObj = this.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
             var oForecast = WorkSummaryDelegate._calculateForecast(oCtx, dServerDateObj, sTotalQtyDone, sStatus);
 
             switch (oForecast.status) {
-                case "NOT_STARTED": return "Chưa bắt đầu";
-                case "COMPLETED": return "Đã hoàn thành";
-                case "INSUFFICIENT_DATA": return "Chưa đủ dữ liệu";
-                case "ALMOST_DONE": return "Không rủi ro";
+                case "NOT_STARTED": return oBundle.getText("wsStatusNotStarted");
+                case "COMPLETED": return oBundle.getText("wsStatusCompleted");
+                case "INSUFFICIENT_DATA": return oBundle.getText("wsStatusInsufficientData");
+                case "ALMOST_DONE": return oBundle.getText("wsRiskNoRisk");
                 case "FORECASTED":
                     if (oForecast.daysVariance > 0) {
-                        return "Khả năng vượt tiến độ " + oForecast.daysVariance + " ngày";
+                        return oBundle.getText("wsRiskAheadDays", [oForecast.daysVariance]);
                     } else if (oForecast.daysVariance < 0) {
-                        return "Nguy cơ chậm tiến độ " + Math.abs(oForecast.daysVariance) + " ngày";
+                        return oBundle.getText("wsRiskDelayDays", [Math.abs(oForecast.daysVariance)]);
                     } else {
-                        return "Dự kiến đúng tiến độ";
+                        return oBundle.getText("wsRiskOnTrackForecast");
                     }
                 default: return "—";
             }

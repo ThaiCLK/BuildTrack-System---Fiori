@@ -34,42 +34,42 @@
             </Panel>
 
             <!-- Visible for ALL -->
-            <Panel headerText="Thời gian &amp; Trạng thái" class="sapUiSmallMarginBottom">
+            <Panel headerText="{i18n>wsTimeStatusPanel}" class="sapUiSmallMarginBottom">
                 <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
-                    <Title text="Trạng thái WBS:" level="H5"/>
+                    <Title text="{i18n>wsWbsStatusLabel}" level="H5"/>
                     <ObjectStatus text="{path: 'Status', formatter: '.formatWbsStatusText'}" state="{path: 'Status', formatter: '.formatWbsStatusState'}" inverted="true" />
                 </HBox>
                 <l:Grid defaultSpan="L6 M6 S12">
                     <l:content>
                         <VBox>
-                            <Label text="Kế hoạch thi công" design="Bold"/>
+                            <Label text="{i18n>wsPlanTimeLabel}" design="Bold"/>
                             <Text text="{path: 'StartDate', formatter: '.formatPlanDateRange'}" class="sapUiTinyMarginTopBottom"/>
                             <ObjectStatus text="{path: 'StartDate', formatter: '.formatPlanDuration'}" state="None" />
                         </VBox>
                         <VBox>
-                            <Label text="Thời gian thực tế" design="Bold"/>
+                            <Label text="{i18n>wsActualTimeLabel}" design="Bold"/>
                             <Text text="{path: 'Status', formatter: '.formatActualDateRange'}" class="sapUiTinyMarginTopBottom"/>
                             <ObjectStatus text="{path: 'Status', formatter: '.formatActualDuration'}" state="{path: 'Status', formatter: '.formatActualDurationState'}" />
                         </VBox>
                     </l:content>
                 </l:Grid>
             </Panel>
-            <Panel headerText="Tiến độ Tổng hợp" class="sapUiSmallMarginBottom" visible="{workSummaryModel>/IsParentNode}">
+            <Panel headerText="{i18n>wsSummaryProgressPanel}" class="sapUiSmallMarginBottom" visible="{workSummaryModel>/IsParentNode}">
                 <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
                     <HBox justifyContent="SpaceBetween" width="100%">
-                        <Label text="Tiến độ thực tế" design="Bold"/>
+                        <Label text="{i18n>wsActualProgressLabel}" design="Bold"/>
                         <Text text="{workSummaryModel>/ParentWeightedProgressStr}" />
                     </HBox>
                     <ProgressIndicator percentValue="{workSummaryModel>/ParentWeightedProgress}" showValue="false" state="{workSummaryModel>/ParentProgressState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
 
                     <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
-                        <Label text="Tiến độ kế hoạch" design="Bold"/>
+                        <Label text="{i18n>wsPlannedProgressLabel}" design="Bold"/>
                         <Text text="{workSummaryModel>/ParentWeightedPlanProgressStr}" />
                     </HBox>
                     <ProgressIndicator percentValue="{workSummaryModel>/ParentWeightedPlanProgress}" showValue="false" state="Success" height="1.2rem" width="100%"/>
 
                     <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
-                        <Label text="Tiêu hao Thời gian" design="Bold"/>
+                        <Label text="{i18n>wsTimeConsumptionLabel}" design="Bold"/>
                         <Text text="{workSummaryModel>/ParentTimeElapsedStr}" />
                     </HBox>
                     <ProgressIndicator percentValue="{workSummaryModel>/ParentTimeElapsedPercent}" showValue="false" state="{workSummaryModel>/ParentTimeState}" height="1.2rem" width="100%"/>
@@ -77,30 +77,30 @@
             </Panel>
 
             <VBox visible="{workSummaryModel>/IsLeafNode}">
-                <Panel headerText="Đánh giá Hiệu suất" class="sapUiSmallMarginBottom" visible="true">
+                <Panel headerText="{i18n>wsPerformancePanel}" class="sapUiSmallMarginBottom" visible="true">
                     <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
 
                         <HBox justifyContent="SpaceBetween" width="100%">
-                            <Label text="Tiến độ thực tế" design="Bold"/>
+                            <Label text="{i18n>wsActualProgressLabel}" design="Bold"/>
                             <Text text="{parts: [{path: 'Status'}, {path: 'workSummaryModel>/TotalQtyDone'}], formatter: '.formatQtyProgressDisplay'}" />
                         </HBox>
                         <ProgressIndicator percentValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyProgressPercent'}" displayValue="{path: 'workSummaryModel>/TotalQtyDone', formatter: '.formatQtyPercentageStr'}" showValue="true" state="{parts: [{path: 'Status'}, {path: 'workSummaryModel>/TotalQtyDone'}], formatter: '.formatQtyProgressState'}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
 
                         <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
-                            <Label text="Tiến độ kế hoạch" design="Bold"/>
+                            <Label text="{i18n>wsPlannedProgressLabel}" design="Bold"/>
                             <Text text="{path: 'Status', formatter: '.formatPlanQtyDisplay'}" />
                         </HBox>
                         <ProgressIndicator percentValue="{path: 'Status', formatter: '.formatPlanQtyPercent'}" displayValue="{path: 'Status', formatter: '.formatPlanQtyPercentStr'}" showValue="true" state="Success" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
 
                         <HBox justifyContent="SpaceBetween" width="100%" class="sapUiMediumMarginTop">
-                            <Label text="Tiêu hao Thời gian" design="Bold"/>
+                            <Label text="{i18n>wsTimeConsumptionLabel}" design="Bold"/>
                             <Text text="{path: 'Status', formatter: '.formatTimeElapsedDisplay'}" />
                         </HBox>
                         <ProgressIndicator percentValue="{path: 'Status', formatter: '.formatTimeElapsedPercent'}" displayValue="{path: 'Status', formatter: '.formatTimeElapsedPercentStr'}" showValue="true" state="{path: 'Status', formatter: '.formatTimeElapsedState'}" height="1.2rem" width="100%"/>
                         <VBox class="sapUiLargeMarginTop">
                             <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="sapUiTinyMarginBottom">
-                                <Label text="Lịch sử cập nhật" design="Bold"/>
-                                <Link text="Xem tất cả" press=".onPressViewFullLogHistory" />
+                                <Label text="{i18n>wsUpdateHistoryLabel}" design="Bold"/>
+                                <Link text="{i18n>wsViewAllLabel}" press=".onPressViewFullLogHistory" />
                             </HBox>
                             <ScrollContainer horizontal="true" vertical="false" width="100%" class="sapUiSmallMarginTop sapUiSmallMarginBottom">
                                 <Table showSeparators="Inner" width="100%" fixedLayout="false">
@@ -124,7 +124,7 @@
                                     <items>
                                         <ColumnListItem>
                                             <cells>
-                                                <Label text="Ngày" design="Bold" />
+                                                <Label text="{i18n>date}" design="Bold" />
                                                 <Text text="{workSummaryModel>/HistoryDates/0}" class="sapMTextBold" />
                                                 <Text text="{workSummaryModel>/HistoryDates/1}" class="sapMTextBold" />
                                                 <Text text="{workSummaryModel>/HistoryDates/2}" class="sapMTextBold" />
@@ -143,7 +143,7 @@
                                         </ColumnListItem>
                                         <ColumnListItem>
                                             <cells>
-                                                <Label text="Nhật ký" design="Bold" />
+                                                <Label text="{i18n>dailyLogTab}" design="Bold" />
                                                 <VBox alignItems="Center">
                                                     <core:Icon src="{= ${workSummaryModel>/HistoryLogIcons/0} ? ${workSummaryModel>/HistoryLogIcons/0} : null }" color="{workSummaryModel>/HistoryLogColors/0}" size="1.2rem" visible="{= !!${workSummaryModel>/HistoryLogIcons/0} }"/>
                                                     <Text text="{workSummaryModel>/HistoryLogTexts/0}" visible="{= !${workSummaryModel>/HistoryLogIcons/0} }"/>
@@ -204,7 +204,7 @@
                                         </ColumnListItem>
                                         <ColumnListItem>
                                             <cells>
-                                                <Label text="Khối lượng" design="Bold" />
+                                                <Label text="{i18n>quantity}" design="Bold" />
                                                 <ObjectStatus text="{workSummaryModel>/HistoryQtys/0}" />
                                                 <ObjectStatus text="{workSummaryModel>/HistoryQtys/1}" />
                                                 <ObjectStatus text="{workSummaryModel>/HistoryQtys/2}" />
@@ -223,7 +223,7 @@
                                         </ColumnListItem>
                                         <ColumnListItem>
                                             <cells>
-                                                <Label text="Thời tiết" design="Bold" />
+                                                <Label text="{i18n>weather}" design="Bold" />
                                                 <Text text="{workSummaryModel>/HistoryWeathers/0}" class="sapUiMediumText"/>
                                                 <Text text="{workSummaryModel>/HistoryWeathers/1}" class="sapUiMediumText"/>
                                                 <Text text="{workSummaryModel>/HistoryWeathers/2}" class="sapUiMediumText"/>
@@ -242,7 +242,7 @@
                                         </ColumnListItem>
                                         <ColumnListItem>
                                             <cells>
-                                                <Label text="Ghi chú (S/C)" design="Bold" />
+                                                <Label text="{i18n>wsNotesScLabel}" design="Bold" />
                                                 <VBox alignItems="Center">
                                                     <core:Icon src="{workSummaryModel>/HistoryNoteIcons/0}" color="{workSummaryModel>/HistoryNoteColors/0}" visible="{= ${workSummaryModel>/HistoryNoteIcons/0} !== '' }"/>
                                                     <Text text="{workSummaryModel>/HistoryNoteTexts/0}" visible="{= ${workSummaryModel>/HistoryNoteIcons/0} === '' }"/>
@@ -307,7 +307,7 @@
                         </VBox>
                     </VBox>
                 </Panel>
-                <Panel headerText="Năng suất &amp; Dự báo" class="sapUiSmallMarginBottom" visible="true">
+                <Panel headerText="{i18n>wsProductivityForecastPanel}" class="sapUiSmallMarginBottom" visible="true">
                     <VBox visible="{workSummaryModel>/IsLeafNode}" class="sapUiSmallMarginTop">
                         <viz:VizFrame
                             id="chartWbsBurnDown"
@@ -335,7 +335,7 @@
                     <l:Grid defaultSpan="L3 M6 S12" class="sapUiSmallMarginTopBottom">
                         <l:content>
                             <VBox>
-                                <Label text="Năng suất trung bình" design="Bold"/>
+                                <Label text="{i18n>wsAverageProductivityLabel}" design="Bold"/>
                                 <Text class="sapUiTinyMarginTop" text="{
                                     parts: [
                                         {path: 'Status'},
@@ -345,7 +345,7 @@
                                 }"/>
                             </VBox>
                             <VBox>
-                                <Label text="Chênh lệch tiến độ" design="Bold"/>
+                                <Label text="{i18n>wsScheduleVarianceLabel}" design="Bold"/>
                                 <ObjectStatus text="{
                                     parts: [
                                         {path: 'Status'},
@@ -367,7 +367,7 @@
                                 }" class="sapUiTinyMarginTop"/>
                             </VBox>
                             <VBox>
-                                <Label text="Dự báo ngày hoàn thành" design="Bold"/>
+                                <Label text="{i18n>wsForecastDateLabel}" design="Bold"/>
                                 <Text text="{
                                     parts: [
                                         {path: 'Status'},
@@ -377,7 +377,7 @@
                                 }" class="sapUiTinyMarginTop"/>
                             </VBox>
                             <VBox>
-                                <Label text="Đánh giá rủi ro tiến độ" design="Bold"/>
+                                <Label text="{i18n>wsRiskAssessmentLabel}" design="Bold"/>
                                 <ObjectStatus text="{
                                     parts: [
                                         {path: 'Status'},
@@ -395,26 +395,26 @@
                         </l:content>
                     </l:Grid>
                 </Panel>
-                <Panel headerText="Thống kê Thời tiết &amp; Cảnh báo Rủi ro" class="sapUiSmallMarginBottom" visible="true">
+                <Panel headerText="{i18n>wsWeatherRiskPanel}" class="sapUiSmallMarginBottom" visible="true">
                     <l:Grid defaultSpan="L6 M6 S12" class="sapUiSmallMarginTopBottom">
                         <l:content>
 
                             <VBox class="sapUiTinyMarginBottom sapUiLargeMarginEnd">
-                                <Label text="Thống kê Thời tiết" design="Bold" class="sapUiMediumMarginBottom"/>
+                                <Label text="{i18n>wsWeatherStatsTitle}" design="Bold" class="sapUiMediumMarginBottom"/>
                                 <HBox class="sapUiTinyMarginBottom">
-                                    <Text text="☁️ Nhiều mây:" width="7rem" />
+                                    <Text text="{i18n>wsCloudyLabel}" width="7rem" />
                                     <Text text="{workSummaryModel>/WeatherStats/CloudyText}" class="sapMTextBold" />
                                 </HBox>
                                 <HBox class="sapUiTinyMarginBottom">
-                                    <Text text="☀️ Nắng:" width="7rem" />
+                                    <Text text="{i18n>wsSunnyLabel}" width="7rem" />
                                     <Text text="{workSummaryModel>/WeatherStats/SunnyText}" class="sapMTextBold" />
                                 </HBox>
                                 <HBox class="sapUiTinyMarginBottom">
-                                    <Text text="🌧️ Mưa:" width="7rem" />
+                                    <Text text="{i18n>wsRainyLabel}" width="7rem" />
                                     <Text text="{workSummaryModel>/WeatherStats/RainyText}" class="sapMTextBold" />
                                 </HBox>
                                 <HBox>
-                                    <Text text="⛈️ Bão:" width="7rem" />
+                                    <Text text="{i18n>wsStormyLabel}" width="7rem" />
                                     <Text text="{workSummaryModel>/WeatherStats/StormyText}" class="sapMTextBold" />
                                 </HBox>
                             </VBox>
