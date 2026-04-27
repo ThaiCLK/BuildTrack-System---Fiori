@@ -62,11 +62,11 @@
                                                 <viz:dataset>
                                                     <vizdata:FlattenedDataset data="{chartModel>/chartData}">
                                                         <vizdata:dimensions>
-                                                            <vizdata:DimensionDefinition name="Date" value="{chartModel>Date}" />
+                                                            <vizdata:DimensionDefinition name="{chartModel>/dimensionName}" value="{chartModel>Date}" />
                                                         </vizdata:dimensions>
                                                         <vizdata:measures>
-                                                            <vizdata:MeasureDefinition name="Planned" value="{chartModel>Planned}" />
-                                                            <vizdata:MeasureDefinition name="Actual" value="{chartModel>Actual}" />
+                                                            <vizdata:MeasureDefinition name="{chartModel>/plannedMeasureName}" value="{chartModel>Planned}" />
+                                                            <vizdata:MeasureDefinition name="{chartModel>/actualMeasureName}" value="{chartModel>Actual}" />
                                                         </vizdata:measures>
                                                     </vizdata:FlattenedDataset>
                                                 </viz:dataset>

@@ -33,8 +33,14 @@ sap.ui.define([
         onInit: function () {
             this.getView().setModel(new JSONModel({
                 hasData: false,
-                chartData: []
+                chartData: [],
+                dimensionName: "Date",
+                plannedMeasureName: "Planned",
+                actualMeasureName: "Actual",
+                measureNames: ["Planned", "Actual"]
             }), "chartModel");
+
+            this._applyChartI18nLabels();
 
             this.getView().setModel(new JSONModel({
                 ProjectProgress: 0,
@@ -72,6 +78,36 @@ sap.ui.define([
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("Site").attachPatternMatched(this._onObjectMatched, this);
             sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
+        },
+
+        _applyChartI18nLabels: function () {
+            var oChartModel = this.getView().getModel("chartModel");
+            var oI18nModel = this.getView().getModel("i18n");
+            if (!oChartModel || !oI18nModel) {
+                return;
+            }
+
+            var oBundle = oI18nModel.getResourceBundle();
+            var sDimensionName = oBundle.getText("date");
+            var sPlannedMeasureName = oBundle.getText("planned");
+            var sActualMeasureName = oBundle.getText("actual");
+
+            oChartModel.setProperty("/dimensionName", sDimensionName);
+            oChartModel.setProperty("/plannedMeasureName", sPlannedMeasureName);
+            oChartModel.setProperty("/actualMeasureName", sActualMeasureName);
+            oChartModel.setProperty("/measureNames", [sPlannedMeasureName, sActualMeasureName]);
+
+            var oViz = this.byId("chartBurnDown");
+            if (oViz && oViz.getFeeds) {
+                (oViz.getFeeds() || []).forEach(function (oFeed) {
+                    var sUid = oFeed && oFeed.getUid ? oFeed.getUid() : "";
+                    if (sUid === "categoryAxis") {
+                        oFeed.setValues([sDimensionName]);
+                    } else if (sUid === "valueAxis") {
+                        oFeed.setValues([sPlannedMeasureName, sActualMeasureName]);
+                    }
+                });
+            }
         },
 
         // ── FORMATTERS ──────────────────────────────────────────────────────
@@ -136,6 +172,8 @@ sap.ui.define([
             var sProjectId = oEvent.getParameter("arguments").project_id;
             this._sCurrentProjectId = sProjectId;
             this._sSiteVhProjectId = null;
+
+            this._applyChartI18nLabels();
 
             this._resetSiteFilterState();
 
