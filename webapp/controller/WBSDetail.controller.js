@@ -218,7 +218,7 @@ sap.ui.define([
                 oInWbsEnd.setValueState("Error");
                 oInWbsEnd.setValueStateText(oBundle.getText("requireWbsEndDate"));
                 bHasError = true;
-            } else if (dWStart && dWEnd <= dWStart) {
+            } else if (dWStart && dWEnd < dWStart) {
                 oInWbsEnd.setValueState("Error");
                 oInWbsEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
                 bHasError = true;

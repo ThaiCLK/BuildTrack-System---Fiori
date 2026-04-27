@@ -1841,12 +1841,6 @@ sap.ui.define([
                 }
 
                 if (dEndObj && !isNaN(dEndObj.getTime())) {
-                    if (dStartObj) {
-                        var dMinEndFromStart = new Date(dStartObj);
-                        dMinEndFromStart.setHours(0, 0, 0, 0);
-                        dMinEndFromStart.setDate(dMinEndFromStart.getDate() + 1);
-                        oPickerEnd.setMinDate(dMinEndFromStart);
-                    }
                     oPickerEnd.setDateValue(dEndObj);
                 }
 
@@ -2051,7 +2045,7 @@ sap.ui.define([
                             }
                         }
 
-                        if (dStart && dEnd && dEnd <= dStart) {
+                        if (dStart && dEnd && dEnd < dStart) {
                             oPickerEnd.setValueState("Error");
                             oPickerEnd.setValueStateText(oBundle.getText("wbsEndDateBeforeStartDateError"));
                             bHasError = true;

@@ -1100,7 +1100,7 @@ sap.ui.define([
                 // and see our custom error message instead of the generic UI5 minDate error.
                 var dStart = oPickerStart.getDateValue();
                 var dEnd = oPickerEnd.getDateValue();
-                if (dStart && dEnd && dEnd <= dStart) {
+                if (dStart && dEnd && dEnd < dStart) {
                     oPickerEnd.setValueState("Error");
                     oPickerEnd.setValueStateText(oBundle.getText("endDateBeforeStartError"));
                 } else {
@@ -1111,7 +1111,7 @@ sap.ui.define([
             oPickerEnd.attachChange(function (oEvent) {
                 var dStart = oPickerStart.getDateValue();
                 var dEnd = oPickerEnd.getDateValue();
-                if (dStart && dEnd && dEnd <= dStart) {
+                if (dStart && dEnd && dEnd < dStart) {
                     oPickerEnd.setValueState("Error");
                     oPickerEnd.setValueStateText(oBundle.getText("endDateBeforeStartError"));
                 } else {
@@ -1266,7 +1266,7 @@ sap.ui.define([
                             var dEndCompare = new Date(dEnd.getTime());
                             dEndCompare.setHours(0, 0, 0, 0);
 
-                            if (dEndCompare <= dStartCompare) {
+                            if (dEndCompare < dStartCompare) {
                                 oPickerEnd.setValueState("Error");
                                 oPickerEnd.setValueStateText(oBundle.getText("endDateBeforeStartError"));
                                 bHasError = true;
