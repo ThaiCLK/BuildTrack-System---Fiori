@@ -508,6 +508,10 @@ sap.ui.define([
                 var oBundle = this.getView().getModel("i18n").getResourceBundle();
                 var sMsg = oBundle.getText("languageChanged", [sKey === "vi" ? oBundle.getText("vietnamese") : oBundle.getText("english")]);
                 sap.m.MessageToast.show(sMsg);
+
+                // Recompute model-derived texts (e.g. Time/Assessment in Site progress)
+                // so they follow the newly selected locale immediately.
+                sap.ui.getCore().getEventBus().publish("Global", "RefreshData");
             }
         },
 

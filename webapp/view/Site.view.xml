@@ -62,11 +62,11 @@
                                                 <viz:dataset>
                                                     <vizdata:FlattenedDataset data="{chartModel>/chartData}">
                                                         <vizdata:dimensions>
-                                                            <vizdata:DimensionDefinition name="{chartModel>/dimensionName}" value="{chartModel>Date}" />
+                                                            <vizdata:DimensionDefinition name="Date" value="{chartModel>Date}" />
                                                         </vizdata:dimensions>
                                                         <vizdata:measures>
-                                                            <vizdata:MeasureDefinition name="{chartModel>/plannedMeasureName}" value="{chartModel>Planned}" />
-                                                            <vizdata:MeasureDefinition name="{chartModel>/actualMeasureName}" value="{chartModel>Actual}" />
+                                                            <vizdata:MeasureDefinition name="Planned" value="{chartModel>Planned}" />
+                                                            <vizdata:MeasureDefinition name="Actual" value="{chartModel>Actual}" />
                                                         </vizdata:measures>
                                                     </vizdata:FlattenedDataset>
                                                 </viz:dataset>
@@ -122,60 +122,60 @@
                             </f:Card>
                         </VBox>
                     </IconTabFilter>
-                    <IconTabFilter text="Tiến độ Tổng hợp" key="progress" icon="sap-icon://document">
+                    <IconTabFilter text="{i18n>siteProgressTab}" key="progress" icon="sap-icon://document">
                         <VBox class="sapUiResponsiveMargin">
-                            <Panel headerText="Tiến độ Dự án" class="sapUiSmallMarginBottom">
+                            <Panel headerText="{i18n>siteProgressProjectPanel}" class="sapUiSmallMarginBottom">
                                 <VBox width="100%" class="sapUiSmallMarginBottom sapUiSmallMarginTop">
                                     <HBox justifyContent="SpaceBetween" width="100%">
-                                        <Label text="Tiến độ thực tế" design="Bold"/>
+                                        <Label text="{i18n>siteProgressActualLabel}" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectProgressStr}" />
                                     </HBox>
                                     <ProgressIndicator percentValue="{projectSummaryModel>/ProjectProgress}" showValue="false" state="{projectSummaryModel>/ProjectProgressState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
                                     <HBox justifyContent="SpaceBetween" width="100%" class="sapUiTinyMarginTop">
-                                        <Label text="Tiến độ kế hoạch" design="Bold"/>
+                                        <Label text="{i18n>siteProgressPlannedLabel}" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectPlanProgressStr}" />
                                     </HBox>
                                     <ProgressIndicator percentValue="{projectSummaryModel>/ProjectPlanProgress}" showValue="false" state="Success" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
                                     <HBox justifyContent="SpaceBetween" width="100%" class="sapUiTinyMarginTop">
-                                        <Label text="Tiêu hao Thời gian" design="Bold"/>
+                                        <Label text="{i18n>siteProgressTimeLabel}" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectTimeStr}" />
                                     </HBox>
                                     <ProgressIndicator percentValue="{projectSummaryModel>/ProjectTimePct}" showValue="false" state="{projectSummaryModel>/ProjectTimeState}" height="1.2rem" width="100%" class="sapUiTinyMarginBottom"/>
                                 </VBox>
                                 <form:SimpleForm editable="false" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4" emptySpanL="0" emptySpanM="0" columnsL="2" columnsM="2">
                                     <form:content>
-                                        <core:Title text="Lịch trình thực tế" />
-                                        <Label text="Khởi công" design="Bold"/>
+                                        <core:Title text="{i18n>siteProgressActualScheduleTitle}" />
+                                        <Label text="{i18n>siteProgressStartLabel}" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectActualStartStr}" />
-                                        <Label text="Hoàn thành" design="Bold"/>
+                                        <Label text="{i18n>siteProgressFinishLabel}" design="Bold"/>
                                         <Text text="{projectSummaryModel>/ProjectActualEndStr}" />
                                     </form:content>
                                 </form:SimpleForm>
                             </Panel>
 
-                            <Panel headerText="Tiến độ chi tiết từng Công trường (Sites)">
-                                <Table items="{path: 'projectSummaryModel>/Sites', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%" noDataText="Chưa có dữ liệu tiến độ">
+                            <Panel headerText="{i18n>siteProgressDetailPanel}">
+                                <Table items="{path: 'projectSummaryModel>/Sites', templateShareable: false}" sticky="HeaderToolbar,ColumnHeaders" width="100%" noDataText="{i18n>siteProgressNoData}">
                                     <columns>
                                         <Column>
-                                            <Text text="Tên Công trường" />
+                                            <Text text="{i18n>siteProgressSiteNameCol}" />
                                         </Column>
                                         <Column>
-                                            <Text text="Tiến độ TT" />
+                                            <Text text="{i18n>siteProgressActualCol}" />
                                         </Column>
                                         <Column>
-                                            <Text text="Tiến độ KH" />
+                                            <Text text="{i18n>siteProgressPlannedCol}" />
                                         </Column>
                                         <Column>
-                                            <Text text="Thời gian" />
+                                            <Text text="{i18n>siteProgressTimeCol}" />
                                         </Column>
                                         <Column hAlign="Begin">
-                                            <Text text="Trọng số" />
+                                            <Text text="{i18n>siteProgressWeightCol}" />
                                         </Column>
                                         <Column >
-                                            <Text text="Đánh giá" />
+                                            <Text text="{i18n>siteProgressAssessmentCol}" />
                                         </Column>
                                         <Column>
-                                            <Text text="Trạng thái" />
+                                            <Text text="{i18n>status}" />
                                         </Column>
                                     </columns>
                                     <items>

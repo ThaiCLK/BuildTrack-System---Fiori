@@ -33,14 +33,8 @@ sap.ui.define([
         onInit: function () {
             this.getView().setModel(new JSONModel({
                 hasData: false,
-                chartData: [],
-                dimensionName: "Date",
-                plannedMeasureName: "Planned",
-                actualMeasureName: "Actual",
-                measureNames: ["Planned", "Actual"]
+                chartData: []
             }), "chartModel");
-
-            this._applyChartI18nLabels();
 
             this.getView().setModel(new JSONModel({
                 ProjectProgress: 0,
@@ -78,36 +72,6 @@ sap.ui.define([
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("Site").attachPatternMatched(this._onObjectMatched, this);
             sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
-        },
-
-        _applyChartI18nLabels: function () {
-            var oChartModel = this.getView().getModel("chartModel");
-            var oI18nModel = this.getView().getModel("i18n");
-            if (!oChartModel || !oI18nModel) {
-                return;
-            }
-
-            var oBundle = oI18nModel.getResourceBundle();
-            var sDimensionName = oBundle.getText("date");
-            var sPlannedMeasureName = oBundle.getText("planned");
-            var sActualMeasureName = oBundle.getText("actual");
-
-            oChartModel.setProperty("/dimensionName", sDimensionName);
-            oChartModel.setProperty("/plannedMeasureName", sPlannedMeasureName);
-            oChartModel.setProperty("/actualMeasureName", sActualMeasureName);
-            oChartModel.setProperty("/measureNames", [sPlannedMeasureName, sActualMeasureName]);
-
-            var oViz = this.byId("chartBurnDown");
-            if (oViz && oViz.getFeeds) {
-                (oViz.getFeeds() || []).forEach(function (oFeed) {
-                    var sUid = oFeed && oFeed.getUid ? oFeed.getUid() : "";
-                    if (sUid === "categoryAxis") {
-                        oFeed.setValues([sDimensionName]);
-                    } else if (sUid === "valueAxis") {
-                        oFeed.setValues([sPlannedMeasureName, sActualMeasureName]);
-                    }
-                });
-            }
         },
 
         // ── FORMATTERS ──────────────────────────────────────────────────────
@@ -172,8 +136,6 @@ sap.ui.define([
             var sProjectId = oEvent.getParameter("arguments").project_id;
             this._sCurrentProjectId = sProjectId;
             this._sSiteVhProjectId = null;
-
-            this._applyChartI18nLabels();
 
             this._resetSiteFilterState();
 
@@ -508,6 +470,7 @@ sap.ui.define([
 
         _loadProjectProgressRollup: function (oProjectObj, aAllWbs, aSites) {
             var oSummaryModel = this.getView().getModel("projectSummaryModel");
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
             if (!aAllWbs || aAllWbs.length === 0) {
                 oSummaryModel.setProperty("/ProjectProgress", 0);
                 oSummaryModel.setProperty("/ProjectProgressStr", "0.00%");
@@ -751,32 +714,36 @@ sap.ui.define([
                     fSiteTimePctUncapped = (iSiteUsedDays / iSitePlanDays) * 100;
                     fSiteTimePct = Math.min(fSiteTimePctUncapped, 100);
                 }
-                var sTimeStr = iSiteUsedDays + " / " + iSitePlanDays + " Ngày (" + oQtyFmt.format(fSiteTimePctUncapped) + "%)";
+                var sTimeStr = oBundle.getText("siteProgressTimeSpentFormat", [
+                    iSiteUsedDays,
+                    iSitePlanDays,
+                    oQtyFmt.format(fSiteTimePctUncapped)
+                ]);
 
                 // Đánh giá
                 var sSiteStatus = (site.Status || "").toUpperCase();
                 var sAssessmentText, sAssessmentState;
                 var bHasWork = oRoot && oRoot._leafWeight > 0;
                 if (sSiteStatus === "CLOSED" || (bHasWork && oRoot._isAllClosed)) {
-                    sAssessmentText = "Hoàn thành";
+                    sAssessmentText = oBundle.getText("siteProgressAssessmentCompleted");
                     sAssessmentState = "Success";
                 } else if (!bHasWork || sSiteStatus === "PLANNING" || sSiteStatus === "PENDING_OPEN" || sSiteStatus === "OPEN_REJECTED" || sSiteStatus === "OPENED") {
-                    sAssessmentText = "Chưa thi công";
+                    sAssessmentText = oBundle.getText("siteProgressAssessmentNotStarted");
                     sAssessmentState = "None";
                 } else {
                     var fPlanProg = oRoot && oRoot._planProgress ? oRoot._planProgress : 0;
                     var fDiff = fPlanProg - fProgress;
                     if (fDiff > 10) {
-                        sAssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentText = oBundle.getText("siteProgressAssessmentDelayed", [oQtyFmt.format(fDiff)]);
                         sAssessmentState = "Error";
                     } else if (fDiff > 0) {
-                        sAssessmentText = "Chậm (" + oQtyFmt.format(fDiff) + "%)";
+                        sAssessmentText = oBundle.getText("siteProgressAssessmentDelayed", [oQtyFmt.format(fDiff)]);
                         sAssessmentState = "Warning";
                     } else if (fDiff < 0) {
-                        sAssessmentText = "Vượt (" + oQtyFmt.format(Math.abs(fDiff)) + "%)";
+                        sAssessmentText = oBundle.getText("siteProgressAssessmentAhead", [oQtyFmt.format(Math.abs(fDiff))]);
                         sAssessmentState = "Success";
                     } else {
-                        sAssessmentText = "Đúng tiến độ";
+                        sAssessmentText = oBundle.getText("siteProgressAssessmentOnTrack");
                         sAssessmentState = "Success";
                     }
                 }
@@ -829,7 +796,11 @@ sap.ui.define([
             oSummaryModel.setProperty("/ProjectPlanProgress", fProjectPlanProgress);
             oSummaryModel.setProperty("/ProjectPlanProgressStr", fProjectPlanProgress.toFixed(2) + "%");
             oSummaryModel.setProperty("/ProjectTimePct", fProjectTimePct);
-            oSummaryModel.setProperty("/ProjectTimeStr", iProjectUsedDays + " / " + iProjectPlanDays + " Ngày (" + oQtyFmt.format(fProjectTimePctUncapped) + "%)");
+            oSummaryModel.setProperty("/ProjectTimeStr", oBundle.getText("siteProgressTimeSpentFormat", [
+                iProjectUsedDays,
+                iProjectPlanDays,
+                oQtyFmt.format(fProjectTimePctUncapped)
+            ]));
             oSummaryModel.setProperty("/ProjectTimeState", sProjectTimeState);
             oSummaryModel.setProperty("/ProjectActualStartStr", fnFormatDate(oProjectStartActual));
             oSummaryModel.setProperty("/ProjectActualEndStr", bProjectAllClosed ? fnFormatDate(oProjectEndActual) : "---");
