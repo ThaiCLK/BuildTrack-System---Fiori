@@ -15,7 +15,7 @@
         showNavButton="true" 
         navButtonPress="onNavBack">
         <content>
-            <IconTabBar id="idIconTabBarSite" expanded="true" class="sapUiResponsiveContentPadding">
+            <IconTabBar id="idIconTabBarSite" expanded="true" class="sapUiResponsiveContentPadding" select=".onTabSelect">
                 <items>
                     <IconTabFilter text="{i18n>siteInfoTab}" key="info" icon="sap-icon://hint">
                         <VBox class="sapUiResponsiveMargin">

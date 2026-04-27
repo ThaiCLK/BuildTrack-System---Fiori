@@ -71,6 +71,8 @@ sap.ui.define([
 
             var oRouter = this.getOwnerComponent().getRouter();
             oRouter.getRoute("Site").attachPatternMatched(this._onObjectMatched, this);
+            // Tab cache per project_id: remembers last selected tab for each project
+            this._mProjectTabCache = {};
             sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
@@ -132,12 +134,27 @@ sap.ui.define([
             return mLabels[(sStatus || "").toUpperCase()] || sStatus;
         },
 
+        onTabSelect: function (oEvent) {
+            // Cache selected tab per project_id for restoration on back-navigation
+            var sKey = oEvent.getParameter("key");
+            if (this._sCurrentProjectId && sKey) {
+                this._mProjectTabCache[this._sCurrentProjectId] = sKey;
+            }
+        },
+
         _onObjectMatched: function (oEvent) {
             var sProjectId = oEvent.getParameter("arguments").project_id;
             this._sCurrentProjectId = sProjectId;
             this._sSiteVhProjectId = null;
 
             this._resetSiteFilterState();
+
+            // Restore cached tab for this project, or default to info tab
+            var oIconTabBar = this.byId("idIconTabBarSite");
+            if (oIconTabBar) {
+                var sCachedTab = this._mProjectTabCache[sProjectId];
+                oIconTabBar.setSelectedKey(sCachedTab || "info");
+            }
 
             var oVhModel = this.getView().getModel("siteVh");
             if (oVhModel) {
