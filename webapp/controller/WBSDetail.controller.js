@@ -61,6 +61,13 @@ sap.ui.define([
             if (this.resetLogDetailState) {
                 this.resetLogDetailState();
             }
+
+            // Cache selected tab per wbsId for restoration on back-navigation
+            var sKey = oEvent.getParameter("key");
+            if (this._sWbsId && sKey) {
+                this._mWbsTabCache[this._sWbsId] = sKey;
+            }
+
             // Clear selections when switching tabs
             var oLogTable = this.byId("idDailyLogList");
             if (oLogTable) {
@@ -410,6 +417,8 @@ sap.ui.define([
             var oWbsEnd = this.byId("inWbsEndDate");
             if (oWbsStart) oWbsStart.addEventDelegate(oDelegate);
             if (oWbsEnd) oWbsEnd.addEventDelegate(oDelegate);
+            // Tab cache per wbsId: remembers last selected tab for each WBS
+            this._mWbsTabCache = {};
             sap.ui.getCore().getEventBus().subscribe("Global", "RefreshData", this._onGlobalRefresh, this);
         },
 
@@ -454,10 +463,11 @@ sap.ui.define([
                 });
             }
 
-            // Reset Tab Selection to Info tab
+            // Restore cached tab for this WBS, or default to Info tab
             var oIconTabBar = this.byId("idIconTabBarWBS");
             if (oIconTabBar) {
-                oIconTabBar.setSelectedKey("infoTab");
+                var sCachedTab = this._mWbsTabCache[sWbsId];
+                oIconTabBar.setSelectedKey(sCachedTab || "infoTab");
             }
 
             // Clear selections on navigation
