@@ -959,7 +959,7 @@ sap.ui.define([
             // Frontend Validation: Only allow deleting PLANNING or OPEN_REJECTED
             var aInvalidItems = [];
             var aSelectedItems = [];
-            
+
             aIndices.forEach(function (iIdx) {
                 var oCtx = oTable.getContextByIndex(iIdx);
                 var oData = oCtx.getObject();
@@ -1004,7 +1004,7 @@ sap.ui.define([
                                 that.getView().setBusy(false);
                                 oTable.clearSelection();
                                 that._loadWbsData();
-                                
+
                                 if (aFailReasons.length === 0) {
                                     var sSuccessMsg = iCount === 1 ?
                                         oBundle.getText("wbsDeletedSuccess", [aSelectedItems[0].name]) :
@@ -1155,7 +1155,8 @@ sap.ui.define([
 
             // --- NEW API CODE ---
             var sApprovalType = bIsClose ? "CLOSE" : "OPEN";
-            var oParamsNew = { WbsIds: sWbsIdsStr, ApprovalType: sApprovalType };
+            var sLang = (localStorage.getItem("buildtrack_lang") || "vi").toUpperCase();
+            var oParamsNew = { WbsIds: sWbsIdsStr, ApprovalType: sApprovalType, Language: sLang };
 
             oModel.callFunction("/ApproveWbs", {
                 method: "POST",
