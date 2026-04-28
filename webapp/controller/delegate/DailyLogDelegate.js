@@ -702,7 +702,47 @@ sap.ui.define([
                     filters: that._sWbsId ? [new Filter("WbsId", FilterOperator.EQ, that._sWbsId)] : [],
                     success: function (oData) {
                         var aExistingLogs = oData.results || [];
-                        that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                        
+                        // Check for duplicate dates
+                        var aDuplicateDates = [];
+                        var oDateFmt = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                        
+                        aSelectedLogs.forEach(function(oLog) {
+                            var dLogDate = oLog.log_date instanceof Date ? oLog.log_date : new Date(oLog.log_date);
+                            var sFormattedDate = oDateFmt.format(dLogDate);
+                            
+                            for (var i = 0; i < aExistingLogs.length; i++) {
+                                var l = aExistingLogs[i];
+                                var dExisting = l.LogDate instanceof Date ? l.LogDate : new Date(l.LogDate);
+                                var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                                var sNormCheckId = that._sWbsId ? that._sWbsId.toLowerCase().replace(/-/g, "") : "";
+
+                                if ((!sLogWbsId || sLogWbsId === sNormCheckId) &&
+                                    dExisting.getFullYear() === dLogDate.getFullYear() &&
+                                    dExisting.getMonth() === dLogDate.getMonth() &&
+                                    dExisting.getDate() === dLogDate.getDate()) {
+                                    if (aDuplicateDates.indexOf(sFormattedDate) === -1) {
+                                        aDuplicateDates.push(sFormattedDate);
+                                    }
+                                    break;
+                                }
+                            }
+                        });
+
+                        if (aDuplicateDates.length > 0) {
+                            oUIModel.setProperty("/ui/busy", false);
+                            MessageBox.confirm(oBundle.getText("duplicateLogDateOverwriteConfirm", [aDuplicateDates.join(", ")]), {
+                                title: oBundle.getText("duplicateLogDateOverwriteTitle"),
+                                onClose: function (sAction) {
+                                    if (sAction === MessageBox.Action.OK) {
+                                        oUIModel.setProperty("/ui/busy", true);
+                                        that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                                    }
+                                }
+                            });
+                        } else {
+                            that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                        }
                     },
                     error: function () {
                         oUIModel.setProperty("/ui/busy", false);
@@ -1854,7 +1894,6 @@ sap.ui.define([
             var oModel = this.getOwnerComponent().getModel();
 
             var fnSequentialProcess = function (aOld, aNew) {
-                console.log("_saveResourceUse: Deleting " + aOld.length + " old resources, creating " + aNew.length + " new resources for LogId=" + sLogId);
                 var iOldIdx = 0;
                 var fnProcessOld = function () {
                     if (iOldIdx >= aOld.length) {
@@ -1862,11 +1901,9 @@ sap.ui.define([
                         return;
                     }
                     var u = aOld[iOldIdx++];
-                    console.log("_saveResourceUse: Removing ResourceUseId=" + u.ResourceUseId);
                     oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
                         success: fnProcessOld,
                         error: function () {
-                            console.warn("_saveResourceUse: Failed to remove ResourceUseId=" + u.ResourceUseId);
                             fnProcessOld();
                         }
                     });
@@ -1905,11 +1942,9 @@ sap.ui.define([
                         var sResLogId = (r.LogId || "").toLowerCase().replace(/-/g, "");
                         return sResLogId === sNormLogId;
                     });
-                    console.log("_saveResourceUse: Backend returned " + aAll.length + " resources, after client filter: " + aFiltered.length);
                     fnSequentialProcess(aFiltered, aResUse);
                 },
                 error: function () {
-                    console.warn("_saveResourceUse: Failed to read existing resources, proceeding with create only");
                     fnSequentialProcess([], aResUse);
                 }
             });
