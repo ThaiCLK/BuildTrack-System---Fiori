@@ -1,0 +1,20 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    <!-- Repeating rows for parent/grandparent acceptance report:
+         Each row shows a leaf descendant WBS with its own Quantity, TotalQtyDone, and UnitCode.
+         Binds to viewData>/acceptanceChildren which is populated by _loadAcceptanceChildren. -->
+    <VBox items="{viewData>/acceptanceChildren}">
+        <HBox class="acceptanceTableRow" width="100%" renderType="Bare">
+            <Text text="{viewData>WbsName}" class="tableDataCell colMain" />
+            <Text text="{path: 'viewData>Quantity', formatter: '.formatTotalQty'}" class="tableDataCell col15 cellEnd" />
+            <Text text="{path: 'viewData>TotalQtyDone', formatter: '.formatTotalQty'}" class="tableDataCell col15 cellEnd" />
+            <Text text="{viewData>UnitCode}" class="tableDataCell col10 cellCenter" />
+            <VBox class="tableDataCell col15 cellCenter">
+                <ObjectStatus 
+                    text="{= ${viewData>/evaluationResult} === '1' ? 'Đạt' : (${viewData>/evaluationResult} === '2' ? 'Chưa Đạt' : '') }"
+                    state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '2' ? 'Error' : 'None') }" />
+            </VBox>
+        </HBox>
+    </VBox>
+</core:FragmentDefinition>

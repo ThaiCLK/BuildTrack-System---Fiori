@@ -57,9 +57,9 @@
                 <VBox class="sapUiMediumMarginTop">
                     <Label text="II. NỘI DUNG NGHIỆM THU" class="signatureLabel sapUiSmallMarginBottom" />
                     
-                    <!-- Simulated Table for 1 row to guarantee rendering on all devices -->
-                    <VBox class="acceptanceTableWrapper sapUiTinyMarginTop" width="100%">
-                        <!-- Header Row -->
+                    <!-- ===== LEAF NODE: Single row (task con có quantity riêng) ===== -->
+                    <VBox class="acceptanceTableWrapper sapUiTinyMarginTop" width="100%"
+                          visible="{viewData>/isAcceptanceLeaf}">
                         <HBox class="acceptanceTableHeader" width="100%" renderType="Bare">
                             <Text text="Nội dung công việc" class="tableHeaderCell colMain" />
                             <Text text="Kế hoạch" class="tableHeaderCell col15 cellEnd" />
@@ -67,7 +67,6 @@
                             <Text text="ĐVT" class="tableHeaderCell col10 cellCenter" />
                             <Text text="Đánh giá" class="tableHeaderCell col15 cellCenter" />
                         </HBox>
-                        <!-- Data Row -->
                         <HBox class="acceptanceTableRow" width="100%" renderType="Bare">
                             <Text text="{WbsName}" class="tableDataCell colMain" />
                             <Text text="{path: 'Quantity', formatter: '.formatTotalQty'}" class="tableDataCell col15 cellEnd" />
@@ -79,6 +78,19 @@
                                     state="{= ${viewData>/evaluationResult} === '1' ? 'Success' : (${viewData>/evaluationResult} === '2' ? 'Error' : 'None') }" />
                             </VBox>
                         </HBox>
+                    </VBox>
+
+                    <!-- ===== PARENT/GRANDPARENT NODE: Multi-row from leaf descendants ===== -->
+                    <VBox class="acceptanceTableWrapper sapUiTinyMarginTop" width="100%"
+                          visible="{= !${viewData>/isAcceptanceLeaf} }">
+                        <HBox class="acceptanceTableHeader" width="100%" renderType="Bare">
+                            <Text text="Nội dung công việc" class="tableHeaderCell colMain" />
+                            <Text text="Kế hoạch" class="tableHeaderCell col15 cellEnd" />
+                            <Text text="Thực tế" class="tableHeaderCell col15 cellEnd" />
+                            <Text text="ĐVT" class="tableHeaderCell col10 cellCenter" />
+                            <Text text="Đánh giá" class="tableHeaderCell col15 cellCenter" />
+                        </HBox>
+                        <core:Fragment fragmentName="z.bts.buildtrack551.view.fragments.AcceptanceReportRows" type="XML" />
                     </VBox>
                 </VBox>
 
