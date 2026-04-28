@@ -702,7 +702,47 @@ sap.ui.define([
                     filters: that._sWbsId ? [new Filter("WbsId", FilterOperator.EQ, that._sWbsId)] : [],
                     success: function (oData) {
                         var aExistingLogs = oData.results || [];
-                        that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                        
+                        // Check for duplicate dates
+                        var aDuplicateDates = [];
+                        var oDateFmt = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                        
+                        aSelectedLogs.forEach(function(oLog) {
+                            var dLogDate = oLog.log_date instanceof Date ? oLog.log_date : new Date(oLog.log_date);
+                            var sFormattedDate = oDateFmt.format(dLogDate);
+                            
+                            for (var i = 0; i < aExistingLogs.length; i++) {
+                                var l = aExistingLogs[i];
+                                var dExisting = l.LogDate instanceof Date ? l.LogDate : new Date(l.LogDate);
+                                var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                                var sNormCheckId = that._sWbsId ? that._sWbsId.toLowerCase().replace(/-/g, "") : "";
+
+                                if ((!sLogWbsId || sLogWbsId === sNormCheckId) &&
+                                    dExisting.getFullYear() === dLogDate.getFullYear() &&
+                                    dExisting.getMonth() === dLogDate.getMonth() &&
+                                    dExisting.getDate() === dLogDate.getDate()) {
+                                    if (aDuplicateDates.indexOf(sFormattedDate) === -1) {
+                                        aDuplicateDates.push(sFormattedDate);
+                                    }
+                                    break;
+                                }
+                            }
+                        });
+
+                        if (aDuplicateDates.length > 0) {
+                            oUIModel.setProperty("/ui/busy", false);
+                            MessageBox.confirm(oBundle.getText("duplicateLogDateOverwriteConfirm", [aDuplicateDates.join(", ")]), {
+                                title: oBundle.getText("duplicateLogDateOverwriteTitle"),
+                                onClose: function (sAction) {
+                                    if (sAction === MessageBox.Action.OK) {
+                                        oUIModel.setProperty("/ui/busy", true);
+                                        that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                                    }
+                                }
+                            });
+                        } else {
+                            that._importLogsSequentially(aSelectedLogs, 0, 0, aExistingLogs);
+                        }
                     },
                     error: function () {
                         oUIModel.setProperty("/ui/busy", false);
@@ -897,7 +937,7 @@ sap.ui.define([
                 // and correctly handles updates by replacing existing resources instead of appending.
                 that._saveResourceUse(sLogId, aResources, function () {
                     that._importLogsSequentially(aLogs, iIndex + 1, iSuccess + 1, aExistingLogs, aCreatedDates, aUpdatedDates);
-                }, false);
+                });
             };
 
             if (sExistingLogId) {
@@ -1066,6 +1106,16 @@ sap.ui.define([
         },
 
         onToggleEditMode: function () {
+            // Permission check: ZBT_DAILY_LOG — only AuthLevel 0 (Field Engineer)
+            var oUserModel = this.getView().getModel("userModel");
+            var iAuthLevel = oUserModel ? parseInt(oUserModel.getProperty("/authLevel"), 10) : -1;
+            var oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            if (iAuthLevel !== 0) {
+                sap.m.MessageBox.error(oBundle.getText("dailyLogPermissionError"));
+                return;
+            }
+
             if (!this._verifyStatusForDailyLog()) {
                 return;
             }
@@ -1073,7 +1123,13 @@ sap.ui.define([
             if (oInput) {
                 oInput.setValueState("None");
             }
-            this.getView().getModel("dailyLogModel").setProperty("/ui/editMode", true);
+            // Save a deep copy of current data as backup for Cancel
+            var oUIModel = this.getView().getModel("dailyLogModel");
+            var oCurrentLog = oUIModel.getProperty("/selectedLog");
+            var aCurrentResources = oUIModel.getProperty("/resourceUseList");
+            oUIModel.setProperty("/ui/_backupLog", JSON.parse(JSON.stringify(oCurrentLog || {})));
+            oUIModel.setProperty("/ui/_backupResources", JSON.parse(JSON.stringify(aCurrentResources || [])));
+            oUIModel.setProperty("/ui/editMode", true);
         },
 
         onQuantityChange: function (oEvent) {
@@ -1101,6 +1157,19 @@ sap.ui.define([
                     oTable.removeSelections(true);
                 }
             } else {
+                // Restore from backup saved when entering edit mode
+                var oBackupLog = oUIModel.getProperty("/ui/_backupLog");
+                var aBackupResources = oUIModel.getProperty("/ui/_backupResources");
+                if (oBackupLog) {
+                    // Restore LogDate as a Date object (JSON.parse converts it to string)
+                    if (oBackupLog.LogDate && typeof oBackupLog.LogDate === "string") {
+                        oBackupLog.LogDate = new Date(oBackupLog.LogDate);
+                    }
+                    oUIModel.setProperty("/selectedLog", oBackupLog);
+                }
+                if (aBackupResources) {
+                    oUIModel.setProperty("/resourceUseList", aBackupResources);
+                }
                 oUIModel.setProperty("/ui/editMode", false);
             }
         },
@@ -1711,7 +1780,7 @@ sap.ui.define([
             };
 
             var oBundle = this.getView().getModel("i18n").getResourceBundle();
-            var fnContinueSave = function (bIsMerging) {
+            var fnContinueSave = function () {
                 oUIModel.setProperty("/ui/busy", true);
                 var fnAfterLog = function (sLogId) {
                     // LAST DEFENSE: Group duplicates before saving to OData
@@ -1739,14 +1808,10 @@ sap.ui.define([
                         that._bindDailyLogList(that._sWbsId);
                         that._updateWbsActualDates(that._sWbsId);
                         that._loadWorkSummary(that._sWbsId);
-
-                        // If we implicitly merged into an existing log, refresh the resource list to show all
-                        if (bIsMerging) {
-                            that._loadResourceUse(sLogId);
-                        }
+                        that._loadResourceUse(sLogId);
 
                         MessageToast.show(sToast);
-                    }, bIsMerging);
+                    });
                 };
 
                 if (bIsNew) {
@@ -1798,15 +1863,25 @@ sap.ui.define([
                         }
                     }
 
-                    var bIsMerging = false;
                     if (sExistingLogIdToUpdate) {
-                        // Switch to update mode for this existing log
-                        bIsNew = false;
-                        oLog.LogId = sExistingLogIdToUpdate;
-                        bIsMerging = true;
+                        // Duplicate date found — ask user to confirm overwrite
+                        var oDateFmt = sap.ui.core.format.DateFormat.getDateInstance({ pattern: "dd/MM/yyyy" });
+                        var sDateStr = oDateFmt.format(dRaw);
+                        MessageBox.confirm(oBundle.getText("duplicateLogDateOverwriteConfirm", [sDateStr]), {
+                            title: oBundle.getText("duplicateLogDateOverwriteTitle"),
+                            onClose: function (sAction) {
+                                if (sAction === MessageBox.Action.OK) {
+                                    // Switch to update mode for this existing log
+                                    bIsNew = false;
+                                    oLog.LogId = sExistingLogIdToUpdate;
+                                    fnContinueSave();
+                                }
+                            }
+                        });
+                        return;
                     }
 
-                    fnContinueSave(bIsMerging);
+                    fnContinueSave();
                 },
                 error: function (oError) {
                     oUIModel.setProperty("/ui/busy", false);
@@ -1815,20 +1890,22 @@ sap.ui.define([
             });
         },
 
-        _saveResourceUse: function (sLogId, aResUse, fnSuccess, bAppendOnly) {
+        _saveResourceUse: function (sLogId, aResUse, fnSuccess) {
             var oModel = this.getOwnerComponent().getModel();
 
             var fnSequentialProcess = function (aOld, aNew) {
                 var iOldIdx = 0;
                 var fnProcessOld = function () {
-                    if (bAppendOnly || iOldIdx >= aOld.length) {
+                    if (iOldIdx >= aOld.length) {
                         fnProcessNew();
                         return;
                     }
                     var u = aOld[iOldIdx++];
                     oModel.remove("/ResourceUseSet(guid'" + u.ResourceUseId + "')", {
                         success: fnProcessOld,
-                        error: fnProcessOld
+                        error: function () {
+                            fnProcessOld();
+                        }
                     });
                 };
 
@@ -1853,10 +1930,19 @@ sap.ui.define([
                 fnProcessOld();
             };
 
+            // Read existing resources for this log — use filter, but also do client-side filtering
+            // as a safety net in case the backend ignores $filter
             oModel.read("/ResourceUseSet", {
                 filters: [new Filter("LogId", FilterOperator.EQ, sLogId)],
                 success: function (oData) {
-                    fnSequentialProcess(oData.results || [], aResUse);
+                    var aAll = oData.results || [];
+                    // Client-side filter: only keep resources belonging to this LogId
+                    var sNormLogId = (sLogId || "").toLowerCase().replace(/-/g, "");
+                    var aFiltered = aAll.filter(function (r) {
+                        var sResLogId = (r.LogId || "").toLowerCase().replace(/-/g, "");
+                        return sResLogId === sNormLogId;
+                    });
+                    fnSequentialProcess(aFiltered, aResUse);
                 },
                 error: function () {
                     fnSequentialProcess([], aResUse);

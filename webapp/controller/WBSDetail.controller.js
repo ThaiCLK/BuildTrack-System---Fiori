@@ -404,7 +404,9 @@ sap.ui.define([
                     level3: { text: "[Chờ duyệt]", signed: false }
                 },
                 isAcceptanceReportReady: false,
-                editMode: false
+                editMode: false,
+                acceptanceChildren: [],
+                isAcceptanceLeaf: true
             });
             this.getView().setModel(oViewData, "viewData");
             // --- DATE PICKER RESTRICTIONS ---
@@ -1216,6 +1218,133 @@ sap.ui.define([
             this._openAcceptanceReport(true);
         },
 
+        /**
+         * Recursively collect all leaf descendant WBS nodes of a given parent node.
+         * A leaf is a node with no children in the tree map, not a root, and whose parent is not root.
+         */
+        _collectLeafDescendants: function (sParentWbsId, oTreeMap, mRootIds) {
+            var sNormId = sParentWbsId.toLowerCase().replace(/-/g, "");
+            var aDirectChildren = oTreeMap[sNormId] || [];
+            var aLeaves = [];
+            var that = this;
+
+            aDirectChildren.forEach(function (oChild) {
+                var sChildNormId = oChild.WbsId.toLowerCase().replace(/-/g, "");
+                var aGrandChildren = oTreeMap[sChildNormId] || [];
+                var bIsRoot = mRootIds && mRootIds[sChildNormId];
+                var sChildPid = oChild.ParentId ? oChild.ParentId.toLowerCase().replace(/-/g, "") : "";
+                var bParentIsRoot = mRootIds && mRootIds[sChildPid];
+                var bIsLeaf = (aGrandChildren.length === 0 && !bIsRoot && !bParentIsRoot);
+
+                if (bIsLeaf) {
+                    aLeaves.push(oChild);
+                } else {
+                    // Recurse into non-leaf children
+                    aLeaves = aLeaves.concat(that._collectLeafDescendants(oChild.WbsId, oTreeMap, mRootIds));
+                }
+            });
+
+            return aLeaves;
+        },
+
+        /**
+         * Load all leaf descendants for this WBS and populate viewData>/acceptanceChildren.
+         * For leaf nodes, acceptanceChildren is empty (the report shows a single-row binding).
+         * For parent/grandparent nodes, acceptanceChildren contains each leaf with qty info.
+         */
+        _loadAcceptanceChildren: function (sWbsId, sSiteId) {
+            var that = this;
+            var oModel = this.getOwnerComponent().getModel();
+            var oViewData = this.getView().getModel("viewData");
+
+            oModel.read("/WBSSet", {
+                filters: [new sap.ui.model.Filter("SiteId", sap.ui.model.FilterOperator.EQ, sSiteId)],
+                success: function (oWbsData) {
+                    var aAllWbs = oWbsData.results || [];
+
+                    // Build tree map
+                    var oTreeMap = {};
+                    var mRootIds = {};
+                    aAllWbs.forEach(function (w) {
+                        var sPid = w.ParentId ? w.ParentId.toLowerCase().replace(/-/g, "") : "";
+                        if (!sPid || /^0+$/.test(sPid)) {
+                            mRootIds[w.WbsId.toLowerCase().replace(/-/g, "")] = true;
+                            sPid = "root";
+                        }
+                        if (!oTreeMap[sPid]) oTreeMap[sPid] = [];
+                        oTreeMap[sPid].push(w);
+                    });
+
+                    var sNormWbsId = sWbsId.toLowerCase().replace(/-/g, "");
+                    var aDirectChildren = oTreeMap[sNormWbsId] || [];
+                    var bIsRoot = mRootIds[sNormWbsId];
+
+                    // Find the current WBS node
+                    var oCurrentWbs = null;
+                    for (var i = 0; i < aAllWbs.length; i++) {
+                        if (aAllWbs[i].WbsId.toLowerCase().replace(/-/g, "") === sNormWbsId) {
+                            oCurrentWbs = aAllWbs[i];
+                            break;
+                        }
+                    }
+
+                    var sNormPid = (oCurrentWbs && oCurrentWbs.ParentId) ? oCurrentWbs.ParentId.toLowerCase().replace(/-/g, "") : "";
+                    var bParentIsRoot = mRootIds[sNormPid];
+                    var bIsLeaf = (aDirectChildren.length === 0 && !bIsRoot && !bParentIsRoot);
+
+                    if (bIsLeaf) {
+                        // Leaf node: no children to aggregate
+                        oViewData.setProperty("/acceptanceChildren", []);
+                        oViewData.setProperty("/isAcceptanceLeaf", true);
+                        return;
+                    }
+
+                    // Collect all leaf descendants
+                    var aLeaves = that._collectLeafDescendants(sWbsId, oTreeMap, mRootIds);
+
+                    // For each leaf, compute TotalQtyDone from DailyLogs
+                    oModel.read("/DailyLogSet", {
+                        success: function (oLogData) {
+                            var aAllLogs = oLogData.results || [];
+                            var mLogSums = {};
+                            aAllLogs.forEach(function (l) {
+                                var sLogWbsId = l.WbsId ? l.WbsId.toLowerCase().replace(/-/g, "") : "";
+                                if (!mLogSums[sLogWbsId]) mLogSums[sLogWbsId] = 0;
+                                mLogSums[sLogWbsId] += parseFloat(l.QuantityDone) || 0;
+                            });
+
+                            var aAccChildren = aLeaves.map(function (oLeaf) {
+                                var sLeafNorm = oLeaf.WbsId.toLowerCase().replace(/-/g, "");
+                                var fQtyDone = mLogSums[sLeafNorm] || 0;
+                                // Use backend TotalQuantityDone if available
+                                if (parseFloat(oLeaf.TotalQuantityDone) > 0) {
+                                    fQtyDone = parseFloat(oLeaf.TotalQuantityDone);
+                                }
+                                return {
+                                    WbsName: oLeaf.WbsName || "",
+                                    WbsCode: oLeaf.WbsCode || "",
+                                    Quantity: parseFloat(oLeaf.Quantity) || 0,
+                                    TotalQtyDone: fQtyDone,
+                                    UnitCode: oLeaf.UnitCode || ""
+                                };
+                            });
+
+                            oViewData.setProperty("/acceptanceChildren", aAccChildren);
+                            oViewData.setProperty("/isAcceptanceLeaf", false);
+                        },
+                        error: function () {
+                            oViewData.setProperty("/acceptanceChildren", []);
+                            oViewData.setProperty("/isAcceptanceLeaf", false);
+                        }
+                    });
+                },
+                error: function () {
+                    oViewData.setProperty("/acceptanceChildren", []);
+                    oViewData.setProperty("/isAcceptanceLeaf", true);
+                }
+            });
+        },
+
         _openAcceptanceReport: function (bIsSignMode) {
             var oView = this.getView();
             var that = this;
@@ -1226,8 +1355,11 @@ sap.ui.define([
             var oContext = oView.getBindingContext();
             var oWbs = oContext ? oContext.getObject() : {};
 
-
             oView.setBusy(true);
+
+            // Load leaf descendants for the acceptance report table
+            this._loadAcceptanceChildren(sWbsId, sSiteId);
+
 
             var fnFetchLogsAndOpenDialog = function (oResult) {
                 var bActionable = false;
