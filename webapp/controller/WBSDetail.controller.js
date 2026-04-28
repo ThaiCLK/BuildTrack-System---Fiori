@@ -1073,9 +1073,10 @@ sap.ui.define([
                 onClose: function (sAction) {
                     if (sAction === sap.m.MessageBox.Action.OK) {
                         oView.setBusy(true);
+                        var sLang = (localStorage.getItem("buildtrack_lang") || "vi").toUpperCase();
                         that.getOwnerComponent().getModel().callFunction("/ApproveWbs", {
                             method: "POST",
-                            urlParameters: { WbsIds: oWbsCtx.getProperty("WbsId"), ApprovalType: "OPEN" },
+                            urlParameters: { WbsIds: oWbsCtx.getProperty("WbsId"), ApprovalType: "OPEN", Language: sLang },
                             success: function (oData) {
                                 oView.setBusy(false);
                                 that.getOwnerComponent().getModel().refresh(true, true);
@@ -1655,9 +1656,10 @@ sap.ui.define([
                 onClose: function (sAction) {
                     if (sAction === sap.m.MessageBox.Action.OK) {
                         oView.setBusy(true);
+                        var sLang = (localStorage.getItem("buildtrack_lang") || "vi").toUpperCase();
                         that.getOwnerComponent().getModel().callFunction("/ApproveWbs", {
                             method: "POST",
-                            urlParameters: { WbsIds: oWbsCtx.getProperty("WbsId"), ApprovalType: "OPEN" },
+                            urlParameters: { WbsIds: oWbsCtx.getProperty("WbsId"), ApprovalType: "OPEN", Language: sLang },
                             success: function (oData) {
                                 oView.setBusy(false);
                                 that.getOwnerComponent().getModel().refresh(true, true);
@@ -1720,11 +1722,13 @@ sap.ui.define([
             oView.setBusy(true);
 
             // --- NEW API CODE ---
+            var sLang = (localStorage.getItem("buildtrack_lang") || "vi").toUpperCase();
             oModel.callFunction("/ApproveWbs", {
                 method: "POST",
                 urlParameters: {
                     WbsIds: sWbsId,
-                    ApprovalType: "OPEN"
+                    ApprovalType: "OPEN",
+                    Language: sLang
                 },
                 success: function (oData) {
                     oView.setBusy(false);

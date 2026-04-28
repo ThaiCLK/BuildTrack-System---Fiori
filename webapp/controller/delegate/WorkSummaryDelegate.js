@@ -1978,9 +1978,10 @@ sap.ui.define([
                 // --- END OLD API CODE ---
 
                 // --- NEW API CODE ---
+                var sLang = (localStorage.getItem("buildtrack_lang") || "vi").toUpperCase();
                 oModel.callFunction("/ApproveWbs", {
                     method: "POST",
-                    urlParameters: { WbsIds: sWbsId, ApprovalType: "CLOSE" },
+                    urlParameters: { WbsIds: sWbsId, ApprovalType: "CLOSE", Language: sLang },
                     success: function (oData) {
                         oView.setBusy(false);
                         this._loadWorkSummary(sWbsId);
