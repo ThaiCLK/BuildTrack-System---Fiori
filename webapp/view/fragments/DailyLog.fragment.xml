@@ -114,7 +114,7 @@
                                         path: 'dailyLogModel>/selectedLog/LogDate',
                                         type: 'sap.ui.model.type.Date',
                                         formatOptions: { pattern: 'dd/MM/yyyy' }
-                                    }" editable="{dailyLogModel>/ui/editMode}" displayFormat="dd/MM/yyyy" valueFormat="dd/MM/yyyy"/>
+                                    }" editable="false" displayFormat="dd/MM/yyyy" valueFormat="dd/MM/yyyy"/>
 
                                 <Label text="{i18n>reportQtyDone}"/>
                                 <HBox alignItems="Center">

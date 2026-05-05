@@ -644,8 +644,6 @@ sap.ui.define([
                         var fnText = function (sKey, sFallback) { return oBundle ? oBundle.getText(sKey) : sFallback; };
                         var aForecasting = [];
                         var fRemainingQty = Math.max(0, fQuantity - fTotalQtyDone);
-                        var sRemainingText = fnText("wsRemainingPrefix", "Còn:") + " " + Math.round(fRemainingQty);
-                        oWSModel.setProperty("/RemainingQtyText", sRemainingText);
 
                         var oNumFormat = sap.ui.core.format.NumberFormat.getFloatInstance({ maxFractionDigits: 2, groupingEnabled: true });
                         var oNormFormat = sap.ui.core.format.NumberFormat.getFloatInstance({ maxFractionDigits: 4, groupingEnabled: true });
