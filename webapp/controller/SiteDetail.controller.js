@@ -287,11 +287,24 @@ sap.ui.define([
 
             var oCodeInput = new Input({ placeholder: oBundle.getText("enterKeyword") });
             var oNameInput = new Input({ placeholder: oBundle.getText("enterKeyword") });
-            var oPrevButton = new Button({ text: oBundle.getText("unitVhPrev") });
-            var oNextButton = new Button({ text: oBundle.getText("unitVhNext") });
-            var oPageInfoText = new MText({});
+
+            // Pager dạng: < 1 / 2 >
+            var oPrevButton = new Button({
+                icon: "sap-icon://navigation-left-arrow",
+                type: "Transparent",
+                tooltip: oBundle.getText("unitVhPrev")
+            });
+            var oNextButton = new Button({
+                icon: "sap-icon://navigation-right-arrow",
+                type: "Transparent",
+                tooltip: oBundle.getText("unitVhNext")
+            });
+            var oPageInfoText = new MText({
+                textAlign: "Center"
+            }).addStyleClass("sapUiSmallMarginBeginEnd");
             var oPagerBox = new HBox({
                 alignItems: "Center",
+                justifyContent: "Center",
                 items: [oPrevButton, oPageInfoText, oNextButton]
             });
 
@@ -299,7 +312,10 @@ sap.ui.define([
             var mState = {
                 page: 1,
                 pageSize: 30,
-                hasMore: false
+                hasMore: false,
+                totalPages: null,
+                lastCode: null,   // null = chưa load lần nào
+                lastName: null
             };
 
             var oDialog = new ValueHelpDialog({
@@ -308,6 +324,7 @@ sap.ui.define([
                 descriptionKey: "UnitName",
                 supportMultiselect: false,
                 supportRanges: false,
+                contentWidth: "800px",
                 ok: function (oEvent) {
                     var aTokens = oEvent.getParameter("tokens") || [];
                     var sPicked = aTokens.length > 0 ? (aTokens[0].getKey() || "") : "";
@@ -329,19 +346,41 @@ sap.ui.define([
             var fnUpdatePager = function () {
                 oPrevButton.setEnabled(mState.page > 1);
                 oNextButton.setEnabled(!!mState.hasMore);
-                oPageInfoText.setText(oBundle.getText("unitVhPageInfo", [mState.page]));
+                var sPageText = mState.totalPages
+                    ? (mState.page + " / " + mState.totalPages)
+                    : String(mState.page);
+                oPageInfoText.setText(sPageText);
             };
 
             var fnLoadPage = function () {
                 oDialog.setBusy(true);
 
+                var sCurrentCode = (oCodeInput.getValue() || "").trim();
+                var sCurrentName = (oNameInput.getValue() || "").trim();
+
+                // Nếu filter thay đổi kể từ lần load trước → reset về trang 1
+                if (sCurrentCode !== mState.lastCode || sCurrentName !== mState.lastName) {
+                    mState.page = 1;
+                    mState.totalPages = null;
+                    mState.lastCode = sCurrentCode;
+                    mState.lastName = sCurrentName;
+                }
+
                 that._readUnitValueHelpPage({
-                    code: (oCodeInput.getValue() || "").trim(),
-                    name: (oNameInput.getValue() || "").trim(),
+                    code: sCurrentCode,
+                    name: sCurrentName,
                     pageSize: mState.pageSize,
                     skip: (mState.page - 1) * mState.pageSize
                 }, function (aRows, bHasMore) {
                     mState.hasMore = bHasMore;
+                    if (!bHasMore) {
+                        // Đây là trang cuối — ghi nhận totalPages
+                        mState.totalPages = mState.page;
+                    }
+                    // Nếu hasMore=true nhưng page >= totalPages đã ghi → totalPages đó stale
+                    if (bHasMore && mState.totalPages !== null && mState.page >= mState.totalPages) {
+                        mState.totalPages = null;
+                    }
                     oTableModel.setData(aRows || []);
                     fnUpdatePager();
                     oDialog.update();
@@ -357,19 +396,13 @@ sap.ui.define([
             };
 
             oPrevButton.attachPress(function () {
-                if (mState.page <= 1) {
-                    return;
-                }
-
+                if (mState.page <= 1) { return; }
                 mState.page -= 1;
                 fnLoadPage();
             });
 
             oNextButton.attachPress(function () {
-                if (!mState.hasMore) {
-                    return;
-                }
-
+                if (!mState.hasMore) { return; }
                 mState.page += 1;
                 fnLoadPage();
             });
@@ -378,7 +411,11 @@ sap.ui.define([
                 useToolbar: true,
                 showGoOnFB: true,
                 search: function () {
+                    // Reset toàn bộ state khi bấm Search
                     mState.page = 1;
+                    mState.totalPages = null;
+                    mState.lastCode = null;
+                    mState.lastName = null;
                     fnLoadPage();
                 }
             });
@@ -416,8 +453,8 @@ sap.ui.define([
                 oTable.setModel(oTableModel);
 
                 if (oTable.bindRows) {
-                    oTable.addColumn(new UITableColumn({ label: new Label({ text: oBundle.getText("unitColCode") }), template: new MText({ text: "{UnitCode}" }) }));
-                    oTable.addColumn(new UITableColumn({ label: new Label({ text: oBundle.getText("unitColName") }), template: new MText({ text: "{UnitName}" }) }));
+                    oTable.addColumn(new UITableColumn({ width: "200px", label: new Label({ text: oBundle.getText("unitColCode") }), template: new MText({ text: "{UnitCode}" }) }));
+                    oTable.addColumn(new UITableColumn({ width: "500px", label: new Label({ text: oBundle.getText("unitColName") }), template: new MText({ text: "{UnitName}" }) }));
                     oTable.bindRows("/");
                 } else {
                     oTable.addColumn(new MColumn({ header: new Label({ text: oBundle.getText("unitColCode") }) }));
@@ -436,6 +473,7 @@ sap.ui.define([
                 MessageBox.error(oBundle.getText("unitVhLoadError"));
             });
         },
+
 
         onTabSelect: function (oEvent) {
             var sKey = oEvent.getParameter("key");
