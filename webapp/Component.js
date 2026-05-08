@@ -35,24 +35,7 @@ sap.ui.define([
             this._oSecurity = new SecurityDelegate();
             this._oSecurity.initialize(this);
 
-            // ── SAP FIORI STANDARD: Remove width limitation ──
-            // Calls the FLP ShellUIService to allow the app to fill the full
-            // shell canvas (removes sapUShellApplicationContainerLimitedWidth).
-            // Falls back silently when running outside FLP (e.g. standalone).
-            try {
-                var oShellService = sap.ushell &&
-                    sap.ushell.Container &&
-                    sap.ushell.Container.getServiceAsync("ShellUIService");
-                if (oShellService && oShellService.then) {
-                    oShellService.then(function (oService) {
-                        if (oService && oService.setAppWidthLimited) {
-                            oService.setAppWidthLimited(false);
-                        }
-                    });
-                }
-            } catch (e) {
-                // Not running inside FLP — ignore silently
-            }
+            // Full-width display is handled by "sap.flp": { "fullWidth": true } in manifest.json
         },
 
         /**
