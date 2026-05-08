@@ -743,23 +743,27 @@ sap.ui.define([
                 dCurrent.setDate(dCurrent.getDate() + 1);
             }
 
-            // Luôn điền ngày — dòng Ngày không dùng "-"
-            for (var d = 0; d < aCalculatedDates.length && d < 14; d++) {
-                var dDateD = aCalculatedDates[d];
-                var sDateTextD = ("0" + dDateD.getDate()).slice(-2) + "/" + ("0" + (dDateD.getMonth() + 1)).slice(-2);
-                // Cột cuối (thứ 14): khác CLOSED → "H.Nay"; CLOSED → DD/MM bình thường
-                if (d === 13 && !bIsClosed) { sDateTextD = "H.Nay"; }
-                aDates[d] = sDateTextD;
-            }
-
-            // Các trạng thái chưa khởi công (Bao gồm cả OPENED): chỉ hiện ngày, phần còn lại giữ "-"
-            if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1) {
-                fnSetProps(); return;
-            }
-
             var dStartActual = (oWbs.StartActual instanceof Date) ? oWbs.StartActual : (oWbs.StartActual ? new Date(oWbs.StartActual) : new Date(dServerDateObj));
             var dStartActual_clone = new Date(dStartActual);
             dStartActual_clone.setHours(0, 0, 0, 0);
+
+            // Điền ngày — chỉ hiện ngày từ Start Actual trở đi, các ngày trước đó là "-"
+            for (var d = 0; d < aCalculatedDates.length && d < 14; d++) {
+                var dDateD = aCalculatedDates[d];
+                if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1 || dDateD < dStartActual_clone) {
+                    aDates[d] = "-";
+                } else {
+                    var sDateTextD = ("0" + dDateD.getDate()).slice(-2) + "/" + ("0" + (dDateD.getMonth() + 1)).slice(-2);
+                    // Cột cuối (thứ 14): khác CLOSED → "H.Nay"; CLOSED → DD/MM bình thường
+                    if (d === 13 && !bIsClosed) { sDateTextD = "H.Nay"; }
+                    aDates[d] = sDateTextD;
+                }
+            }
+
+            // Các trạng thái chưa khởi công (Bao gồm cả OPENED): phần còn lại giữ "-"
+            if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1) {
+                fnSetProps(); return;
+            }
 
             var fnGetLogsForDate = function (dTarget) {
                 return aLogs.filter(function (l) {
