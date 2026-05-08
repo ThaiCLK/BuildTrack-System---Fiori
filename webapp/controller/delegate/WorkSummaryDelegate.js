@@ -453,7 +453,7 @@ sap.ui.define([
                     oWSModel.setProperty("/DailyLogs", aLogs);
 
                     WorkSummaryDelegate._calculateWeatherAndRiskStats.call(that, aLogs, oWSModel);
-                    WorkSummaryDelegate._loadResourceForecasting.call(that, aLogs, oWSModel, fTotalQtyDone, parseFloat(oWbs.Quantity) || 0);
+                    WorkSummaryDelegate._loadResourceForecasting.call(that, aLogs, oWSModel, fTotalQtyDone, parseFloat(oWbs.Quantity) || 0, oWbs.UnitCode || "");
 
                     var dServerDateObj = that.getView().getModel("viewData").getProperty("/ServerDateObj") || new Date();
                     WorkSummaryDelegate._buildLogHistoryMatrix(oWbs, aLogs, oWSModel, dServerDateObj);
@@ -587,7 +587,7 @@ sap.ui.define([
             });
         },
 
-        _loadResourceForecasting: function (aLogs, oWSModel, fTotalQtyDone, fQuantity) {
+        _loadResourceForecasting: function (aLogs, oWSModel, fTotalQtyDone, fQuantity, sUnitCode) {
             var oSelf = this;
             var oModel = this.getOwnerComponent().getModel();
             if (!aLogs || aLogs.length === 0) {
@@ -645,6 +645,9 @@ sap.ui.define([
                         var aForecasting = [];
                         var fRemainingQty = Math.max(0, fQuantity - fTotalQtyDone);
                         var sRemainingText = fnText("wsRemainingPrefix", "Còn:") + " " + Math.round(fRemainingQty);
+                        if (sUnitCode) {
+                            sRemainingText += " " + sUnitCode;
+                        }
                         oWSModel.setProperty("/RemainingQtyText", sRemainingText);
 
                         var oNumFormat = sap.ui.core.format.NumberFormat.getFloatInstance({ maxFractionDigits: 2, groupingEnabled: true });
@@ -655,7 +658,7 @@ sap.ui.define([
                             oItem.UsedQuantityFormatted = oNumFormat.format(oItem.UsedQuantity);
 
                             oItem.Norm = fTotalQtyDone > 0 ? (oItem.UsedQuantity / fTotalQtyDone) : 0;
-                            oItem.NormText = oNormFormat.format(oItem.Norm) + " / " + fnText("wsNormPerQtyUnit", "Khối lượng");
+                            oItem.NormText = oNormFormat.format(oItem.Norm) + " / 1 " + fnText("wsNormPerQtyUnit", "Khối lượng");
 
                             var fEtc = oItem.Norm * fRemainingQty;
                             oItem.EtcQuantityRaw = fEtc;
@@ -745,23 +748,27 @@ sap.ui.define([
                 dCurrent.setDate(dCurrent.getDate() + 1);
             }
 
-            // Luôn điền ngày — dòng Ngày không dùng "-"
-            for (var d = 0; d < aCalculatedDates.length && d < 14; d++) {
-                var dDateD = aCalculatedDates[d];
-                var sDateTextD = ("0" + dDateD.getDate()).slice(-2) + "/" + ("0" + (dDateD.getMonth() + 1)).slice(-2);
-                // Cột cuối (thứ 14): khác CLOSED → "H.Nay"; CLOSED → DD/MM bình thường
-                if (d === 13 && !bIsClosed) { sDateTextD = "H.Nay"; }
-                aDates[d] = sDateTextD;
-            }
-
-            // Các trạng thái chưa khởi công (Bao gồm cả OPENED): chỉ hiện ngày, phần còn lại giữ "-"
-            if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1) {
-                fnSetProps(); return;
-            }
-
             var dStartActual = (oWbs.StartActual instanceof Date) ? oWbs.StartActual : (oWbs.StartActual ? new Date(oWbs.StartActual) : new Date(dServerDateObj));
             var dStartActual_clone = new Date(dStartActual);
             dStartActual_clone.setHours(0, 0, 0, 0);
+
+            // Điền ngày — chỉ hiện ngày từ Start Actual trở đi, các ngày trước đó là "-"
+            for (var d = 0; d < aCalculatedDates.length && d < 14; d++) {
+                var dDateD = aCalculatedDates[d];
+                if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1 || dDateD < dStartActual_clone) {
+                    aDates[d] = "-";
+                } else {
+                    var sDateTextD = ("0" + dDateD.getDate()).slice(-2) + "/" + ("0" + (dDateD.getMonth() + 1)).slice(-2);
+                    // Cột cuối (thứ 14): khác CLOSED → "H.Nay"; CLOSED → DD/MM bình thường
+                    if (d === 13 && !bIsClosed) { sDateTextD = "H.Nay"; }
+                    aDates[d] = sDateTextD;
+                }
+            }
+
+            // Các trạng thái chưa khởi công (Bao gồm cả OPENED): phần còn lại giữ "-"
+            if (["PLANNING", "PENDING_OPEN", "OPEN_REJECTED", "OPENED"].indexOf(sStatus) !== -1) {
+                fnSetProps(); return;
+            }
 
             var fnGetLogsForDate = function (dTarget) {
                 return aLogs.filter(function (l) {
@@ -1065,8 +1072,7 @@ sap.ui.define([
 
             // ── Lưới thời gian tĩnh (Stepped Interval) ─────────────────────────
             var iChartDays = WorkSummaryDelegate._getDaysDiff(dChartStart, dChartEnd) + 1;
-            var iStep = Math.ceil(iChartDays / 30);
-            if (iStep < 1) iStep = 1;
+            var iStep = 1;
 
             var aUniqueDates = [];
             var dTemp = new Date(dChartStart);
@@ -1110,19 +1116,22 @@ sap.ui.define([
 
                     // Planned remaining on this day
                     var fPlanned = null;
-                    var iDaysFromPlanStart = WorkSummaryDelegate._getDaysDiff(dPlanStart, dCurrent) + 1;
-                    if (iDaysFromPlanStart <= 0) {
-                        fPlanned = fQuantity;
-                    } else if (iDaysFromPlanStart >= iPlanDays) {
-                        fPlanned = 0;
-                    } else {
-                        fPlanned = Math.max(0, fQuantity - (fDailyBurnRate * iDaysFromPlanStart));
+                    if (dCurrent >= dPlanStart) {
+                        var iDaysFromPlanStart = WorkSummaryDelegate._getDaysDiff(dPlanStart, dCurrent) + 1;
+                        if (iDaysFromPlanStart >= iPlanDays) {
+                            fPlanned = 0;
+                        } else {
+                            fPlanned = Math.max(0, fQuantity - (fDailyBurnRate * iDaysFromPlanStart));
+                        }
+                        fPlanned = Math.round(fPlanned * 100) / 100;
                     }
-                    fPlanned = Math.round(fPlanned * 100) / 100;
 
                     // Actual remaining — only up to today
                     var fActual = null;
-                    if (dCurrent <= dToday) {
+                    var dStartActual_clone = dStartActual ? new Date(dStartActual) : null;
+                    if (dStartActual_clone) { dStartActual_clone.setHours(0, 0, 0, 0); }
+
+                    if (dStartActual_clone && dCurrent <= dToday && dCurrent >= dStartActual_clone) {
                         fActual = Math.max(0, Math.round((fQuantity - fCumActual) * 100) / 100);
                     }
 

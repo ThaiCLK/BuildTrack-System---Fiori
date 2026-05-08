@@ -333,14 +333,16 @@ sap.ui.define([
             var oChartStartDate = new Date(oIdealStart);
             var oChartEndDate = new Date(oIdealEnd);
 
+            var dMinStartActual = null;
             aWbs.forEach(function (w) {
                 if (w.StartActual) {
                     var d = new Date(w.StartActual); d.setHours(0, 0, 0, 0);
-                    if (d < oChartStartDate) oChartStartDate = d;
+                    if (d < oChartStartDate) oChartStartDate = new Date(d);
+                    if (!dMinStartActual || d < dMinStartActual) dMinStartActual = new Date(d);
                 }
                 if (w.EndActual) {
                     var d = new Date(w.EndActual); d.setHours(0, 0, 0, 0);
-                    if (d > oChartEndDate) oChartEndDate = d;
+                    if (d > oChartEndDate) oChartEndDate = new Date(d);
                 }
             });
 
@@ -370,8 +372,7 @@ sap.ui.define([
             };
 
             var iChartDays = fnGetDaysDiff(oChartStartDate, oChartEndDate) + 1;
-            var iStep = Math.ceil(iChartDays / 30);
-            if (iStep < 1) iStep = 1;
+            var iStep = 1;
 
             var iProjectPlanDays = fnGetDaysDiff(oIdealStart, oIdealEnd) + 1;
             if (iProjectPlanDays <= 0) iProjectPlanDays = 1;
@@ -414,20 +415,19 @@ sap.ui.define([
 
                 // Planned: Ideal Line
                 var fPlanned = null;
-                var iDaysFromPlanStart = fnGetDaysDiff(oIdealStart, oDate) + 1;
-
-                if (iDaysFromPlanStart <= 0) {
-                    fPlanned = iTotalWbs;
-                } else if (iDaysFromPlanStart >= iProjectPlanDays) {
-                    fPlanned = 0;
-                } else {
-                    fPlanned = Math.max(0, iTotalWbs - (fDailyBurnRate * iDaysFromPlanStart));
+                if (oDate >= oIdealStart) {
+                    var iDaysFromPlanStart = fnGetDaysDiff(oIdealStart, oDate) + 1;
+                    if (iDaysFromPlanStart >= iProjectPlanDays) {
+                        fPlanned = 0;
+                    } else {
+                        fPlanned = Math.max(0, iTotalWbs - (fDailyBurnRate * iDaysFromPlanStart));
+                    }
+                    fPlanned = Math.round(fPlanned * 100) / 100;
                 }
-                fPlanned = Math.round(fPlanned * 100) / 100;
 
                 // Actual: WBS NOT YET closed
                 var fActual = null;
-                if (oDate.getTime() <= oToday.getTime()) {
+                if (dMinStartActual && oDate.getTime() <= oToday.getTime() && oDate >= dMinStartActual) {
                     var iClosed = 0;
                     aWbs.forEach(function (w) {
                         if ((w.Status || "").toUpperCase() === "CLOSED") {

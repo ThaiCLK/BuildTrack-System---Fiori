@@ -442,10 +442,7 @@
 
                 <Panel headerText="{i18n>wsResourceForecastPanel}" class="sapUiSmallMarginBottom" visible="true">
                     <VBox class="sapUiSmallMargin">
-                        <HBox alignItems="Center" class="sapUiSmallMarginBottom">
-                            <Label text="{i18n>wsResourceForecastLabel}" design="Bold"/>
-                            <Text text=" ({workSummaryModel>/RemainingQtyText})" class="sapUiTinyMarginBegin"/>
-                        </HBox>
+                        <Text text="{i18n>wsResourceForecastLabel} ({workSummaryModel>/RemainingQtyText})" class="sapMTextBold sapUiSmallMarginBottom" />
                         <Table showSeparators="Inner" noDataText="{i18n>wsResourceForecastNoData}" items="{workSummaryModel>/ResourceForecasting}">
                             <columns>
                                 <Column width="30%">
