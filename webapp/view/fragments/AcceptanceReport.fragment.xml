@@ -32,7 +32,7 @@
                     <VBox class="sapUiSmallMarginBegin">
                         <HBox class="infoTableRow" width="100%">
                             <Label text="Nhà thầu:" class="infoTableLabel" />
-                            <Text text="Công ty Thành An 116" class="infoTableValue" />
+                            <Text text="Công ty Đông Đô" class="infoTableValue" />
                         </HBox>
                         <HBox class="infoTableRow" width="100%">
                             <Label text="Dự án / Gói thầu:" class="infoTableLabel" />
