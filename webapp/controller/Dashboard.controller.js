@@ -421,8 +421,8 @@ sap.ui.define([
                 var fRemPct = 100 - fDonePct;
                 var sName = w.WbsName || w.WbsCode || "WBS";
 
-                aProgressChart.push({ wbsName: sName, type: oBundle.getText("done") + " (%)", value: Math.round(fDonePct * 100) / 100 });
-                aProgressChart.push({ wbsName: sName, type: oBundle.getText("remaining") + " (%)", value: Math.round(fRemPct * 100) / 100 });
+                aProgressChart.push({ wbsName: sName, type: "1. " + oBundle.getText("remaining") + " (%)", value: Math.round(fRemPct * 100) / 100 });
+                aProgressChart.push({ wbsName: sName, type: "2. " + oBundle.getText("done") + " (%)", value: Math.round(fDonePct * 100) / 100 });
             });
             if (aProgressChart.length === 0) {
                 aProgressChart = [{ wbsName: "No Data", type: "Done (%)", value: 0 }];
@@ -506,7 +506,7 @@ sap.ui.define([
             if (oProgress) {
                 oProgress.setVizProperties({
                     plotArea: {
-                        colorPalette: ["#19A979", "#E0E0E0"],
+                        colorPalette: ["#E0E0E0", "#19A979"],
                         dataLabel: { visible: false }
                     },
                     title: { visible: false },
