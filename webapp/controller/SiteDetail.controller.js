@@ -912,6 +912,13 @@ sap.ui.define([
                 var oCtx = oTable.getContextByIndex(aIndices[0]);
                 var sParentId = oCtx ? oCtx.getProperty("WbsId") : null;
                 var sParentName = oCtx ? oCtx.getProperty("WbsName") : "";
+                var sParentStatus = oCtx ? oCtx.getProperty("Status") : "";
+
+                // Validate: cannot add child if parent is PENDING_OPEN (awaiting open approval)
+                if (sParentStatus === "PENDING_OPEN") {
+                    sap.m.MessageBox.error(oBundle.getText("cannotCreateChildPendingOpenError"));
+                    return;
+                }
 
                 // Determine depth of selected row
                 var iDepth = this._getWbsDepth(sParentId);
